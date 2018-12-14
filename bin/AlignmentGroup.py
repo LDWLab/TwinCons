@@ -1,4 +1,6 @@
-import re
+import re, random
+from Bio.Seq import MutableSeq
+from collections import Counter
 """
 Contains class for alignment groups
 """
@@ -46,3 +48,27 @@ class AlginmentGroup:
 			else:
 				dictList[v[0]]=k
 		return dictList
+
+	def randomize_gaps(self, aa_list):
+		'''
+		Substitutes gaps in the alignment with a random choice from the present AAs.
+		Should be an option to either use absolute random or random sampled from the distribution of the sequence.
+		'''
+		for aln in self.aln_obj:
+			i = 0
+			newaln=MutableSeq(str(aln.seq))
+			aln_no_dash = str(aln.seq).replace('-', '')
+			distribution = Counter(aln_no_dash)
+			choice_distr = []
+			for aa in aa_list:
+				choice_distr.append(distribution[aa]/len(aln_no_dash))
+			for resi in aln.seq:
+				if resi == '-':
+					#newaln[i] = choice(aa_list, p=choice_distr)
+					newaln[i] = random.choice(aa_list)
+				i+=1
+			aln.seq=newaln
+		return True
+	
+	def _return_alignment_obj(self):
+		return self.aln_obj

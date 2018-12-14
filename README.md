@@ -9,12 +9,21 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 ## Overall flow
 
 1. Inputs
-- One alignment file with two defined groups [Required]
-- One or two structure files for each group, or secondary structure string [Optional]
+- One alignment file with two defined groups (Required)
+- One or two structure files for each group, or secondary structure string (Optional)
 	- Structure files must each correspond to a sequence from the their appropriate sequence group, sequences must have same length between structure and alignment or the correct numbering must be used in the structure files.
 
 2. Flow
 - Read alignment and structure files
 - Split the alignment into two groups
 - Create group classes
-	- Create correspondence tuple between alignment index and anchor sequences for the groups
+	- Create correspondence mapping between alignment index and anchor sequences for the groups
+	- Calculate structural data and associate with correspondence mapping (sec structure and inner/outer)
+	- Randomize gaps in alignment objects
+	- Calculate frequency vectors and associate with correspondence mapping (<span style="color:red">what happens when no structure?</span>)
+- For combinations of two classes:
+	- Calculate score using **frequency vectors**, **correspondence mapping**, and **matrices** defined by **structural data**
+- Generate output
+	- **.pml file** for all structures with residue colors defined by the score
+	- **.png** with score trace for residue number
+	- **optional data** if run as a module **for multiple alignment analysis**

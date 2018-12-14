@@ -47,12 +47,16 @@ def main():
 	"""Main entry for the script"""
 	aln_path = sys.argv[1]
 	protein_struc_path = sys.argv[2]
+
 	alignIO_out=read_align(aln_path)
 	aa_list=uniq_AA_list(alignIO_out)
+	pdbDict, linesList, residueList=replace_bfactor(protein_struc_path)
+
 	TestGroup = AlginmentGroup(alignIO_out,protein_struc_path)
 	struc_to_aln_index_mapping=AlginmentGroup.create_struc_aln_mapping(TestGroup)
-	pdbDict, linesList, residueList=replace_bfactor(protein_struc_path)
-	print(struc_to_aln_index_mapping)
+	AlginmentGroup.randomize_gaps(TestGroup, aa_list)
+	
+	print(struc_to_aln_index_mapping,AlginmentGroup._return_alignment_obj(TestGroup))
 
 
 if __name__ == '__main__':
