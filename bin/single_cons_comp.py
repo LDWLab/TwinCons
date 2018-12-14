@@ -70,7 +70,7 @@ def slice_by_name(unsliced_aln_obj):
 			if re.match(prot,entry.id.split("_")[0]):
 				what.append(entry)
 		sliced_dict[prot]=what
-	return sliced_dict
+	return sliced_dict			#Instead of making a dict from the whats (which are aln_objects) just yield them
 
 def uniq_AA_list(aln_obj):
 	'''
