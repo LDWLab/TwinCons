@@ -70,7 +70,7 @@ def slice_by_name(unsliced_aln_obj):
 			if re.match(prot,entry.id.split("_")[0]):
 				what.append(entry)
 		sliced_dict[prot]=what
-	return sliced_dict			#Instead of making a dict from the whats (which are aln_objects) just yield them
+	return sliced_dict			#Iterate over the dict and create instances of AlignmentGroup
 
 def uniq_AA_list(aln_obj):
 	'''

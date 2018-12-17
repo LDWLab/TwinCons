@@ -71,4 +71,7 @@ class AlginmentGroup:
 		return True
 	
 	def _return_alignment_obj(self):
+		"""
+		Returns current alignment object of this group
+		"""
 		return self.aln_obj
