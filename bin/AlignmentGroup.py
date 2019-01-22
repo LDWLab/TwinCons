@@ -20,6 +20,9 @@ class AlginmentGroup:
 		'''
 		Make a dictionary complementing the locations in 
 		the alignment fasta file and the structure pdb file
+		
+		Check and think what to do when no mapping is possible 
+		since we are passing the wrong struc (nonexistent in this group)
 		'''
 		alignDict = {}
 		struc_name = re.findall(r'(.*\/)(.*)(_.*.pdb)',self.struc_file)[0][1]

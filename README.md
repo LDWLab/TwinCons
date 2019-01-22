@@ -15,7 +15,7 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 
 2. Flow
 - Read alignment and structure files
-- Split the alignment into two groups
+- <span style="color:red">Split the alignment into two groups</span>
 - Create group classes
 	- Create correspondence mapping between alignment index and anchor sequences for the groups
 	- Calculate structural data and associate with correspondence mapping (sec structure and inner/outer)
