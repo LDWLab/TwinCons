@@ -1,5 +1,8 @@
 import re, random
 from Bio.Seq import MutableSeq
+from Bio.PDB import DSSP
+from Bio.PDB import PDBParser
+from Bio.PDB import ResidueDepth
 from collections import Counter
 """
 Contains class for alignment groups
@@ -16,7 +19,7 @@ class AlginmentGroup:
 		self.struc_file = struc_file if struc_file is not None else None
 		self.sstruc_str = sstruc_str if sstruc_str is not None else None
 
-	def create_struc_aln_mapping(self):
+	def create_aln_struc_mapping(self):
 		'''
 		Make a dictionary complementing the locations in 
 		the alignment fasta file and the structure pdb file
@@ -32,7 +35,7 @@ class AlginmentGroup:
 		i=0
 		a=1
 		for alignment in self.aln_obj:
-			if re.search(struc_name, alignment.id) is not None:
+			if re.search(struc_name, alignment.id) is not None: # else error as wrong structure was passed
 				anchor_seq=alignment 							# anchor_seq will hold the sequence data from the name of the pdb file
 				for x in anchor_seq:
 					if (x=="-"):
@@ -49,8 +52,19 @@ class AlginmentGroup:
 			if v[0]==0:
 				next
 			else:
-				dictList[v[0]]=k
+				dictList[k]=v[0]
 		return dictList
+	
+	def _freq_iterator(self, column, aa_list):
+		'''
+		Calculates frequency of each AA in the column.
+		'''
+		col_aalist=[]
+		for aa in aa_list:
+			#print(aa, column.count(aa)/len(column.replace("-", "")))
+			col_aalist.append(column.count(aa)/len(column))
+		#print()
+		return col_aalist
 
 	def randomize_gaps(self, aa_list):
 		'''
@@ -73,6 +87,25 @@ class AlginmentGroup:
 			aln.seq=newaln
 		return True
 	
+	def column_distribution_calculation(self, aa_list, alen):
+		column_distr={}
+		i=0
+		while i < alen:
+			col_aalist=self._freq_iterator(self.aln_obj[:, i], sorted(aa_list))
+			i+=1
+			column_distr[i] = col_aalist
+		return column_distr
+
+	def ss_map_creator(self):
+		parser = PDBParser()
+		structure = parser.get_structure('current_structure',self.struc_file)
+		model = structure[0]
+		dssp = DSSP(model, self.struc_file)
+		a_key = list(dssp.keys())[2]
+		print (dssp[a_key])
+
+		rd = ResidueDepth(model)
+
 	def _return_alignment_obj(self):
 		"""
 		Returns current alignment object of this group

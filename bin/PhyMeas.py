@@ -1,6 +1,7 @@
 """Script to calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, sys, warnings, statistics, copy, itertools, random, Bio.Align
 from Bio import AlignIO
+from collections import defaultdict
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlginmentGroup
 
@@ -69,19 +70,35 @@ def parse_pdb(file):
 def main():
 	"""Main entry for the script"""
 	aln_path = sys.argv[1]
+	pdb_paths = []
+	for pdb_path in sys.argv[2:]:
+		pdb_paths.append(pdb_path)
 	protein_struc_path = sys.argv[2]
 	alignIO_out=read_align(aln_path)
 
 	sliced_alns = slice_by_name(alignIO_out)
 	aa_list=uniq_AA_list(alignIO_out)
-	pdbDict, linesList, residueList=parse_pdb(protein_struc_path)
+	parsed_struct={}
+	for pdb_file in pdb_paths:
+		pdbDict, linesList, residueList=parse_pdb(pdb_file)
+		parsed_struct[pdb_file]=[pdbDict, linesList, residueList]
 
+	alngroup_dict={}							#Dictionary combining class outputs
+	aln_index_dict=defaultdict(dict)			#Dictionary combining class outputs with first key the aln index
 	for alngroup_name in sliced_alns:
-		print(alngroup_name)
-		alngroup_name = AlginmentGroup(sliced_alns[alngroup_name],protein_struc_path)
-		struc_to_aln_index_mapping=AlginmentGroup.create_struc_aln_mapping(alngroup_name)
-		AlginmentGroup.randomize_gaps(alngroup_name, aa_list)
-		print(struc_to_aln_index_mapping,AlginmentGroup._return_alignment_obj(alngroup_name))
+		current_path = [s for s in pdb_paths if alngroup_name in s]				#Add a check to ensure it is a single match and that there is a match!
+		print(alngroup_name, current_path)
+		alngroup_name_object = AlginmentGroup(sliced_alns[alngroup_name],current_path[0])
+		struc_to_aln_index_mapping=AlginmentGroup.create_aln_struc_mapping(alngroup_name_object)
+		AlginmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+		alnindex_col_distr = AlginmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+		alngroup_dict[alngroup_name] = [struc_to_aln_index_mapping,alnindex_col_distr,AlginmentGroup._return_alignment_obj(alngroup_name_object)]
+		for aln_index in alnindex_col_distr:
+			aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+		AlginmentGroup.ss_map_creator(alngroup_name_object)
+
+	#for aln_index in aln_index_dict:
+	#	print(aln_index, aln_index_dict[aln_index])
 
 
 if __name__ == '__main__':
