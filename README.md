@@ -29,3 +29,17 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 	- **.pml file** for all structures with residue colors defined by the score
 	- **.png** with score trace for residue number
 	- **optional data** if run as a module **for multiple alignment analysis**
+
+## Dependencies
+
+- Python3
+- Python modules:
+	- Biopython
+- DSSP 
+- MSMS http://mgltools.scripps.edu/downloads#msms
+
+## Other
+
+Order in the vector
+
+A C D E F G H I K L M N P Q R S T V W Y

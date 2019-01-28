@@ -4,6 +4,7 @@ from Bio import AlignIO
 from collections import defaultdict
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlginmentGroup
+from MatrixLoad import PhymlMatrix
 
 def read_align(aln_path):
 	'''
@@ -88,18 +89,36 @@ def main():
 	for alngroup_name in sliced_alns:
 		current_path = [s for s in pdb_paths if alngroup_name in s]				#Add a check to ensure it is a single match and that there is a match!
 		print(alngroup_name, current_path)
+		###
 		alngroup_name_object = AlginmentGroup(sliced_alns[alngroup_name],current_path[0])
 		struc_to_aln_index_mapping=AlginmentGroup.create_aln_struc_mapping(alngroup_name_object)
 		AlginmentGroup.randomize_gaps(alngroup_name_object, aa_list)
 		alnindex_col_distr = AlginmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-		alngroup_dict[alngroup_name] = [struc_to_aln_index_mapping,alnindex_col_distr,AlginmentGroup._return_alignment_obj(alngroup_name_object)]
+		ss_aln_index_map,res_depth_aln_index_map = AlginmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+		###
+		alngroup_dict[alngroup_name] = [struc_to_aln_index_mapping,alnindex_col_distr,AlginmentGroup._return_alignment_obj(alngroup_name_object),ss_aln_index_map,res_depth_aln_index_map]
+		
 		for aln_index in alnindex_col_distr:
 			aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-		AlginmentGroup.ss_map_creator(alngroup_name_object)
+		
 
-	#for aln_index in aln_index_dict:
-	#	print(aln_index, aln_index_dict[aln_index])
+	for aln_index in aln_index_dict:
+		#print(aln_index, aln_index_dict[aln_index])
+		temp_column_dict=defaultdict(dict)
+		for groupname in aln_index_dict[aln_index]:
+			if aln_index in alngroup_dict[groupname][3]:
+				if aln_index in temp_column_dict:
+					temp_column_dict[aln_index].append(groupname)
+				else:
+					temp_column_dict[aln_index]=[]
+					temp_column_dict[aln_index].append(groupname)
+				#print(groupname, aln_index, alngroup_dict[groupname][3][aln_index], alngroup_dict[groupname][4][aln_index],aln_index_dict[aln_index][groupname])
+		if len(temp_column_dict[aln_index]) > 1:
+			if alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index] == alngroup_dict[temp_column_dict[aln_index][1]][3][aln_index]:
+				print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
 
+	lg_matrix=PhymlMatrix('../test_data/LG.dat')
+	lg_matrix.calculate_Sij()
 
 if __name__ == '__main__':
 	sys.exit(main())

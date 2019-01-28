@@ -88,6 +88,9 @@ class AlginmentGroup:
 		return True
 	
 	def column_distribution_calculation(self, aa_list, alen):
+		'''
+		Calculates AA distribution for the current alignment column
+		'''
 		column_distr={}
 		i=0
 		while i < alen:
@@ -96,15 +99,27 @@ class AlginmentGroup:
 			column_distr[i] = col_aalist
 		return column_distr
 
-	def ss_map_creator(self):
+	def ss_map_creator(self,struc_to_aln_index_mapping):
+		'''
+		Connects the alignment mapping index and the secondary structural
+		assignments from DSSP. Also same for residue depth (TODO)
+		'''
+		ss_aln_index_map={}
+		res_depth_aln_index_map={}
+		inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
 		parser = PDBParser()
 		structure = parser.get_structure('current_structure',self.struc_file)
 		model = structure[0]
 		dssp = DSSP(model, self.struc_file)
-		a_key = list(dssp.keys())[2]
-		print (dssp[a_key])
-
+		dssp_keys = list(dssp.keys())
 		rd = ResidueDepth(model)
+		for a_key in dssp_keys:
+			ss_aln_index_map[inv_map[dssp[a_key][0]]] = dssp[a_key][2]
+			res_depth_aln_index_map[inv_map[dssp[a_key][0]]]=rd[a_key]
+			#print (inv_map[dssp[a_key][0]], dssp[a_key][2],rd[a_key])
+
+		
+		return ss_aln_index_map,res_depth_aln_index_map
 
 	def _return_alignment_obj(self):
 		"""
