@@ -4,7 +4,7 @@ from Bio import AlignIO
 from collections import defaultdict
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlginmentGroup
-from MatrixLoad import PhymlMatrix
+from MatrixLoad import PAMLmatrix
 
 def read_align(aln_path):
 	'''
@@ -100,25 +100,28 @@ def main():
 		
 		for aln_index in alnindex_col_distr:
 			aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-		
 
-	for aln_index in aln_index_dict:
-		#print(aln_index, aln_index_dict[aln_index])
-		temp_column_dict=defaultdict(dict)
-		for groupname in aln_index_dict[aln_index]:
-			if aln_index in alngroup_dict[groupname][3]:
-				if aln_index in temp_column_dict:
-					temp_column_dict[aln_index].append(groupname)
-				else:
-					temp_column_dict[aln_index]=[]
-					temp_column_dict[aln_index].append(groupname)
-				#print(groupname, aln_index, alngroup_dict[groupname][3][aln_index], alngroup_dict[groupname][4][aln_index],aln_index_dict[aln_index][groupname])
-		if len(temp_column_dict[aln_index]) > 1:
-			if alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index] == alngroup_dict[temp_column_dict[aln_index][1]][3][aln_index]:
-				print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
 
-	lg_matrix=PhymlMatrix('../test_data/LG.dat')
-	lg_matrix.calculate_Sij()
+	lg_matrix=PAMLmatrix('../test_data/LG.dat')
+	print(lg_matrix.dict_lodd[('A','A')])
+
+
+	#for aln_index in aln_index_dict:
+	#	#print(aln_index, aln_index_dict[aln_index])
+	#	temp_column_dict=defaultdict(dict)
+	#	for groupname in aln_index_dict[aln_index]:
+	#		if aln_index in alngroup_dict[groupname][3]:
+	#			if aln_index in temp_column_dict:
+	#				temp_column_dict[aln_index].append(groupname)
+	#			else:
+	#				temp_column_dict[aln_index]=[]
+	#				temp_column_dict[aln_index].append(groupname)
+	#			#print(groupname, aln_index, alngroup_dict[groupname][3][aln_index], alngroup_dict[groupname][4][aln_index],aln_index_dict[aln_index][groupname])
+	#	if len(temp_column_dict[aln_index]) > 1:
+	#		if alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index] == alngroup_dict[temp_column_dict[aln_index][1]][3][aln_index]:
+	#			print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
+
+	
 
 if __name__ == '__main__':
 	sys.exit(main())

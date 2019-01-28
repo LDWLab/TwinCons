@@ -42,4 +42,8 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 
 Order in the vector
 
-A C D E F G H I K L M N P Q R S T V W Y
+A	C	D	E	F	G	H	I	K	L	M	N	P	Q	R	S	T	V	W	Y
+
+Order in PhyML matrix
+
+A	R	N	D	C	Q	E	G	H	I	L	K	M	F	P	S	T	W	Y	V
