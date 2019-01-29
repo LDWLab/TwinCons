@@ -18,6 +18,9 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 - Read alignment and structure files
 - Split the alignment into two groups 
 	- <span style="color:red">or split alignment in multiple groups by traversing the tree.</span>
+- Parse matrices
+	- Transform to log odds
+	- Normalize random to 0
 - Create group classes
 	- Create correspondence mapping between alignment index and anchor sequences for the groups (<span style="color:red">what happens when no structure?</span>)
 	- Calculate structural data and associate with correspondence mapping (sec structure and inner/outer)

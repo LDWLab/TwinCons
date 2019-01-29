@@ -1,7 +1,8 @@
 """Script to calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, sys, warnings, statistics, copy, itertools, random, Bio.Align
+import numpy as np
 from Bio import AlignIO
-from collections import defaultdict
+from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlginmentGroup
 from MatrixLoad import PAMLmatrix
@@ -18,6 +19,7 @@ def uniq_AA_list(aln_obj):
 	Creates list of unique AA residues in the given MSA to be used for frequency iterator.
 	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters.
 	'''
+	default_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
 	hash_AA=dict()
 	for alignment in aln_obj:
 		for amac in alignment.seq:
@@ -29,7 +31,10 @@ def uniq_AA_list(aln_obj):
 		pass
 	else:
 		raise ValueError("Alignment has AA letters not found in the IUPAC extended list!")
-	return list(hash_AA.keys())
+	if Counter(list(hash_AA.keys())) == Counter(default_aa_sequence):
+		return default_aa_sequence
+	else:
+		raise ValueError("Alignment has non-standard AAs!")
 
 def slice_by_name(unsliced_aln_obj):
 	'''
@@ -103,24 +108,42 @@ def main():
 
 
 	lg_matrix=PAMLmatrix('../test_data/LG.dat')
-	print(lg_matrix.dict_lodd[('A','A')])
+	ext_matrix=PAMLmatrix('../test_data/EXT.dat')
+	hel_matrix=PAMLmatrix('../test_data/HEL.dat')
+	oth_matrix=PAMLmatrix('../test_data/OTH.dat')
 
+	#print(lg_matrix.dict_lodd[('A','A')])
+	lgmx=np.array(lg_matrix.lodd)
+	extmx=np.array(ext_matrix.lodd)
+	helmx=np.array(hel_matrix.lodd)
+	othmx=np.array(oth_matrix.lodd)
 
-	#for aln_index in aln_index_dict:
-	#	#print(aln_index, aln_index_dict[aln_index])
-	#	temp_column_dict=defaultdict(dict)
-	#	for groupname in aln_index_dict[aln_index]:
-	#		if aln_index in alngroup_dict[groupname][3]:
-	#			if aln_index in temp_column_dict:
-	#				temp_column_dict[aln_index].append(groupname)
-	#			else:
-	#				temp_column_dict[aln_index]=[]
-	#				temp_column_dict[aln_index].append(groupname)
-	#			#print(groupname, aln_index, alngroup_dict[groupname][3][aln_index], alngroup_dict[groupname][4][aln_index],aln_index_dict[aln_index][groupname])
-	#	if len(temp_column_dict[aln_index]) > 1:
-	#		if alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index] == alngroup_dict[temp_column_dict[aln_index][1]][3][aln_index]:
-	#			print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
-
+	for aln_index in aln_index_dict:
+		#print(aln_index, aln_index_dict[aln_index])
+		temp_column_dict=defaultdict(dict)
+		for groupname in aln_index_dict[aln_index]:
+			if aln_index in alngroup_dict[groupname][3]:
+				if aln_index in temp_column_dict:
+					temp_column_dict[aln_index].append(groupname)
+				else:
+					temp_column_dict[aln_index]=[]
+					temp_column_dict[aln_index].append(groupname)
+				#print(groupname, aln_index, alngroup_dict[groupname][3][aln_index], alngroup_dict[groupname][4][aln_index],aln_index_dict[aln_index][groupname])
+		if len(temp_column_dict[aln_index]) > 1:
+			ss_indicator1=alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index]
+			ss_indicator2=alngroup_dict[temp_column_dict[aln_index][1]][3][aln_index]
+			if ss_indicator1 == ss_indicator2:
+				vr1=np.array(alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index])
+				vr2=np.array(alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
+				if ss_indicator1 == 'E' or ss_indicator1 == 'B':
+					print(aln_index, ss_indicator1, ss_indicator2, vr1@extmx@vr2.T)
+				elif ss_indicator1 == 'H' or ss_indicator1 == 'G':
+					print(aln_index, ss_indicator1, ss_indicator2, vr1@helmx@vr2.T)
+				else:
+					print(aln_index, ss_indicator1, ss_indicator2, vr1@othmx@vr2.T)
+				#print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
+			else:
+				print(aln_index, ss_indicator1, ss_indicator2, vr1@lgmx@vr2.T)
 	
 
 if __name__ == '__main__':
