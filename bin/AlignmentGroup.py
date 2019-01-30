@@ -8,7 +8,7 @@ from collections import Counter
 Contains class for alignment groups
 """
 
-class AlginmentGroup:
+class AlignmentGroup:
 	"""
 	Class for a single group within an alignment.
 	Must pass the alignment object and optionally a structure object or secondary structure string
