@@ -99,6 +99,13 @@ class AlignmentGroup:
 			column_distr[i] = col_aalist
 		return column_distr
 
+	def structure_loader(self,struc_to_aln_index_mapping):
+		inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
+		parser = PDBParser()
+		structure = parser.get_structure('current_structure',self.struc_file)
+		model = structure[0]
+		return inv_map, model
+
 	def ss_map_creator(self,struc_to_aln_index_mapping):
 		'''
 		Connects the alignment mapping index and the secondary structural
@@ -106,20 +113,20 @@ class AlignmentGroup:
 		'''
 		ss_aln_index_map={}
 		res_depth_aln_index_map={}
-		inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
-		parser = PDBParser()
-		structure = parser.get_structure('current_structure',self.struc_file)
-		model = structure[0]
+		inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
 		dssp = DSSP(model, self.struc_file)
-		dssp_keys = list(dssp.keys())
-		rd = ResidueDepth(model)
-		for a_key in dssp_keys:
-			ss_aln_index_map[inv_map[dssp[a_key][0]]] = dssp[a_key][2]
-			res_depth_aln_index_map[inv_map[dssp[a_key][0]]]=rd[a_key]
-			#print (inv_map[dssp[a_key][0]], dssp[a_key][2],rd[a_key])
+		for a_key in list(dssp.keys()):
+			ss_aln_index_map[inv_map[a_key[1][1]]] = dssp[a_key][2]
+		return ss_aln_index_map
 
-		
-		return ss_aln_index_map,res_depth_aln_index_map
+	def depth_map_creator(self, struc_to_aln_index_mapping):
+		res_depth_aln_index_map={}
+		inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
+		rd = ResidueDepth(model)
+		for a_key in list(rd.keys()):
+			res_depth_aln_index_map[inv_map[a_key[1][1]]]=rd[a_key]
+		return res_depth_aln_index_map
+
 
 	def _return_alignment_obj(self):
 		"""

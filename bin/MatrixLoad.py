@@ -27,7 +27,7 @@ class PAMLmatrix:
 		if int(testvr@revtestA@testvr.T) != 0:
 			raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
 		else:
-			print(baseline)
+			#print(baseline)
 			return np.add(lodd,abs(baseline))
 
 	@property

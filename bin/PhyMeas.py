@@ -140,6 +140,12 @@ def compute_score(aln_index_dict, alngroup_dict):
 			else:
 				print(aln_index, ss_indicator1, ss_indicator2, vr1@lgmx@vr2.T)
 			#print (aln_index, alngroup_dict[temp_column_dict[aln_index][0]][3][aln_index], '\n\t',temp_column_dict[aln_index][0], '\t',alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index], '\n\t',temp_column_dict[aln_index][1], '\t',alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
+		else:								#In case of only one structure
+			#print(aln_index, temp_column_dict[aln_index])
+			pass
+			#vr1=np.array(alngroup_dict[temp_column_dict[aln_index][0]][1][aln_index])
+			#vr2=np.array(alngroup_dict[temp_column_dict[aln_index][1]][1][aln_index])
+			#print(aln_index, vr1@lgmx@vr2.T)
 
 def main():
 	"""Main entry for the script"""
@@ -168,7 +174,8 @@ def main():
 				struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
 				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
 				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-				ss_aln_index_map,res_depth_aln_index_map = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+				ss_aln_index_map = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+				res_depth_aln_index_map = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
 				###
 				alngroup_dict[alngroup_name] = [struc_to_aln_index_mapping,alnindex_col_distr,AlignmentGroup._return_alignment_obj(alngroup_name_object),ss_aln_index_map,res_depth_aln_index_map]
 
