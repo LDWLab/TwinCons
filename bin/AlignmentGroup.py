@@ -1,21 +1,22 @@
 import re, random
+from numpy.random import choice
 from Bio.Seq import MutableSeq
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
 from Bio.PDB import ResidueDepth
 from collections import Counter
-"""
-Contains class for alignment groups
-"""
+'''Contains class for alignment groups'''
 
 class AlignmentGroup:
-	"""
+	'''
 	Class for a single group within an alignment.
-	Must pass the alignment object and optionally a structure object or secondary structure string
-	"""
-
+	Must pass the alignment object and optionally a 
+	structure object or secondary structure string
+	'''
+	DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
 	def __init__(self,aln_obj, struc_file=None, sstruc_str=None):
 		self.aln_obj = aln_obj
+		
 		self.struc_file = struc_file if struc_file is not None else None
 		self.sstruc_str = sstruc_str if sstruc_str is not None else None
 
@@ -25,7 +26,7 @@ class AlignmentGroup:
 		the alignment fasta file and the structure pdb file
 		
 		Check and think what to do when no mapping is possible 
-		since we are passing the wrong struc (nonexistent in this group)
+		since we are passing the wrong struc (nonexistent in this group).
 		'''
 		alignDict = {}
 		struc_name = re.findall(r'(.*\/)(.*)(_.*.pdb)',self.struc_file)[0][1]
@@ -56,9 +57,7 @@ class AlignmentGroup:
 		return dictList
 	
 	def _freq_iterator(self, column, aa_list):
-		'''
-		Calculates frequency of each AA in the column.
-		'''
+		'''Calculates frequency of each AA in the column.'''
 		col_aalist=[]
 		for aa in aa_list:
 			#print(aa, column.count(aa)/len(column.replace("-", "")))
@@ -69,7 +68,8 @@ class AlignmentGroup:
 	def randomize_gaps(self, aa_list):
 		'''
 		Substitutes gaps in the alignment with a random choice from the present AAs.
-		Should be an option to either use absolute random or random sampled from the distribution of the sequence.
+		Should be an option to either use absolute random or random sampled from the 
+		distribution of the sequence.
 		'''
 		for aln in self.aln_obj:
 			i = 0
@@ -88,9 +88,7 @@ class AlignmentGroup:
 		return True
 	
 	def column_distribution_calculation(self, aa_list, alen):
-		'''
-		Calculates AA distribution for the current alignment column
-		'''
+		'''Calculates AA distribution for the current alignment column'''
 		column_distr={}
 		i=0
 		while i < alen:
@@ -109,27 +107,42 @@ class AlignmentGroup:
 	def ss_map_creator(self,struc_to_aln_index_mapping):
 		'''
 		Connects the alignment mapping index and the secondary structural
-		assignments from DSSP. Also same for residue depth (TODO)
+		assignments from DSSP.
 		'''
 		ss_aln_index_map={}
 		res_depth_aln_index_map={}
 		inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
 		dssp = DSSP(model, self.struc_file)
 		for a_key in list(dssp.keys()):
-			ss_aln_index_map[inv_map[a_key[1][1]]] = dssp[a_key][2]
+			ss_aln_index_map[inv_map[a_key[1][1]]] = self.DSSP_code_mycode[dssp[a_key][2]]
 		return ss_aln_index_map
 
 	def depth_map_creator(self, struc_to_aln_index_mapping):
+		'''Connects the alignment mapping index and the residue depth'''
+
 		res_depth_aln_index_map={}
 		inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
-		rd = ResidueDepth(model)
-		for a_key in list(rd.keys()):
-			res_depth_aln_index_map[inv_map[a_key[1][1]]]=rd[a_key]
+		dssp = DSSP(model, self.struc_file)
+		#rd = ResidueDepth(model)
+		for a_key in list(dssp.keys()):
+			if dssp[a_key][3] > 0.2:
+				res_depth_aln_index_map[inv_map[a_key[1][1]]]='E'
+			else:
+				res_depth_aln_index_map[inv_map[a_key[1][1]]]='B'
 		return res_depth_aln_index_map
 
+	def both_map_creator(self, struc_to_aln_index_mapping):
+		'''Connects the alignment mapping index and the residue depth'''
+		sda={}
+		inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
+		dssp = DSSP(model, self.struc_file)
+		for a_key in list(dssp.keys()):
+			if dssp[a_key][3] > 0.2:
+				sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
+			else:
+				sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
+		return sda
 
 	def _return_alignment_obj(self):
-		"""
-		Returns current alignment object of this group
-		"""
+		'''Returns current alignment object of this group'''
 		return self.aln_obj

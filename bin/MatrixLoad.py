@@ -1,12 +1,12 @@
 import numpy as np
-"""
+'''
 Contains class for loading substitution matrices
-"""
+'''
 
 class PAMLmatrix:
-	"""
+	'''
 	Class for constructing a matrix from a PAML dat file
-	"""
+	'''
 	_lodd = None
 	_dict_lodd = None
 	_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
@@ -38,7 +38,6 @@ class PAMLmatrix:
 		if self._lodd is None:
 			f = open ( self.matrix_path , 'r')
 			triangular_mx = [[num for num in line.rstrip('\n').split(' ') ] for line in f if line.strip() != "" ]
-
 			pi_frequencies = triangular_mx.pop()
 			pi_frequencies.pop()
 
