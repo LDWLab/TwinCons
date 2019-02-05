@@ -1,7 +1,12 @@
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, sys, warnings, statistics, copy, itertools, random, Bio.Align, argparse, random, math
+import re, sys, warnings, statistics, copy, itertools, random, Bio.Align, argparse, random, math, matplotlib
+matplotlib.use('Agg')
+import pandas as pd
 import numpy as np
 from Bio import AlignIO
+import seaborn as sns
+from textwrap import wrap
+import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlignmentGroup
@@ -49,6 +54,7 @@ def uniq_AA_list(aln_obj):
 	if Counter(list(hash_AA.keys())) == Counter(default_aa_sequence):
 		return default_aa_sequence
 	else:
+		print(list(hash_AA.keys()))
 		raise ValueError("Alignment has non-standard AAs!")
 
 def slice_by_name(unsliced_aln_obj):
@@ -96,31 +102,109 @@ def shannon_entropy(alnObject, aa_list, commandline_args):
 			entropy_list.append(entropy_i)
 		if commandline_args.reflected_shannon:
 			refl_shentr = abs(math.log(1/len(aa_list),2))+sum(entropy_list)
-			entropyDict[i]=refl_shentr
+			entropyDict[i+1]=refl_shentr
 		elif commandline_args.shannon_entropy:
 			sh_entropy = abs(sum(entropy_list))
-			entropyDict[i]=sh_entropy
+			entropyDict[i+1]=sh_entropy
 	return entropyDict
 
 def struc_anno_matrices (struc_anno):
+	'''Returns a log odds matrix from a given name of a PAML type matrix'''
 	return np.array(PAMLmatrix('../test_data/'+struc_anno+'.dat').lodd)
 
-def compute_score(aln_index_dict, struc_annotation):#?
-	'''Should handle all structure options'''
-	groupnames = list(struc_annotation.keys())
-	for aln_index in aln_index_dict:
-		vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
-		vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-		if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
-			common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
-			if len(common_chars) > 0:
-				print(aln_index, vr1@struc_anno_matrices(''.join(common_chars))@vr2.T)
+def compute_score(aln_index_dict, *args):
+	'''
+	Computes transformation score between two groups, using substitution 
+	matrices on the common structural elements between two groups.
+	Returns a dictionary with key the alignment index and value the computed score.
+	'''
+	alnindex_score=defaultdict(dict)
+	if commandline_args.structure_paths:
+		struc_annotation = args[0]
+		groupnames = list(struc_annotation.keys())
+		for aln_index in aln_index_dict:
+			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
+			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
+			if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
+				common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
+				if len(common_chars) > 0:
+					alnindex_score[aln_index] = vr1@struc_anno_matrices(''.join(common_chars))@vr2.T
+					#print(aln_index, vr1@struc_anno_matrices(''.join(common_chars))@vr2.T)
+				else:
+					lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+					alnindex_score[aln_index] = vr1@lgmx@vr2.T
+					#print(aln_index,vr1@lgmx@vr2.T)
 			else:
 				lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
-				print(aln_index,vr1@lgmx@vr2.T)
-		else:
+				alnindex_score[aln_index] = vr1@lgmx@vr2.T
+				#print(aln_index,vr1@lgmx@vr2.T)
+	else:											#Case of no structure defined inputs
+		groupnames = args[0]
+		for aln_index in aln_index_dict:
+			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
+			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
 			lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
-			print(aln_index,vr1@lgmx@vr2.T)
+			alnindex_score[aln_index] = vr1@lgmx@vr2.T
+			#print(aln_index,vr1@lgmx@vr2.T)
+	return alnindex_score
+
+def plotter (entropyDict, blscor_resn):
+	plot_entr=[]
+	plot_scor=[]
+	for x in sorted(entropyDict.keys(), key=abs):
+		#print(x, blscor_resn[int(x)])
+		if x in blscor_resn.keys():
+			#print (x, blscor_resn[int(x)], entropyDict[x])
+			plot_entr.append(entropyDict[x])
+			plot_scor.append(blscor_resn[int(x)])
+		else:
+			raise ValueError ("Non-equal entropy and bl score lists!")
+	ax = plt.subplot()
+	sns.set(style='ticks',rc={'figure.figsize':(20,15)})
+	plt.plot(plot_scor, label="Transformation score", linewidth=0.5)
+	plt.plot(plot_entr, label="Conservation", linewidth=0.5)
+	
+	plt.legend()
+	ax.grid(True, which='both')
+	sns.despine(ax=ax, offset=0)
+	dpi_scaling = 3*len(blscor_resn)
+	plt.savefig('./test.svg', dpi=dpi_scaling)
+
+def plotter2(out_dict,group_names):
+	'''
+	Prints out a scatter of the scores.
+	'''
+	sns.set(style='ticks')
+	ylist=[]
+	xlist=[]
+	for pos in sorted(out_dict.keys()):
+		xlist.append(pos)
+		ylist.append(out_dict[pos])
+	f = plt.figure(figsize=(20,15))
+	ax = f.add_subplot(111)
+	negative_mask = np.array(ylist) < -1
+	null_mask=[]
+	for x in ylist:
+		if x > -1 and x < 1:
+			null_mask.append(True)
+		else:
+			null_mask.append(False)
+	positive_mask = np.array(ylist) >= 1
+	plt.bar(np.array(xlist)[positive_mask],np.array(ylist)[positive_mask], 1,edgecolor='None',color='red')
+	plt.bar(np.array(xlist)[null_mask],np.array(ylist)[null_mask], 1,edgecolor='None',color='gray')
+	plt.bar(np.array(xlist)[negative_mask],np.array(ylist)[negative_mask], 1,edgecolor='None',color='blue')
+	#plt.yticks(np.arange(min(getattr(MatrixInfo,my_mx).values()),max(getattr(MatrixInfo,my_mx).values()), step=1))
+	#ax.set_ylim(min(getattr(MatrixInfo,my_mx).values()),max(getattr(MatrixInfo,my_mx).values()))
+	if True in negative_mask and True in positive_mask:
+		plt.legend(['more likely than random', 'random','less likely than random'], loc='upper left')
+	plt.xlabel('Alignment position')
+	plt.ylabel('Transformation score')
+	title = "Alignment file "+commandline_args.alignment_path+" between "+group_names[0]+" and "+group_names[1]
+	plt.title("\n".join(wrap(title, 60)))
+	ax.grid(True, which='both')
+	sns.despine(ax=ax, offset=0)
+	dpi_scaling = 3*len(out_dict)
+	plt.savefig('./test.svg', dpi=dpi_scaling)
 
 def main():
 	'''Main entry point'''
@@ -129,10 +213,10 @@ def main():
 	aa_list=uniq_AA_list(alignIO_out)
 	sliced_alns = slice_by_name(alignIO_out)
 	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-		entropyDict=shannon_entropy(alignIO_out, aa_list, commandline_args)
-		for x in entropyDict:
-			print(x, entropyDict[x])
-		sys.exit(0)
+		#print("Conservation/entropy result:")
+		entropyDict = shannon_entropy(alignIO_out, aa_list, commandline_args)
+		#for x in entropyDict:
+		#	print(x, entropyDict[x])
 	aln_index_dict=defaultdict(dict)
 	struc_annotation = defaultdict(dict)
 	if commandline_args.structure_paths:
@@ -163,7 +247,17 @@ def main():
 				else:
 					parser.print_help()
 					raise ValueError("When a structure is defined, one of the matrix options are rquired!")
-		compute_score(aln_index_dict, struc_annotation)
+		alnindex_score = compute_score(aln_index_dict, struc_annotation)
+	else:										#Case of no structure defined outputs
+		for alngroup_name in sliced_alns:
+			alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+			AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+			alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+			for aln_index in alnindex_col_distr:
+				aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+		alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
+	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
+		plotter2(alnindex_score, list(sliced_alns.keys()))
 
 
 if __name__ == '__main__':
