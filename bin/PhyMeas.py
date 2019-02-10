@@ -248,7 +248,9 @@ def horizontal_gradient_bar(out_dict,group_names):
 	gradientbars(bar)
 	plt.savefig('./test.svg')
 
-#This one works with negatives
+#Use this one - works with negative values
+#Important: scaling should be done so that colors are comparable between negative and  /All this might be wrong
+#positive values... max(data)+min(abs(data)) (maybe negatives will be too white then)? /see how it looks
 def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 	fig, ax = plt.subplots()
 	data=[]
