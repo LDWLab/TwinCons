@@ -206,6 +206,75 @@ def plotter2(out_dict,group_names):
 	dpi_scaling = 3*len(out_dict)
 	plt.savefig('./test.svg', dpi=dpi_scaling)
 
+#Gradients dont work on negatives yet
+def vartical_gradient_bar(out_dict,group_names):
+	fig, ax = plt.subplots()
+	data=[]
+	for x in sorted(out_dict.keys()):
+		data.append(out_dict[x])
+	bar = ax.barh(range(len(data)),data)
+	def gradientbars(bars):
+		ax = bars[0].axes
+		lim = ax.get_xlim()+ax.get_ylim()
+		for bar in bars:
+			bar.set_zorder(1)
+			bar.set_facecolor("none")
+			x,y = bar.get_xy()
+			w, h = bar.get_width(), bar.get_height()
+			grad = np.atleast_2d(np.linspace(0,1*w/max(data),256))
+			ax.imshow(grad, extent=[x,x+w,y,y+h], aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+		ax.axis(lim)
+	gradientbars(bar)
+	plt.savefig('./test.svg')
+
+def horizontal_gradient_bar(out_dict,group_names):
+	fig, ax = plt.subplots()
+	data=[]
+	for x in sorted(out_dict.keys()):
+		data.append(out_dict[x])
+	bar = ax.bar(range(len(data)),data)
+	def gradientbars(bars):
+		ax = bars[0].axes
+		lim = ax.get_xlim()+ax.get_ylim()
+		for bar in bars:
+			bar.set_zorder(1)
+			bar.set_facecolor("none")
+			x,y = bar.get_xy()
+			w, h = bar.get_width(), bar.get_height()
+			grad = np.atleast_2d(np.linspace(1*h/max(data),0,256)).T
+			#grad = np.atleast_2d(np.linspace(h/min(data),h/max(data),256)).T
+			ax.imshow(grad, extent=[x,x+w,y,y+h], aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+		ax.axis(lim)
+	gradientbars(bar)
+	plt.savefig('./test.svg')
+
+#This one works with negatives
+def upsidedown_horizontal_gradient_bar(out_dict,group_names):
+	fig, ax = plt.subplots()
+	data=[]
+	for x in sorted(out_dict.keys()):
+		data.append(out_dict[x])
+	bar = ax.bar(range(len(data)),data)
+	def gradientbars(bars):
+		ax = bars[0].axes
+		lim = ax.get_xlim()+ax.get_ylim()
+		for bar in bars:
+			bar.set_zorder(1)
+			bar.set_facecolor("none")
+			x,y = bar.get_xy()
+			w, h = bar.get_width(), bar.get_height()
+			if h > 0:
+				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Blues'), aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+			else:			# can add different gradient for negative values
+				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Reds'), aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+		#ax.set_facecolor('Gray')
+		ax.axis(lim)
+	gradientbars(bar)
+	dpi_scaling = 3*len(out_dict)
+	plt.savefig('./test.svg',dpi=dpi_scaling)
+
 def main():
 	'''Main entry point'''
 	aln_path = commandline_args.alignment_path
@@ -257,7 +326,7 @@ def main():
 				aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
 		alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
 	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-		plotter2(alnindex_score, list(sliced_alns.keys()))
+		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
 
 
 if __name__ == '__main__':
