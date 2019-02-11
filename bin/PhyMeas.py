@@ -206,48 +206,6 @@ def plotter2(out_dict,group_names):
 	dpi_scaling = 3*len(out_dict)
 	plt.savefig('./test.svg', dpi=dpi_scaling)
 
-#Gradients dont work on negatives yet
-def vartical_gradient_bar(out_dict,group_names):
-	fig, ax = plt.subplots()
-	data=[]
-	for x in sorted(out_dict.keys()):
-		data.append(out_dict[x])
-	bar = ax.barh(range(len(data)),data)
-	def gradientbars(bars):
-		ax = bars[0].axes
-		lim = ax.get_xlim()+ax.get_ylim()
-		for bar in bars:
-			bar.set_zorder(1)
-			bar.set_facecolor("none")
-			x,y = bar.get_xy()
-			w, h = bar.get_width(), bar.get_height()
-			grad = np.atleast_2d(np.linspace(0,1*w/max(data),256))
-			ax.imshow(grad, extent=[x,x+w,y,y+h], aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
-		ax.axis(lim)
-	gradientbars(bar)
-	plt.savefig('./test.svg')
-
-def horizontal_gradient_bar(out_dict,group_names):
-	fig, ax = plt.subplots()
-	data=[]
-	for x in sorted(out_dict.keys()):
-		data.append(out_dict[x])
-	bar = ax.bar(range(len(data)),data)
-	def gradientbars(bars):
-		ax = bars[0].axes
-		lim = ax.get_xlim()+ax.get_ylim()
-		for bar in bars:
-			bar.set_zorder(1)
-			bar.set_facecolor("none")
-			x,y = bar.get_xy()
-			w, h = bar.get_width(), bar.get_height()
-			grad = np.atleast_2d(np.linspace(1*h/max(data),0,256)).T
-			#grad = np.atleast_2d(np.linspace(h/min(data),h/max(data),256)).T
-			ax.imshow(grad, extent=[x,x+w,y,y+h], aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
-		ax.axis(lim)
-	gradientbars(bar)
-	plt.savefig('./test.svg')
-
 #Use this one - works with negative values
 #Important: scaling should be done so that colors are comparable between negative and  /All this might be wrong
 #positive values... max(data)+min(abs(data)) (maybe negatives will be too white then)? /see how it looks
