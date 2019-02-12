@@ -186,19 +186,51 @@ def plotter (entropyDict, blscor_resn):
 	dpi_scaling = 3*len(blscor_resn)
 	plt.savefig('./test.svg', dpi=dpi_scaling)
 
+def plotter2(out_dict,group_names):
+	'''
+	Prints out a scatter of the scores.
+	'''
+	sns.set(style='ticks')
+	ylist=[]
+	xlist=[]
+	for pos in sorted(out_dict.keys()):
+		xlist.append(pos)
+		ylist.append(out_dict[pos])
+	f = plt.figure(figsize=(20,15))
+	ax = f.add_subplot(111)
+	negative_mask = np.array(ylist) < -1
+	null_mask=[]
+	for x in ylist:
+		if x > -1 and x < 1:
+			null_mask.append(True)
+		else:
+			null_mask.append(False)
+	positive_mask = np.array(ylist) >= 1
+	plt.bar(np.array(xlist)[positive_mask],np.array(ylist)[positive_mask], 1,edgecolor='None',color='red')
+	plt.bar(np.array(xlist)[null_mask],np.array(ylist)[null_mask], 1,edgecolor='None',color='gray')
+	plt.bar(np.array(xlist)[negative_mask],np.array(ylist)[negative_mask], 1,edgecolor='None',color='blue')
+	#plt.yticks(np.arange(min(getattr(MatrixInfo,my_mx).values()),max(getattr(MatrixInfo,my_mx).values()), step=1))
+	#ax.set_ylim(min(getattr(MatrixInfo,my_mx).values()),max(getattr(MatrixInfo,my_mx).values()))
+	if True in negative_mask and True in positive_mask:
+		plt.legend(['more likely than random', 'random','less likely than random'], loc='upper left')
+	plt.xlabel('Alignment position')
+	plt.ylabel('Transformation score')
+	title = "Alignment file "+commandline_args.alignment_path+" between "+group_names[0]+" and "+group_names[1]
+	plt.title("\n".join(wrap(title, 60)))
+	ax.grid(True, which='both')
+	sns.despine(ax=ax, offset=0)
+	dpi_scaling = 3*len(out_dict)
+	plt.savefig('./test.svg', dpi=dpi_scaling)
+
 #Use this one - works with negative values
 #Important: scaling should be done so that colors are comparable between negative and  /All this might be wrong
 #positive values... max(data)+min(abs(data)) (maybe negatives will be too white then)? /see how it looks
 def upsidedown_horizontal_gradient_bar(out_dict,group_names):
-	plt.rcParams['image.composite_image'] = False					#So that bars are separate images
 	fig, ax = plt.subplots()
 	data=[]
-	stdevdata=[]
 	for x in sorted(out_dict.keys()):
-		data.append(out_dict[x][0])
-		stdevdata.append(out_dict[x][1])
-	bar = ax.bar(range(len(data)),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
-
+		data.append(out_dict[x])
+	bar = ax.bar(range(len(data)),data)
 	def gradientbars(bars):
 		ax = bars[0].axes
 		lim = ax.get_xlim()+ax.get_ylim()
@@ -209,41 +241,40 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 			w, h = bar.get_width(), bar.get_height()
 			if h > 0:
 				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
-				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Blues'), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
-			else:			#different gradient for negative values
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Blues'), aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+			else:			# can add different gradient for negative values
 				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
-				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Reds'), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Reds'), aspect="auto", zorder=0, norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
 	gradientbars(bar)
 	dpi_scaling = 3*len(out_dict)
-	
-	plt.savefig('./test.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig('./test.svg',dpi=dpi_scaling)
 
 def uninterrupted_stretches(alnindex, alnindex_score):
 	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
 	Also associates these scores with the last position of the alignment index.
-	For now uses > 1 as positive and < -1 as negative. Can be a variable or changed as appropriate.
+	For now uses > 0 as positive and < 0 as negative. Can be a variable or changed as appropriate.
 	"""
 	posdata={}
 	negdata={}
 	pos=0
 	neg=0
 	for x,has_more in lookahead(range(0,len(alnindex))):
-		if alnindex_score[alnindex[x]][0] > 1:
-			#print('pos',alnindex[x], alnindex_score[alnindex[x]][0])
+		if alnindex_score[alnindex[x]] > 1:
+			#print('pos',alnindex[x], alnindex_score[alnindex[x]])
 			pos+=1
 			if neg != 0:
 				negdata[alnindex[x-1]]=neg
 				neg = 0
-		elif alnindex_score[alnindex[x]][0] < -1:
-			#print('neg',alnindex[x], alnindex_score[alnindex[x]][0])
+		elif alnindex_score[alnindex[x]] < -1:
+			#print('neg',alnindex[x], alnindex_score[alnindex[x]])
 			neg+=1
 			if pos != 0:
 				posdata[alnindex[x-1]]=pos
 				pos = 0
 		else:				#in case of using some range between positive and negative scores for random
-			#print('rand',alnindex[x], alnindex_score[alnindex[x]][0])
+			#print('rand',alnindex[x], alnindex_score[alnindex[x]])
 			if pos != 0:
 				posdata[alnindex[x-1]]=pos
 				pos = 0
@@ -257,87 +288,58 @@ def uninterrupted_stretches(alnindex, alnindex_score):
 				negdata[alnindex[x]]=neg
 	return posdata, negdata
 
-def rand_normalizer(commandline_args):
-	"""Every calculation and loading of alignment/structure is performed 10 times.
-	This is done to dampen the errors in heavily gapped regions since a random sequence is introduced there.
-	Allows us to add errorbars on the output graph.
-	"""
-	randindex_norm=defaultdict(dict)
-	for rand_index in range(0,10):
-		aln_path = commandline_args.alignment_path
-		alignIO_out=read_align(aln_path)
-		aa_list=uniq_AA_list(alignIO_out)
-		sliced_alns = slice_by_name(alignIO_out)
-		
-		if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-			#print("Conservation/entropy result:")
-			entropyDict = shannon_entropy(alignIO_out, aa_list, commandline_args)
-			#for x in entropyDict:
-			#	print(x, entropyDict[x])
-		
-		aln_index_dict=defaultdict(dict)
-		struc_annotation = defaultdict(dict)
-		if commandline_args.structure_paths:
-			for alngroup_name in sliced_alns:
-				current_path = [s for s in commandline_args.structure_paths if alngroup_name in s]
-				if len(current_path) < 1:					#FIX In case number of structures is fewer than the number of alignment groups
-					alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
-					AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-					alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-					for aln_index in alnindex_col_distr:
-						struc_annotation[alngroup_name][aln_index] = 'BEHOS'
-					for aln_index in alnindex_col_distr:
-							aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-				else:
-					alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
-					struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
-					AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-					alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-					for aln_index in alnindex_col_distr:
-							aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-					if commandline_args.secondary_structure:
-						struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-					elif commandline_args.burried_exposed:
-						struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-					elif commandline_args.both:
-						struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-					else:
-						parser.print_help()
-						raise ValueError("When a structure is defined, one of the matrix options are rquired!")
-			alnindex_score = compute_score(aln_index_dict, struc_annotation)
-			randindex_norm[rand_index]=alnindex_score
-		else:										#Case of no structure defined outputs
-			for alngroup_name in sliced_alns:
+def main():
+	'''Main entry point'''
+	aln_path = commandline_args.alignment_path
+	alignIO_out=read_align(aln_path)
+	aa_list=uniq_AA_list(alignIO_out)
+	sliced_alns = slice_by_name(alignIO_out)
+	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
+		#print("Conservation/entropy result:")
+		entropyDict = shannon_entropy(alignIO_out, aa_list, commandline_args)
+		#for x in entropyDict:
+		#	print(x, entropyDict[x])
+	aln_index_dict=defaultdict(dict)
+	struc_annotation = defaultdict(dict)
+	if commandline_args.structure_paths:
+		for alngroup_name in sliced_alns:
+			print(alngroup_name)
+			current_path = [s for s in commandline_args.structure_paths if alngroup_name in s]
+			if len(current_path) < 1:
 				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
 				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
 				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
 				for aln_index in alnindex_col_distr:
-					aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-			alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
-			randindex_norm[rand_index]=alnindex_score
-	
-	#Calculating mean and stdev per alignment position
-	position_defined_scores=defaultdict(dict)
-	for x in randindex_norm.keys():
-		for pos in randindex_norm[x]:
-			if pos in position_defined_scores:
-				position_defined_scores[pos].append(randindex_norm[x][pos])
+					struc_annotation[alngroup_name][aln_index] = 'BEHOS'
+				for aln_index in alnindex_col_distr:
+						aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
 			else:
-				position_defined_scores[pos]=[]
-				position_defined_scores[pos].append(randindex_norm[x][pos])
-	output_dict = {}
-	for x in position_defined_scores.keys():
-		output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
-	return output_dict, sliced_alns
-
-
-def main():
-	'''Main entry point'''
-	
-	alnindex_score, sliced_alns = rand_normalizer(commandline_args)
-	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:		#temporary for plotting
-		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
-
+				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
+				struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+				for aln_index in alnindex_col_distr:
+						aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+				if commandline_args.secondary_structure:
+					struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+				elif commandline_args.burried_exposed:
+					struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+				elif commandline_args.both:
+					struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+				else:
+					parser.print_help()
+					raise ValueError("When a structure is defined, one of the matrix options are rquired!")
+		alnindex_score = compute_score(aln_index_dict, struc_annotation)
+	else:										#Case of no structure defined outputs
+		for alngroup_name in sliced_alns:
+			alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+			AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+			alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+			for aln_index in alnindex_col_distr:
+				aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+		alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
+	#if commandline_args.shannon_entropy or commandline_args.reflected_shannon:		#temporary for plotting
+	#	upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
 	
 	alnindex = sorted(alnindex_score.keys())
 	posdata,negdata = uninterrupted_stretches(alnindex, alnindex_score)

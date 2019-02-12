@@ -81,8 +81,8 @@ class AlignmentGroup:
 				choice_distr.append(distribution[aa]/len(aln_no_dash))
 			for resi in aln.seq:
 				if resi == '-':
-					newaln[i] = choice(aa_list, p=choice_distr)
-					#newaln[i] = random.choice(aa_list)
+					#newaln[i] = choice(aa_list, p=choice_distr)
+					newaln[i] = random.choice(aa_list)
 				i+=1
 			aln.seq=newaln
 		return True
