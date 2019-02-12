@@ -148,6 +148,22 @@ def compute_score(aln_index_dict, *args):
 			#print(aln_index,vr1@lgmx@vr2.T)
 	return alnindex_score
 
+def lookahead(iterable):
+	"""Pass through all values from the given iterable, augmented by the
+	information if there are more values to come after the current one
+	(True), or if it is the last value (False).
+	"""
+	# Get an iterator and pull the first value.
+	it = iter(iterable)
+	last = next(it)
+	# Run the iterator to exhaustion (starting from the second value).
+	for val in it:
+		# Report the *previous* value (more to come).
+		yield last, True
+		last = val
+	# Report the last value.
+	yield last, False
+
 def plotter (entropyDict, blscor_resn):
 	plot_entr=[]
 	plot_scor=[]
@@ -235,6 +251,43 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 	dpi_scaling = 3*len(out_dict)
 	plt.savefig('./test.svg',dpi=dpi_scaling)
 
+def uninterrupted_stretches(alnindex, alnindex_score):
+	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
+	Also associates these scores with the last position of the alignment index.
+	For now uses > 0 as positive and < 0 as negative. Can be a variable or changed as appropriate.
+	"""
+	posdata={}
+	negdata={}
+	pos=0
+	neg=0
+	for x,has_more in lookahead(range(0,len(alnindex))):
+		if alnindex_score[alnindex[x]] > 1:
+			#print('pos',alnindex[x], alnindex_score[alnindex[x]])
+			pos+=1
+			if neg != 0:
+				negdata[alnindex[x-1]]=neg
+				neg = 0
+		elif alnindex_score[alnindex[x]] < -1:
+			#print('neg',alnindex[x], alnindex_score[alnindex[x]])
+			neg+=1
+			if pos != 0:
+				posdata[alnindex[x-1]]=pos
+				pos = 0
+		else:				#in case of using some range between positive and negative scores for random
+			#print('rand',alnindex[x], alnindex_score[alnindex[x]])
+			if pos != 0:
+				posdata[alnindex[x-1]]=pos
+				pos = 0
+			if neg != 0:
+				negdata[alnindex[x-1]]=neg
+				neg = 0
+		if has_more is False:
+			if pos != 0:
+				posdata[alnindex[x]]=pos
+			if neg != 0:
+				negdata[alnindex[x]]=neg
+	return posdata, negdata
+
 def main():
 	'''Main entry point'''
 	aln_path = commandline_args.alignment_path
@@ -288,25 +341,9 @@ def main():
 	#if commandline_args.shannon_entropy or commandline_args.reflected_shannon:		#temporary for plotting
 	#	upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
 	
-	
-	#Uninterrupted stretches
-	posdata={}
-	negdata={}
-	pos=0
-	neg=0
-	for x in sorted(alnindex_score.keys()):
-		if alnindex_score[x] > 1:
-			#print('pos',x, alnindex_score[x])
-			pos+=1
-			negdata[x]=neg
-			neg = 0
-		elif alnindex_score[x] < -1:
-			#print('neg',x, alnindex_score[x])
-			neg+=1
-			posdata[x]=pos
-			pos = 0
-		else:
-			pass
+	alnindex = sorted(alnindex_score.keys())
+	posdata,negdata = uninterrupted_stretches(alnindex, alnindex_score)
+
 	for x in sorted(posdata.keys()):
 		print(x, posdata[x])
 
