@@ -295,12 +295,12 @@ def main():
 	pos=0
 	neg=0
 	for x in sorted(alnindex_score.keys()):
-		if alnindex_score[x] > 1.5:
+		if alnindex_score[x] > 1:
 			#print('pos',x, alnindex_score[x])
 			pos+=1
 			negdata[x]=neg
 			neg = 0
-		elif alnindex_score[x] < -1.5:
+		elif alnindex_score[x] < -1:
 			#print('neg',x, alnindex_score[x])
 			neg+=1
 			posdata[x]=pos
