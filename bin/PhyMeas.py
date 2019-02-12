@@ -285,9 +285,30 @@ def main():
 			for aln_index in alnindex_col_distr:
 				aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
 		alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
-	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
-
+	#if commandline_args.shannon_entropy or commandline_args.reflected_shannon:		#temporary for plotting
+	#	upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
+	
+	
+	#Uninterrupted stretches
+	posdata={}
+	negdata={}
+	pos=0
+	neg=0
+	for x in sorted(alnindex_score.keys()):
+		if alnindex_score[x] > 1.5:
+			#print('pos',x, alnindex_score[x])
+			pos+=1
+			negdata[x]=neg
+			neg = 0
+		elif alnindex_score[x] < -1.5:
+			#print('neg',x, alnindex_score[x])
+			neg+=1
+			posdata[x]=pos
+			pos = 0
+		else:
+			pass
+	for x in sorted(posdata.keys()):
+		print(x, posdata[x])
 
 if __name__ == '__main__':
 	sys.exit(main())
