@@ -17,8 +17,10 @@ from MatrixLoad import PAMLmatrix
 parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
 parser.add_argument('alignment_path', help='Path to alignment file')
 parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
+parser.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 entropy_group = parser.add_mutually_exclusive_group()
 entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
+entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
 structure_option = parser.add_mutually_exclusive_group()
 structure_option.add_argument('-ss','--secondary_structure', help = 'Use substitution matrices derived from data dependent on the secondary structure assignment.', action="store_true")
@@ -165,6 +167,8 @@ def lookahead(iterable):
 	yield last, False
 
 def plotter (entropyDict, blscor_resn):
+	"""Used for comparison of blscore and entropy/conservation
+	"""
 	plot_entr=[]
 	plot_scor=[]
 	for x in sorted(entropyDict.keys(), key=abs):
@@ -199,7 +203,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 		stdevdata.append(out_dict[x][1])
 	bar = ax.bar(range(len(data)),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
 
-	def gradientbars(bars):
+	def gradientbars(bars,positivegradient,negativegradient):
 		ax = bars[0].axes
 		lim = ax.get_xlim()+ax.get_ylim()
 		for bar in bars:
@@ -209,16 +213,19 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 			w, h = bar.get_width(), bar.get_height()
 			if h > 0:
 				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
-				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Blues'), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(positivegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 			else:			#different gradient for negative values
 				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
-				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap('Reds'), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
+				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(negativegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
-	gradientbars(bar)
+	if min(data) < 0:
+		gradientbars(bar,'Blues','Reds')
+	else:
+		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
 	
-	plt.savefig('./test.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig('./'+'-'.join(group_names)+'.svg',format = 'svg',dpi=dpi_scaling)
 
 def uninterrupted_stretches(alnindex, alnindex_score):
 	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
@@ -272,6 +279,7 @@ def rand_normalizer(commandline_args):
 		if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
 			#print("Conservation/entropy result:")
 			entropyDict = shannon_entropy(alignIO_out, aa_list, commandline_args)
+			randindex_norm[rand_index]=entropyDict
 			#for x in entropyDict:
 			#	print(x, entropyDict[x])
 		
@@ -306,7 +314,7 @@ def rand_normalizer(commandline_args):
 						raise ValueError("When a structure is defined, one of the matrix options are rquired!")
 			alnindex_score = compute_score(aln_index_dict, struc_annotation)
 			randindex_norm[rand_index]=alnindex_score
-		else:										#Case of no structure defined outputs
+		elif commandline_args.leegascuel:										#Case of no structure defined outputs
 			for alngroup_name in sliced_alns:
 				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
 				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
@@ -331,11 +339,11 @@ def rand_normalizer(commandline_args):
 	return output_dict, sliced_alns
 
 
-def main():
+def main(commandline_args):
 	'''Main entry point'''
 	
 	alnindex_score, sliced_alns = rand_normalizer(commandline_args)
-	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:		#temporary for plotting
+	if commandline_args.plotit:									#for plotting
 		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
 
 	
@@ -346,5 +354,5 @@ def main():
 		print(x, posdata[x])
 
 if __name__ == '__main__':
-	sys.exit(main())
+	sys.exit(main(commandline_args))
 
