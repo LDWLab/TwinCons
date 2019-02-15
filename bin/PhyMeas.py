@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, sys, warnings, statistics, copy, itertools, random, Bio.Align, argparse, random, math, matplotlib
 matplotlib.use('Agg')
@@ -18,8 +19,10 @@ def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
 	parser.add_argument('alignment_path', help='Path to alignment file')
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
-	parser.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
-	entropy_group = parser.add_mutually_exclusive_group()
+	output_type_group = parser.add_mutually_exclusive_group(required=True)
+	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
+	output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
+	entropy_group = parser.add_mutually_exclusive_group(required=True)
 	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -47,7 +50,7 @@ def uniq_AA_list(aln_obj):
 	hash_AA=dict()
 	for alignment in aln_obj:
 		for amac in alignment.seq:
-			if re.match(r'-',amac):
+			if re.match(r'-|X',amac):
 				pass
 			else:
 				hash_AA[amac]='null'
@@ -222,12 +225,14 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
 	if min(data) < 0:
+		pamlarray = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
 		gradientbars(bar,'Blues','Reds')
 	else:
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
 	
-	plt.savefig('./'+'-'.join(group_names)+'.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig('./outputs/'+'-'.join(group_names)+'.svg',format = 'svg',dpi=dpi_scaling)
 
 def uninterrupted_stretches(alnindex, alnindex_score):
 	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
@@ -343,18 +348,18 @@ def rand_normalizer(commandline_args):
 
 def main(commandline_arguments):
 	'''Main entry point'''
-	commandline_args = create_and_parse_argument_options(commandline_arguments)
-	#print (commandline_args)
-	alnindex_score, sliced_alns = rand_normalizer(commandline_args)
-	if commandline_args.plotit:									#for plotting
+	comm_args = create_and_parse_argument_options(commandline_arguments)
+	alnindex_score, sliced_alns = rand_normalizer(comm_args)
+	if comm_args.plotit:									#for plotting
 		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
-
+	elif comm_args.return_within:
+		return alnindex_score, sliced_alns
 	
-	alnindex = sorted(alnindex_score.keys())
-	posdata,negdata = uninterrupted_stretches(alnindex, alnindex_score)
+	#alnindex = sorted(alnindex_score.keys())
+	#posdata,negdata = uninterrupted_stretches(alnindex, alnindex_score)
 
-	for x in sorted(posdata.keys()):
-		print(x, posdata[x])
+	#for x in sorted(posdata.keys()):
+	#	print(x, posdata[x])
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv[1:]))
