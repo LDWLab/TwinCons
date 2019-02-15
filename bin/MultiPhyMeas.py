@@ -1,5 +1,5 @@
 """Calculates conservation score for multiple alignments"""
 import PhyMeas
 
-alist = ['~/Desktop/bS01-RNAP7Ca.fasta', '-lg', '-p']
+alist = ['/mnt/c/Users/Ishihito/Desktop/uL02ab_txid_tagged-check-Cterm.fas', '-lg']
 PhyMeas.main(alist)

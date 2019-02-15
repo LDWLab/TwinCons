@@ -14,19 +14,21 @@ from MatrixLoad import PAMLmatrix
 
 
 ###Argument block; might want to make it into a function
-parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
-parser.add_argument('alignment_path', help='Path to alignment file')
-parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
-parser.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
-entropy_group = parser.add_mutually_exclusive_group()
-entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
-entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
-entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
-structure_option = parser.add_mutually_exclusive_group()
-structure_option.add_argument('-ss','--secondary_structure', help = 'Use substitution matrices derived from data dependent on the secondary structure assignment.', action="store_true")
-structure_option.add_argument('-be','--burried_exposed', help = 'Use substitution matrices derived from data dependent on the solvent accessability of a residue.', action="store_true")
-structure_option.add_argument('-ssbe','--both', help = 'Use substitution matrices derived from data dependent on both the secondary structure and the solvent accessability of a residue.', action="store_true")
-commandline_args = parser.parse_args()
+def create_and_parse_argument_options(argument_list):
+	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
+	parser.add_argument('alignment_path', help='Path to alignment file')
+	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
+	parser.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
+	entropy_group = parser.add_mutually_exclusive_group()
+	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
+	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
+	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
+	structure_option = parser.add_mutually_exclusive_group()
+	structure_option.add_argument('-ss','--secondary_structure', help = 'Use substitution matrices derived from data dependent on the secondary structure assignment.', action="store_true")
+	structure_option.add_argument('-be','--burried_exposed', help = 'Use substitution matrices derived from data dependent on the solvent accessability of a residue.', action="store_true")
+	structure_option.add_argument('-ssbe','--both', help = 'Use substitution matrices derived from data dependent on both the secondary structure and the solvent accessability of a residue.', action="store_true")
+	commandline_args = parser.parse_args(argument_list)
+	return commandline_args
 ###
 
 def read_align(aln_path):
@@ -114,7 +116,7 @@ def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
 	return np.array(PAMLmatrix('../test_data/'+struc_anno+'.dat').lodd)
 
-def compute_score(aln_index_dict, *args):
+def compute_score(commandline_args,aln_index_dict, *args):
 	'''
 	Computes transformation score between two groups, using substitution 
 	matrices on the common structural elements between two groups.
@@ -312,7 +314,7 @@ def rand_normalizer(commandline_args):
 					else:
 						parser.print_help()
 						raise ValueError("When a structure is defined, one of the matrix options are rquired!")
-			alnindex_score = compute_score(aln_index_dict, struc_annotation)
+			alnindex_score = compute_score(commandline_args,aln_index_dict, struc_annotation)
 			randindex_norm[rand_index]=alnindex_score
 		elif commandline_args.leegascuel:										#Case of no structure defined outputs
 			for alngroup_name in sliced_alns:
@@ -321,7 +323,7 @@ def rand_normalizer(commandline_args):
 				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
 				for aln_index in alnindex_col_distr:
 					aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-			alnindex_score = compute_score(aln_index_dict,list(sliced_alns.keys()))
+			alnindex_score = compute_score(commandline_args,aln_index_dict,list(sliced_alns.keys()))
 			randindex_norm[rand_index]=alnindex_score
 	
 	#Calculating mean and stdev per alignment position
@@ -339,9 +341,10 @@ def rand_normalizer(commandline_args):
 	return output_dict, sliced_alns
 
 
-def main(commandline_args):
+def main(commandline_arguments):
 	'''Main entry point'''
-	
+	commandline_args = create_and_parse_argument_options(commandline_arguments)
+	#print (commandline_args)
 	alnindex_score, sliced_alns = rand_normalizer(commandline_args)
 	if commandline_args.plotit:									#for plotting
 		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
@@ -354,5 +357,4 @@ def main(commandline_args):
 		print(x, posdata[x])
 
 if __name__ == '__main__':
-	sys.exit(main(commandline_args))
-
+	sys.exit(main(sys.argv[1:]))
