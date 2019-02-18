@@ -12,6 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlignmentGroup
 from MatrixLoad import PAMLmatrix
+from Bio.SubsMat import MatrixInfo
 
 
 ###Argument block; might want to make it into a function
@@ -23,8 +24,9 @@ def create_and_parse_argument_options(argument_list):
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 	output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
 	entropy_group = parser.add_mutually_exclusive_group(required=True)
-	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
+	entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
+	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
 	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
 	structure_option = parser.add_mutually_exclusive_group()
 	structure_option.add_argument('-ss','--secondary_structure', help = 'Use substitution matrices derived from data dependent on the secondary structure assignment.', action="store_true")
@@ -119,6 +121,29 @@ def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
 	return np.array(PAMLmatrix('../test_data/'+struc_anno+'.dat').lodd)
 
+def blos_matrix():
+	aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+	loddmx = []
+	for aa in aa_sequence:
+		linemx=[]
+		for aa2 in aa_sequence:
+
+			if (aa,aa2) in MatrixInfo.blosum62:
+				linemx.append(MatrixInfo.blosum62[(aa,aa2)])
+				#print(aa,aa2,MatrixInfo.blosum62[(aa,aa2)])
+			else:
+				linemx.append(MatrixInfo.blosum62[(aa2,aa)])
+				#print(aa2,aa,MatrixInfo.blosum62[(aa2,aa)])
+		loddmx.append(linemx)
+	testvr = np.repeat(1/len(aa_sequence),len(aa_sequence))
+	baseline = float(testvr@np.array(loddmx)@testvr.T)
+	revtestA=np.add(np.array(loddmx), abs(baseline))
+	if int(testvr@revtestA@testvr.T) != 0:
+		raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+	else:
+		#print(baseline)
+		return np.add(np.array(loddmx),abs(baseline))
+
 def compute_score(commandline_args,aln_index_dict, *args):
 	'''
 	Computes transformation score between two groups, using substitution 
@@ -145,7 +170,7 @@ def compute_score(commandline_args,aln_index_dict, *args):
 				lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
 				alnindex_score[aln_index] = vr1@lgmx@vr2.T
 				#print(aln_index,vr1@lgmx@vr2.T)
-	else:											#Case of no structure defined inputs
+	elif commandline_args.leegascuel:											#Case of no structure defined inputs
 		groupnames = args[0]
 		for aln_index in aln_index_dict:
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
@@ -153,6 +178,12 @@ def compute_score(commandline_args,aln_index_dict, *args):
 			lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
 			alnindex_score[aln_index] = vr1@lgmx@vr2.T
 			#print(aln_index,vr1@lgmx@vr2.T)
+	elif commandline_args.blosum:
+		groupnames = args[0]
+		for aln_index in aln_index_dict:
+			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
+			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
+			alnindex_score[aln_index] = vr1@blos_matrix()@vr2.T
 	return alnindex_score
 
 def lookahead(iterable):
@@ -217,21 +248,21 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 			x,y = bar.get_xy()
 			w, h = bar.get_width(), bar.get_height()
 			if h > 0:
-				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
+				grad = np.atleast_2d(np.linspace(h/max(data),0,256)).T
 				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(positivegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 			else:			#different gradient for negative values
-				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
+				grad = np.atleast_2d(np.linspace(h/min(data),0,256)).T
 				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(negativegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
 	if min(data) < 0:
 		pamlarray = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
 		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
+		plt.plot((0, len(data)), (1, 1), 'k-', linewidth=0.5)
 		gradientbars(bar,'Blues','Reds')
 	else:
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
-	
 	plt.savefig('./outputs/'+'-'.join(group_names)+'.svg',format = 'svg',dpi=dpi_scaling)
 
 def uninterrupted_stretches(alnindex, alnindex_score):
@@ -321,7 +352,7 @@ def rand_normalizer(commandline_args):
 						raise ValueError("When a structure is defined, one of the matrix options are rquired!")
 			alnindex_score = compute_score(commandline_args,aln_index_dict, struc_annotation)
 			randindex_norm[rand_index]=alnindex_score
-		elif commandline_args.leegascuel:										#Case of no structure defined outputs
+		elif commandline_args.leegascuel or commandline_args.blosum:										#Case of no structure defined outputs
 			for alngroup_name in sliced_alns:
 				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
 				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
@@ -341,8 +372,11 @@ def rand_normalizer(commandline_args):
 				position_defined_scores[pos]=[]
 				position_defined_scores[pos].append(randindex_norm[x][pos])
 	output_dict = {}
-	for x in position_defined_scores.keys():
-		output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
+	for x in position_defined_scores.keys():				#If standard deviation is too big, set the result as 0
+		if 2*np.std(position_defined_scores[x]) > abs(np.average(position_defined_scores[x]))/2:
+			output_dict[x] = (0, np.std(position_defined_scores[x]))
+		else:
+			output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
 	return output_dict, sliced_alns
 
 

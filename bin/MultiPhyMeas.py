@@ -55,40 +55,45 @@ def make_length_distr(df,comm_args):
 			if pos is None:
 				pass
 			else:
-				if pos > 1:
+				if pos > 0.5:
+					#print(i, 'greater')
+					k=0
 					i+=1
 					w+=pos
-				elif pos <= 1:
+				elif pos <= 0.5:
 					if k == thr_distr:
+						#print(i, 'smaller k is threshold')
 						if file in length_distr.keys():
 							length_distr[file].append(i)
-							weight_distr[file].append(w)
+							weight_distr[file].append((i,w))
 							w=0
 							i=0
 							k=0
 						else:
-							weight_distr[file]=[]
-							weight_distr[file].append(w)
 							length_distr[file]=[]
+							weight_distr[file]=[]
 							length_distr[file].append(i)
+							weight_distr[file].append((i,w))
 							w=0
 							i=0
 							k=0
 					elif k < thr_distr:
-						w+=pos
+						#print(i, 'smaller k is not threshold')
+						#w+=pos #Think about this one
 						#i+=1	#Think about that one
 						k+=1
 			if has_more is False:
+				#print(i, 'last')
 				if file in length_distr.keys():
-					weight_distr[file].append(w)
 					length_distr[file].append(i)
+					weight_distr[file].append((i,w))
 					w=0
 					i=0
 				else:
-					weight_distr[file]=[]
 					length_distr[file]=[]
-					weight_distr[file].append(w)
+					weight_distr[file]=[]
 					length_distr[file].append(i)
+					weight_distr[file].append((i,w))
 					w=0
 					i=0
 	return length_distr, weight_distr
@@ -127,14 +132,14 @@ def ribbon_plot(newdict, bin_edges,output_path):
 
 def make_hist(input_dict):
 	maxlength=0
-	for x in input_dict:
-		if maxlength < max(input_dict[x]):
-			maxlength = max(input_dict[x])
+	for file in input_dict:
+		if maxlength < max(input_dict[file]):
+			maxlength = max(input_dict[file])
 	bins = list(range(0,int(maxlength)+1))
 	newdict={}
-	for x in input_dict:
-		hist, bin_edges = np.histogram(input_dict[x], bins=bins)
-		newdict[x]=hist
+	for file in input_dict:
+		hist, bin_edges = np.histogram(input_dict[file], bins=bins)
+		newdict[file]=hist
 	return newdict, bin_edges
 
 def main(commandline_args):
@@ -159,17 +164,21 @@ def main(commandline_args):
 	length_distr, weight_distr = make_length_distr(df,comm_args)
 	lendict, len_bin_edges = make_hist (length_distr)
 	
-	for x in sorted(weight_distr):
-		print(x, len(weight_distr[x]))
-	weidict, wei_bin_edges = make_hist (weight_distr)
-	#print(wei_bin_edges[1:])
-	for x in sorted(weidict):
-		#print(x, sum(weidict[x]*wei_bin_edges[1:])/aln_length[x])
-		print(x,aln_length[x], sum(weidict[x]*wei_bin_edges[1:]))
-	
+	#weidict, wei_bin_edges = make_hist (weight_distr)
+
+	#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
 	ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
 	
+	ax = plt.subplot()
+	colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
+	sorted_names = sorted(weight_distr.keys())
+	for file, color in zip(sorted_names,colors):
+		plt.scatter(*zip(*weight_distr[file]), label=file, marker='.',color=color)
 	
+	plt.legend(bbox_to_anchor=(1.04,1), borderaxespad=0)
+	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+
+
 	#ax = plt.subplot()
 	#for k, v in lendict.items():
 	#	plt.plot(range(1, len(v) + 1), v, '.-', label=k)
