@@ -252,75 +252,74 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 	if min(data) < 0:
 		pamlarray = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
 		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
-		plt.plot((0, len(data)), (0.5, 0.5), 'k-', linewidth=0.5)
+		plt.plot((0, len(data)), (0.75, 0.75), 'k-', linewidth=0.5)
 		gradientbars(bar,'Blues','Reds')
 	else:
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
-	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig('./outputs/'+'-'.join(group_names)+'.svg',format = 'svg',dpi=dpi_scaling)
 
-def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
-	"""Checks through the commandline options and does the appropriate calculations; gap randomizations.
-	Returns a dictionary of alignment position -> computed score.
+def rand_normalizer(commandline_args,alignIO_out_gapped,aa_list):
+	"""Every calculation and gap filling of alignment is performed 10 times.
+	This is done to dampen the errors in heavily gapped regions.
+	Allows us to add errorbars on the output graph.
 	"""
-	alignIO_out=alignIO_out_gapped[:,:]
-	sliced_alns = slice_by_name(alignIO_out)
-
-	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-		return shannon_entropy(alignIO_out, aa_list, commandline_args)
-	
-	aln_index_dict=defaultdict(dict)
-	struc_annotation = defaultdict(dict)
-	if commandline_args.structure_paths:
-		for alngroup_name in sliced_alns:
-			current_path = [s for s in commandline_args.structure_paths if alngroup_name in s]
-			if len(current_path) < 1:					#FIX In case number of structures is fewer than the number of alignment groups
+	randindex_norm=defaultdict(dict)
+	#aln_path = commandline_args.alignment_path
+	#alignIO_out_gapped=read_align(aln_path)
+	#aa_list=uniq_AA_list(alignIO_out_gapped)
+	for rand_index in range(0,100):						#Then run the function itself 10 times returning its results in the data structure
+		alignIO_out=alignIO_out_gapped[:,:]
+		sliced_alns = slice_by_name(alignIO_out)
+		if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
+			#print("Conservation/entropy result:")
+			entropyDict = shannon_entropy(alignIO_out, aa_list, commandline_args)
+			randindex_norm[rand_index]=entropyDict
+			#for x in entropyDict:
+			#	print(x, entropyDict[x])
+		
+		aln_index_dict=defaultdict(dict)
+		struc_annotation = defaultdict(dict)
+		if commandline_args.structure_paths:
+			for alngroup_name in sliced_alns:
+				current_path = [s for s in commandline_args.structure_paths if alngroup_name in s]
+				if len(current_path) < 1:					#FIX In case number of structures is fewer than the number of alignment groups
+					alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+					AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+					alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+					for aln_index in alnindex_col_distr:
+						struc_annotation[alngroup_name][aln_index] = 'BEHOS'
+					for aln_index in alnindex_col_distr:
+							aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+				else:
+					alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
+					struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+					AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+					alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
+					for aln_index in alnindex_col_distr:
+							aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+					if commandline_args.secondary_structure:
+						struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+					elif commandline_args.burried_exposed:
+						struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+					elif commandline_args.both:
+						struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+					else:
+						parser.print_help()
+						raise ValueError("When a structure is defined, one of the matrix options are rquired!")
+			alnindex_score = compute_score(commandline_args,aln_index_dict, struc_annotation)#Yield/return this and sliced alns
+			randindex_norm[rand_index]=alnindex_score
+		elif commandline_args.leegascuel or commandline_args.blosum:							#Case of no structure defined outputs
+			for alngroup_name in sliced_alns:
 				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
 				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
 				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
 				for aln_index in alnindex_col_distr:
-					struc_annotation[alngroup_name][aln_index] = 'BEHOS'
-				for aln_index in alnindex_col_distr:
-						aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-			else:
-				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
-				struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
-				AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-				alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-				for aln_index in alnindex_col_distr:
-						aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-				if commandline_args.secondary_structure:
-					struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-				elif commandline_args.burried_exposed:
-					struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-				elif commandline_args.both:
-					struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-				else:
-					parser.print_help()
-					raise ValueError("When a structure is defined, one of the matrix options are rquired!")
-		return compute_score(commandline_args,aln_index_dict, struc_annotation)
-	elif commandline_args.leegascuel or commandline_args.blosum:							#Case of no structure defined outputs
-		for alngroup_name in sliced_alns:
-			alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
-			AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-			alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]))
-			for aln_index in alnindex_col_distr:
-				aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-		return compute_score(commandline_args,aln_index_dict,list(sliced_alns.keys()))
-
-def main(commandline_arguments):
-	'''Main entry point'''
-	comm_args = create_and_parse_argument_options(commandline_arguments)
-	alignIO_out_gapped=read_align(comm_args.alignment_path)
-	randindex_norm=defaultdict(dict)
-	gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
+					aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+			alnindex_score = compute_score(commandline_args,aln_index_dict,list(sliced_alns.keys()))#Yield/return this and sliced alns
+			randindex_norm[rand_index]=alnindex_score
 	
-	for rand_index in range(0,10):
-		"""Every calculation and gap filling of alignment is performed 10 times.
-		This is done to dampen the errors in heavily gapped regions.
-		Allows us to add errorbars on the output graph."""
-		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,uniq_AA_list(alignIO_out_gapped))
-	
+	#Following needs to get out of the function as well
 	#Calculating mean and stdev per alignment position
 	position_defined_scores=defaultdict(dict)
 	for x in randindex_norm.keys():
@@ -336,11 +335,19 @@ def main(commandline_arguments):
 			output_dict[x] = (0, np.std(position_defined_scores[x]))
 		else:
 			output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
-	
+	return output_dict, sliced_alns
+
+
+def main(commandline_arguments):
+	'''Main entry point'''
+	comm_args = create_and_parse_argument_options(commandline_arguments)
+	alignIO_out_gapped=read_align(comm_args.alignment_path)
+	#randindex_norm=defaultdict(dict)
+	alnindex_score, sliced_alns = rand_normalizer(comm_args,alignIO_out_gapped,uniq_AA_list(alignIO_out_gapped))
 	if comm_args.plotit:									#for plotting
-		upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()))
+		upsidedown_horizontal_gradient_bar(alnindex_score, list(sliced_alns.keys()))
 	elif comm_args.return_within:
-		return output_dict, gapped_sliced_alns
+		return alnindex_score, sliced_alns
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv[1:]))

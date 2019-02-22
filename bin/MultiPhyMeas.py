@@ -36,7 +36,7 @@ def lookahead(iterable):
 	# Report the last value.
 	yield last, False
 
-def make_length_distr(df,comm_args):
+def make_length_distr(df,comm_args,group_dict):
 	'''
 	Takes in dataframe with values per file and returns
 	a length distribution dictionary with keys files and
@@ -51,6 +51,7 @@ def make_length_distr(df,comm_args):
 		i=0
 		k=0
 		w=0
+		alignment_length = len(group_dict[file])
 		for pos,has_more in lookahead(df[file]):
 			if pos is None:
 				pass
@@ -65,7 +66,10 @@ def make_length_distr(df,comm_args):
 						#print(i, 'smaller k is threshold')
 						if file in length_distr.keys():
 							length_distr[file].append(i)
-							weight_distr[file].append((i,w))
+							if i > 0:
+								weight_distr[file].append((i,w))
+							else:
+								weight_distr[file].append((i,0))
 							w=0
 							i=0
 							k=0
@@ -73,7 +77,10 @@ def make_length_distr(df,comm_args):
 							length_distr[file]=[]
 							weight_distr[file]=[]
 							length_distr[file].append(i)
-							weight_distr[file].append((i,w))
+							if i > 0:
+								weight_distr[file].append((i,w))
+							else:
+								weight_distr[file].append((i,0))
 							w=0
 							i=0
 							k=0
@@ -86,14 +93,20 @@ def make_length_distr(df,comm_args):
 				#print(i, 'last')
 				if file in length_distr.keys():
 					length_distr[file].append(i)
-					weight_distr[file].append((i,w))
+					if i > 0:
+						weight_distr[file].append((i,w))
+					else:
+						weight_distr[file].append((i,0))
 					w=0
 					i=0
 				else:
 					length_distr[file]=[]
 					weight_distr[file]=[]
 					length_distr[file].append(i)
-					weight_distr[file].append((i,w))
+					if i > 0:
+						weight_distr[file].append((i,w))
+					else:
+						weight_distr[file].append((i,0))
 					w=0
 					i=0
 	return length_distr, weight_distr
@@ -128,7 +141,7 @@ def ribbon_plot(newdict, bin_edges,output_path):
 							title="Number of segments"))
 						)
 	fig = go.Figure(data=traces, layout=layout)
-	#plotly.offline.plot(fig, filename=output_path)
+	plotly.offline.plot(fig, filename=output_path)
 
 def make_hist(input_dict):
 	maxlength=0
@@ -151,7 +164,7 @@ def main(commandline_args):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas)',comm_args.alignment_path+file):
 			# print(file)
 			out_dict={}
-			alnindex_score,sliced_alns=PhyMeas.main([comm_args.alignment_path+file, '-r', '-lg'])
+			alnindex_score,sliced_alns=PhyMeas.main([comm_args.alignment_path+file, '-r', '-bl'])
 			for x in sliced_alns:
 				aln_length[file]=sliced_alns[x].get_alignment_length()
 				break
@@ -161,16 +174,19 @@ def main(commandline_args):
 		else:
 			raise ValueError("Directory must have only .fas or .fasta alignment files!")
 	df = pd.DataFrame.from_dict(group_dict)
-	length_distr, weight_distr = make_length_distr(df,comm_args)
+	length_distr, weight_distr = make_length_distr(df,comm_args,group_dict)
 	lendict, len_bin_edges = make_hist (length_distr)
 	
 	#weidict, wei_bin_edges = make_hist (weight_distr)
 
 	#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
-	ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
+	#ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
 	
 	ax = plt.subplot()
-	colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
+	if len(weight_distr) == 10:
+		colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
+	else:
+		colors = matplotlib.cm.tab20(np.linspace(0, 1, len(weight_distr)))
 	sorted_names = sorted(weight_distr.keys())
 	for file, color in zip(sorted_names,colors):
 		plt.scatter(*zip(*weight_distr[file]), label=file, marker='.',color=color)
