@@ -175,10 +175,9 @@ def main(commandline_args):
 			raise ValueError("Directory must have only .fas or .fasta alignment files!")
 	df = pd.DataFrame.from_dict(group_dict)
 	length_distr, weight_distr = make_length_distr(df,comm_args,group_dict)
-	lendict, len_bin_edges = make_hist (length_distr)
 	
+	#lendict, len_bin_edges = make_hist (length_distr)
 	#weidict, wei_bin_edges = make_hist (weight_distr)
-
 	#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
 	#ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
 	
