@@ -1,6 +1,6 @@
 # Conservation score
 
-Here we will try to use different types of matrices to represent conservation within an alignment, given the prior information of a pair of groups within the alignment.
+Using different types of matrices we can represent conservation within an alignment, given the prior information of a pair of groups within the alignment.
 
 We will also use different substitution matrices based on external structural information.
 
@@ -22,15 +22,15 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 	- Transform to log odds
 	- Normalize random to 0
 - Create group classes
-	- Create correspondence mapping between alignment index and anchor sequences for the groups (<span style="color:red">what happens when no structure?</span>)
+	- Create correspondence mapping between alignment index and anchor sequences for the groups.
 	- Calculate structural data and associate with correspondence mapping (sec structure and inner/outer)
 	- Randomize gaps in alignment objects
 	- Calculate frequency vectors and associate with correspondence mapping 
 - For combinations of two classes:
 	- Calculate score using **frequency vectors**, **correspondence mapping**, and **matrices** defined by **structural data**
 - Generate output
-	- **.pml file** for all structures with residue colors defined by the score
-	- **.png** with score trace for residue number
+	- <span style="color:red">**.pml file** for all structures with residue colors defined by the score</span>
+	- **.svg** with score trace for residue number
 	- **optional data** if run as a module **for multiple alignment analysis**
 
 ## Dependencies
@@ -43,10 +43,6 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 
 ## Other
 
-Order in the vector
+Sample output
 
-A	C	D	E	F	G	H	I	K	L	M	N	P	Q	R	S	T	V	W	Y
-
-Order in PhyML matrix
-
-A	R	N	D	C	Q	E	G	H	I	L	K	M	F	P	S	T	W	Y	V
+<img src="./bin/outputs/tests/eL14c-uL02c.svg">
