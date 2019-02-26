@@ -74,7 +74,7 @@ def make_length_distr(df,comm_args,group_dict):
 							if i > 0:
 								weight_distr[file].append((i,w/i))
 							else:
-								weight_distr[file].append((i,0))
+								weight_distr[file].append((i,w))
 							w=0
 							i=0
 							k=0
@@ -85,7 +85,7 @@ def make_length_distr(df,comm_args,group_dict):
 							if i > 0:
 								weight_distr[file].append((i,w/i))
 							else:
-								weight_distr[file].append((i,0))
+								weight_distr[file].append((i,w))
 							w=0
 							i=0
 							k=0
@@ -101,7 +101,7 @@ def make_length_distr(df,comm_args,group_dict):
 					if i > 0:
 						weight_distr[file].append((i,w/i))
 					else:
-						weight_distr[file].append((i,0))
+						weight_distr[file].append((i,w))
 					w=0
 					i=0
 				else:
@@ -111,7 +111,7 @@ def make_length_distr(df,comm_args,group_dict):
 					if i > 0:
 						weight_distr[file].append((i,w/i))
 					else:
-						weight_distr[file].append((i,0))
+						weight_distr[file].append((i,w))
 					w=0
 					i=0
 	return length_distr, weight_distr
