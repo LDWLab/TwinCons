@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Calculates conservation score for multiple alignments"""
 import PhyMeas
-
 import re, os, sys, getopt, plotly, single_cons_comp, argparse
 import plotly.graph_objs as go
 import matplotlib
@@ -10,13 +9,19 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+#from labellines import labelLine, labelLines
+from operator import itemgetter
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from multiple alignments.')
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
-	parser.add_argument('output_path', help='Path to folder for output. Must already exist!')
+	parser.add_argument('output_path', help='Path to image for output.')
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
 	parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
+	output_group = parser.add_mutually_exclusive_group(required=True)
+	output_group.add_argument('-ps', '--scatter_plot', help='Plots a scatter of the length for positive stretches and their total score.', action="store_true")
+	output_group.add_argument('-pr', '--ribbon_plot', help='Plots a 3D ribbon of the length for positive stretches and their total score.', action="store_true")
+	output_group.add_argument('-pm', '--multi_plot', help='Plots a scatter of the representation for each alignment. For many (>20) alignments.', action="store_true")
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -67,7 +72,7 @@ def make_length_distr(df,comm_args,group_dict):
 						if file in length_distr.keys():
 							length_distr[file].append(i)
 							if i > 0:
-								weight_distr[file].append((i,w))
+								weight_distr[file].append((i,w/i))
 							else:
 								weight_distr[file].append((i,0))
 							w=0
@@ -78,7 +83,7 @@ def make_length_distr(df,comm_args,group_dict):
 							weight_distr[file]=[]
 							length_distr[file].append(i)
 							if i > 0:
-								weight_distr[file].append((i,w))
+								weight_distr[file].append((i,w/i))
 							else:
 								weight_distr[file].append((i,0))
 							w=0
@@ -94,7 +99,7 @@ def make_length_distr(df,comm_args,group_dict):
 				if file in length_distr.keys():
 					length_distr[file].append(i)
 					if i > 0:
-						weight_distr[file].append((i,w))
+						weight_distr[file].append((i,w/i))
 					else:
 						weight_distr[file].append((i,0))
 					w=0
@@ -104,12 +109,18 @@ def make_length_distr(df,comm_args,group_dict):
 					weight_distr[file]=[]
 					length_distr[file].append(i)
 					if i > 0:
-						weight_distr[file].append((i,w))
+						weight_distr[file].append((i,w/i))
 					else:
 						weight_distr[file].append((i,0))
 					w=0
 					i=0
 	return length_distr, weight_distr
+
+def slope(point1, point2):
+	if point2[0]-point1[0] != 0:
+		return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
+	else:
+		return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
 
 def ribbon_plot(newdict, bin_edges,output_path):
 	traces = []
@@ -142,6 +153,23 @@ def ribbon_plot(newdict, bin_edges,output_path):
 						)
 	fig = go.Figure(data=traces, layout=layout)
 	plotly.offline.plot(fig, filename=output_path)
+
+def scatter_plot(comm_args,weight_distr):
+	ax = plt.subplot()
+	if len(weight_distr) == 10:
+		colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
+	else:
+		colors = matplotlib.cm.tab20(np.linspace(0, 1, len(weight_distr)))
+	sorted_names = sorted(weight_distr.keys())
+	for file, color in zip(sorted_names,colors):
+		degree_label = 180-round(np.rad2deg(slope(weight_distr[file][0],weight_distr[file][1])),2)
+		plt.scatter(*zip(*weight_distr[file]), label=str(degree_label)+' '+re.sub(r'\.fas.*','',file), marker='.',color=color)
+		plt.plot(*zip(*weight_distr[file]),color=color)
+
+	#labelLines(plt.gca().get_lines(),align=False)
+	plt.legend(bbox_to_anchor=(1.04,1), borderaxespad=0)
+	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+	return True
 
 def make_hist(input_dict):
 	maxlength=0
@@ -176,30 +204,19 @@ def main(commandline_args):
 	df = pd.DataFrame.from_dict(group_dict)
 	length_distr, weight_distr = make_length_distr(df,comm_args,group_dict)
 	
-	#lendict, len_bin_edges = make_hist (length_distr)
-	#weidict, wei_bin_edges = make_hist (weight_distr)
-	#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
-	#ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
-	
-	ax = plt.subplot()
-	if len(weight_distr) == 10:
-		colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
-	else:
-		colors = matplotlib.cm.tab20(np.linspace(0, 1, len(weight_distr)))
-	sorted_names = sorted(weight_distr.keys())
-	for file, color in zip(sorted_names,colors):
-		plt.scatter(*zip(*weight_distr[file]), label=file, marker='.',color=color)
-	
-	plt.legend(bbox_to_anchor=(1.04,1), borderaxespad=0)
-	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
-
-
-	#ax = plt.subplot()
-	#for k, v in lendict.items():
-	#	plt.plot(range(1, len(v) + 1), v, '.-', label=k)
-	#ax.set_ylim(0,20)
-	#plt.legend()
-	#plt.savefig(comm_args.output_path, dpi=600)
+	if comm_args.ribbon_plot:
+		lendict, len_bin_edges = make_hist (length_distr)
+		ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
+		#weidict, wei_bin_edges = make_hist (weight_distr)
+		#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
+	elif comm_args.scatter_plot:
+		scatter_plot(comm_args,weight_distr)
+	elif comm_args.multi_plot:
+		maxweight={}
+		for file in weight_distr.keys():
+			maxweight[file]=[max(weight_distr[file],key=itemgetter(0)),max(weight_distr[file],key=itemgetter(1))]
+			#print(file, slope(maxweight[file][0],maxweight[file][1]))
+		scatter_plot(comm_args,maxweight)
 
 
 if __name__ == "__main__":
