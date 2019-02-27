@@ -25,25 +25,24 @@ def create_and_parse_argument_options(argument_list):
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
-def lookahead(iterable):
-	"""Pass through all values from the given iterable, augmented by the
-	information if there are more values to come after the current one
-	(True), or if it is the last value (False).
-	"""
-	# Get an iterator and pull the first value.
-	it = iter(iterable)
-	last = next(it)
-	# Run the iterator to exhaustion (starting from the second value).
-	for val in it:
-		# Report the *previous* value (more to come).
-		yield last, True
-		last = val
-	# Report the last value.
-	yield last, False
+#def lookahead(iterable):
+#	"""Pass through all values from the given iterable, augmented by the
+#	information if there are more values to come after the current one
+#	(True), or if it is the last value (False).
+#	"""
+#	# Get an iterator and pull the first value.
+#	it = iter(iterable)
+#	last = next(it)
+#	# Run the iterator to exhaustion (starting from the second value).
+#	for val in it:
+#		# Report the *previous* value (more to come).
+#		yield last, True
+#		last = val
+#	# Report the last value.
+#	yield last, False
 
 def make_length_distr(df,comm_args,group_dict):
-	'''
-	Takes in dataframe with values per file and returns
+	'''Takes in dataframe with values per file and returns
 	a length distribution dictionary with keys files and
 	values lengths of uninterrupted positive scoring positions.
 	(Can be interupted by 1 low scoring position (or more set with -t)
@@ -51,76 +50,126 @@ def make_length_distr(df,comm_args,group_dict):
 	'''
 	length_distr={}
 	weight_distr={}
+	length_to_weight={}
 	thr_distr = comm_args.threshold
 	for file in df:
 		i=0
 		k=0
 		w=0
 		alignment_length = len(group_dict[file])
-		for pos,has_more in lookahead(df[file]):
-			if pos is None:
-				pass
-			else:
-				if pos > 0.5:
-					#print(i, 'greater')
-					k=0
-					i+=1
-					w+=pos
-				elif pos <= 0.5:
-					if k == thr_distr:
-						#print(i, 'smaller k is threshold')
+		for pos,has_more in PhyMeas.lookahead(df[file]):
+			if pos > 0.5:
+				#print(i, 'greater')
+				k=0
+				i+=1
+				w+=pos
+			elif pos <= 0.5:
+				if k == thr_distr:
+					#print(i, 'smaller k is threshold')
+					if i > 0 and w > 0.5:
 						if file in length_distr.keys():
 							length_distr[file].append(i)
-							if i > 0:
-								weight_distr[file].append((i,w/i))
+							weight_distr[file].append((i,w/i))
+							###
+							if i in length_to_weight[file].keys():
+								length_to_weight[file][i].append(w/i)
 							else:
-								weight_distr[file].append((i,w))
-							w=0
-							i=0
-							k=0
+								length_to_weight[file][i]=[]
+								length_to_weight[file][i].append(w/i)
+							###
+							i,k,w=0,0,0
 						else:
 							length_distr[file]=[]
 							weight_distr[file]=[]
 							length_distr[file].append(i)
-							if i > 0:
-								weight_distr[file].append((i,w/i))
-							else:
-								weight_distr[file].append((i,w))
-							w=0
-							i=0
-							k=0
-					elif k < thr_distr:
-						#print(i, 'smaller k is not threshold')
-						#w+=pos #Think about this one
-						#i+=1	#Think about that one
-						k+=1
+							weight_distr[file].append((i,w/i))
+							###
+							length_to_weight[file]={}
+							length_to_weight[file][i]=[]
+							length_to_weight[file][i].append(w/i)
+							###
+							i,k,w=0,0,0
+				elif k < thr_distr:
+					#print(i, 'smaller k is not threshold')
+					w+=pos	#Think about these two
+					i+=1	
+					k+=1
 			if has_more is False:
 				#print(i, 'last')
-				if file in length_distr.keys():
-					length_distr[file].append(i)
-					if i > 0:
+				if i > 0 and w > 0.5:
+					if file in length_distr.keys():
+						length_distr[file].append(i)
 						weight_distr[file].append((i,w/i))
+						###
+						if i in length_to_weight[file].keys():
+							length_to_weight[file][i].append(w/i)
+						else:
+							length_to_weight[file][i]=[]
+							length_to_weight[file][i].append(w/i)
+						###
 					else:
-						weight_distr[file].append((i,w))
-					w=0
-					i=0
-				else:
-					length_distr[file]=[]
-					weight_distr[file]=[]
-					length_distr[file].append(i)
-					if i > 0:
+						length_distr[file]=[]
+						weight_distr[file]=[]
+						length_distr[file].append(i)
 						weight_distr[file].append((i,w/i))
-					else:
-						weight_distr[file].append((i,w))
-					w=0
-					i=0
-	return length_distr, weight_distr
+						###
+						length_to_weight[file]={}
+						length_to_weight[file][i]=[]
+						length_to_weight[file][i].append(w/i)
+						###
+	return length_distr, weight_distr, length_to_weight
+
+def uninterrupted_stretches(alnindex, alnindex_score):
+	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
+	Also associates these scores with the last position of the alignment index.
+	For now uses > 1 as positive and < -1 as negative. Can be a variable or changed as appropriate.
+	"""
+	posdata={}
+	negdata={}
+	pos,neg=0,0
+	for x,has_more in PhyMeas.lookahead(range(0,len(alnindex))):
+		if alnindex_score[alnindex[x]] > 0.5:
+			#print('pos',alnindex[x], alnindex_score[alnindex[x]][0])
+			pos+=1
+			if neg != 0:
+				negdata[alnindex[x-1]]=neg
+				neg = 0
+		elif alnindex_score[alnindex[x]] < -0.5:
+			#print('neg',alnindex[x], alnindex_score[alnindex[x]][0])
+			neg+=1
+			if pos != 0:
+				posdata[alnindex[x-1]]=pos
+				pos = 0
+		else:				#in case of using some range between positive and negative scores for random
+			#print('rand',alnindex[x], alnindex_score[alnindex[x]][0])
+			if pos != 0:
+				posdata[alnindex[x-1]]=pos
+				pos = 0
+			if neg != 0:
+				negdata[alnindex[x-1]]=neg
+				neg = 0
+		if has_more is False:
+			if pos != 0:
+				posdata[alnindex[x]]=pos
+			if neg != 0:
+				negdata[alnindex[x]]=neg
+	return posdata, negdata
 
 def slope(point1, point2):
-	if point2[0]-point1[0] != 0:
-		return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
-	else:
-		return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
+	return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
+
+
+def make_hist(input_dict):
+	maxlength=0
+	for file in input_dict:
+		if maxlength < max(input_dict[file]):
+			maxlength = max(input_dict[file])
+	bins = list(range(0,int(maxlength)+1))
+	newdict={}
+	for file in input_dict:
+		hist, bin_edges = np.histogram(input_dict[file], bins=bins)
+		newdict[file]=hist
+	return newdict, bin_edges
 
 def ribbon_plot(newdict, bin_edges,output_path):
 	traces = []
@@ -154,7 +203,7 @@ def ribbon_plot(newdict, bin_edges,output_path):
 	fig = go.Figure(data=traces, layout=layout)
 	plotly.offline.plot(fig, filename=output_path)
 
-def scatter_plot(comm_args,weight_distr):
+def scatter_plot(comm_args,weight_distr,_lines=False,_maxx=False,_scatter=False):
 	ax = plt.subplot()
 	if len(weight_distr) == 10:
 		colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
@@ -162,26 +211,22 @@ def scatter_plot(comm_args,weight_distr):
 		colors = matplotlib.cm.tab20(np.linspace(0, 1, len(weight_distr)))
 	sorted_names = sorted(weight_distr.keys())
 	for file, color in zip(sorted_names,colors):
-		degree_label = 180-round(np.rad2deg(slope(weight_distr[file][0],weight_distr[file][1])),2)
-		plt.scatter(*zip(*weight_distr[file]), label=str(degree_label)+' '+re.sub(r'\.fas.*','',file), marker='.',color=color)
-		plt.plot(*zip(*weight_distr[file]),color=color)
-
+		if _lines:
+			degree_label = 180-round(np.rad2deg(slope(weight_distr[file][0],weight_distr[file][1])),2)
+			plt.scatter(*zip(*weight_distr[file]), label=str(degree_label)+' '+re.sub(r'\.fas.*','',file), marker='.',color=color)
+			plt.plot(*zip(*weight_distr[file]),color=color)
+		#if _scatter:
+			#plt.scatter(*zip(*weight_distr[file]), label=re.sub(r'\.fas.*','',file), marker='.',color=color)
+		if _maxx:
+			plotlist=[]
+			for x in zip(weight_distr[file].keys(),weight_distr[file].values()):
+				plotlist.append((x[0],max(x[1])))
+			plt.scatter(*zip(*plotlist), label=re.sub(r'\.fas.*','',file), marker='.',color=color)
 	#labelLines(plt.gca().get_lines(),align=False)
+	plt.plot((1,13),(4.5,0),color='black')
 	plt.legend(bbox_to_anchor=(1.04,1), borderaxespad=0)
 	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
 	return True
-
-def make_hist(input_dict):
-	maxlength=0
-	for file in input_dict:
-		if maxlength < max(input_dict[file]):
-			maxlength = max(input_dict[file])
-	bins = list(range(0,int(maxlength)+1))
-	newdict={}
-	for file in input_dict:
-		hist, bin_edges = np.histogram(input_dict[file], bins=bins)
-		newdict[file]=hist
-	return newdict, bin_edges
 
 def main(commandline_args):
 
@@ -202,7 +247,7 @@ def main(commandline_args):
 		else:
 			raise ValueError("Directory must have only .fas or .fasta alignment files!")
 	df = pd.DataFrame.from_dict(group_dict)
-	length_distr, weight_distr = make_length_distr(df,comm_args,group_dict)
+	length_distr, weight_distr, length_to_weight = make_length_distr(df,comm_args,group_dict)
 	
 	if comm_args.ribbon_plot:
 		lendict, len_bin_edges = make_hist (length_distr)
@@ -210,14 +255,23 @@ def main(commandline_args):
 		#weidict, wei_bin_edges = make_hist (weight_distr)
 		#ribbon_plot(weidict, wei_bin_edges,comm_args.output_path)
 	elif comm_args.scatter_plot:
-		scatter_plot(comm_args,weight_distr)
+		scatter_plot(comm_args,weight_distr,_scatter=True)
 	elif comm_args.multi_plot:
-		maxweight={}
+		scatter_plot(comm_args,length_to_weight,_maxx=True)
+		
+		
+		'''
 		for file in weight_distr.keys():
 			maxweight[file]=[max(weight_distr[file],key=itemgetter(0)),max(weight_distr[file],key=itemgetter(1))]
 			#print(file, slope(maxweight[file][0],maxweight[file][1]))
-		scatter_plot(comm_args,maxweight)
-
+		scatter_plot(comm_args,maxweight,_lines=True)
+		'''
+	#for file in group_dict:
+	#	print (file)
+	#	alnindex = sorted(group_dict[file].keys())
+	#	posdata,negdata = uninterrupted_stretches(alnindex, group_dict[file])
+	#	for x in sorted(posdata.keys()):
+	#		print(x, posdata[x])
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
