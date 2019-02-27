@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+from scipy import stats
 #from labellines import labelLine, labelLines
 from operator import itemgetter
 
@@ -249,6 +250,35 @@ def main(commandline_args):
 	df = pd.DataFrame.from_dict(group_dict)
 	length_distr, weight_distr, length_to_weight = make_length_distr(df,comm_args,group_dict)
 	
+	max_weight_bylength={}
+	for file in length_to_weight.keys():
+		plotlist=[]
+		for x in zip(length_to_weight[file].keys(),length_to_weight[file].values()):
+			plotlist.append((x[0],max(x[1])))
+			if x[0] in max_weight_bylength.keys():
+				if max(x[1]) > max_weight_bylength[x[0]]:
+					max_weight_bylength[x[0]]=max(x[1])
+				else:
+					pass
+			else:
+				max_weight_bylength[x[0]]=max(x[1])
+	
+	
+	#Fitting a line
+	print(max_weight_bylength)
+	print(max_weight_bylength.keys(),max_weight_bylength.values())
+	slope, intercept, r_value, p_value, std_err = stats.linregress(list(max_weight_bylength.keys()),list(max_weight_bylength.values()))
+	print(slope, intercept, r_value, p_value, std_err)
+	axes = plt.gca()
+	plt.plot(list(max_weight_bylength.keys()),list(max_weight_bylength.values()), 'o', label='original data')
+	x_vals = np.array(axes.get_xlim())
+	y_vals = intercept + slope * x_vals
+	plt.plot(x_vals, y_vals, 'r', label='fitted line')
+	plt.legend()
+	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+
+
+	'''
 	if comm_args.ribbon_plot:
 		lendict, len_bin_edges = make_hist (length_distr)
 		ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
@@ -258,14 +288,13 @@ def main(commandline_args):
 		scatter_plot(comm_args,weight_distr,_scatter=True)
 	elif comm_args.multi_plot:
 		scatter_plot(comm_args,length_to_weight,_maxx=True)
-		
-		
-		'''
-		for file in weight_distr.keys():
-			maxweight[file]=[max(weight_distr[file],key=itemgetter(0)),max(weight_distr[file],key=itemgetter(1))]
-			#print(file, slope(maxweight[file][0],maxweight[file][1]))
-		scatter_plot(comm_args,maxweight,_lines=True)
-		'''
+
+		#for file in weight_distr.keys():
+		#	maxweight[file]=[max(weight_distr[file],key=itemgetter(0)),max(weight_distr[file],key=itemgetter(1))]
+		#	#print(file, slope(maxweight[file][0],maxweight[file][1]))
+		#scatter_plot(comm_args,maxweight,_lines=True)
+
+	'''
 	#for file in group_dict:
 	#	print (file)
 	#	alnindex = sorted(group_dict[file].keys())
