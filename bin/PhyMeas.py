@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import pandas as pd
 import numpy as np
 from Bio import AlignIO
+from io import StringIO
 import seaborn as sns
 from textwrap import wrap
 import matplotlib.pyplot as plt
@@ -16,7 +17,9 @@ from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
-	parser.add_argument('alignment_path', help='Path to alignment file')
+	input_file = parser.add_mutually_exclusive_group(required=True)
+	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
+	input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
@@ -313,7 +316,10 @@ def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 def main(commandline_arguments):
 	'''Main entry point'''
 	comm_args = create_and_parse_argument_options(commandline_arguments)
-	alignIO_out_gapped=read_align(comm_args.alignment_path)
+	if comm_args.alignment_path:
+		alignIO_out_gapped=read_align(comm_args.alignment_path)
+	elif comm_args.alignment_string:
+		alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
 	randindex_norm=defaultdict(dict)
 	gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
 	

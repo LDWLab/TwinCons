@@ -236,7 +236,7 @@ def main(commandline_args):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas)',comm_args.alignment_path+file):
 			# print(file)
 			out_dict={}
-			alnindex_score,sliced_alns=PhyMeas.main([comm_args.alignment_path+file, '-r', '-bl'])
+			alnindex_score,sliced_alns=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
 			for x in sliced_alns:
 				aln_length[file]=sliced_alns[x].get_alignment_length()
 				break
