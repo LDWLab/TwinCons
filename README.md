@@ -45,4 +45,4 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 
 Sample output
 
-<img src="./bin/outputs/tests/eL14c-uL02c.svg?sanitize=true">
+<img src="./bin/outputs/uL02b-uL02c.svg?sanitize=true">
