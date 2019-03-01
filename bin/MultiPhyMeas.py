@@ -54,9 +54,7 @@ def make_length_distr(df,comm_args,group_dict):
 	length_to_weight={}
 	thr_distr = comm_args.threshold
 	for file in df:
-		i=0
-		k=0
-		w=0
+		i,k,w=0,0,0
 		alignment_length = len(group_dict[file])
 		for pos,has_more in PhyMeas.lookahead(df[file]):
 			if pos > 0.5:

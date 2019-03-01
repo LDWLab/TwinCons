@@ -75,6 +75,8 @@ def slice_by_name(unsliced_aln_obj):
 	for entry in unsliced_aln_obj:
 		prot_list.append(entry.id.split("_")[0])
 	uniq_prot_list=set(prot_list)
+	if len(uniq_prot_list) != 2:
+		raise ValueError("For now does not support more than two groups! Offending groups are "+str(uniq_prot_list))
 	for prot in uniq_prot_list:
 		what = Bio.Align.MultipleSeqAlignment([])
 		for entry in unsliced_aln_obj:
