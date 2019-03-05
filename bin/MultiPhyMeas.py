@@ -26,22 +26,6 @@ def create_and_parse_argument_options(argument_list):
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
-#def lookahead(iterable):
-#	"""Pass through all values from the given iterable, augmented by the
-#	information if there are more values to come after the current one
-#	(True), or if it is the last value (False).
-#	"""
-#	# Get an iterator and pull the first value.
-#	it = iter(iterable)
-#	last = next(it)
-#	# Run the iterator to exhaustion (starting from the second value).
-#	for val in it:
-#		# Report the *previous* value (more to come).
-#		yield last, True
-#		last = val
-#	# Report the last value.
-#	yield last, False
-
 def make_length_distr(df,comm_args,group_dict):
 	'''Takes in dataframe with values per file and returns
 	a length distribution dictionary with keys files and
@@ -54,9 +38,11 @@ def make_length_distr(df,comm_args,group_dict):
 	length_to_weight={}
 	thr_distr = comm_args.threshold
 	for file in df:
-		i,k,w=0,0,0
+		l,i,k,w=0,0,0,0
 		alignment_length = len(group_dict[file])
 		for pos,has_more in PhyMeas.lookahead(df[file]):
+			l+=1
+			print(l)
 			if pos > 0.5:
 				#print(i, 'greater')
 				k=0
@@ -118,45 +104,8 @@ def make_length_distr(df,comm_args,group_dict):
 						###
 	return length_distr, weight_distr, length_to_weight
 
-def uninterrupted_stretches(alnindex, alnindex_score):
-	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
-	Also associates these scores with the last position of the alignment index.
-	For now uses > 1 as positive and < -1 as negative. Can be a variable or changed as appropriate.
-	"""
-	posdata={}
-	negdata={}
-	pos,neg=0,0
-	for x,has_more in PhyMeas.lookahead(range(0,len(alnindex))):
-		if alnindex_score[alnindex[x]] > 0.5:
-			#print('pos',alnindex[x], alnindex_score[alnindex[x]][0])
-			pos+=1
-			if neg != 0:
-				negdata[alnindex[x-1]]=neg
-				neg = 0
-		elif alnindex_score[alnindex[x]] < -0.5:
-			#print('neg',alnindex[x], alnindex_score[alnindex[x]][0])
-			neg+=1
-			if pos != 0:
-				posdata[alnindex[x-1]]=pos
-				pos = 0
-		else:				#in case of using some range between positive and negative scores for random
-			#print('rand',alnindex[x], alnindex_score[alnindex[x]][0])
-			if pos != 0:
-				posdata[alnindex[x-1]]=pos
-				pos = 0
-			if neg != 0:
-				negdata[alnindex[x-1]]=neg
-				neg = 0
-		if has_more is False:
-			if pos != 0:
-				posdata[alnindex[x]]=pos
-			if neg != 0:
-				negdata[alnindex[x]]=neg
-	return posdata, negdata
-
 def slope(point1, point2):
 	return np.arctan2(point2[1]-point1[1],point2[0]-point1[0])
-
 
 def make_hist(input_dict):
 	maxlength=0
@@ -228,7 +177,6 @@ def scatter_plot(comm_args,weight_distr,_lines=False,_maxx=False,_scatter=False)
 	return True
 
 def main(commandline_args):
-
 	comm_args = create_and_parse_argument_options(commandline_args)
 	group_dict={}
 	aln_length={}
@@ -261,7 +209,6 @@ def main(commandline_args):
 			else:
 				max_weight_bylength[x[0]]=max(x[1])
 	
-	
 	#Fitting a line
 	print(max_weight_bylength)
 	print(max_weight_bylength.keys(),max_weight_bylength.values())
@@ -274,7 +221,6 @@ def main(commandline_args):
 	plt.plot(x_vals, y_vals, 'r', label='fitted line')
 	plt.legend()
 	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
-
 
 	'''
 	if comm_args.ribbon_plot:
@@ -293,12 +239,6 @@ def main(commandline_args):
 		#scatter_plot(comm_args,maxweight,_lines=True)
 
 	'''
-	#for file in group_dict:
-	#	print (file)
-	#	alnindex = sorted(group_dict[file].keys())
-	#	posdata,negdata = uninterrupted_stretches(alnindex, group_dict[file])
-	#	for x in sorted(posdata.keys()):
-	#		print(x, posdata[x])
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
