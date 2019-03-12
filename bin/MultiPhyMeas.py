@@ -42,7 +42,7 @@ def make_length_distr(df,comm_args,group_dict):
 		alignment_length = len(group_dict[file])
 		for pos,has_more in PhyMeas.lookahead(df[file]):
 			l+=1
-			print(l)
+			#print(l)
 			if pos > 0.5:
 				#print(i, 'greater')
 				k=0
@@ -163,8 +163,8 @@ def scatter_plot(comm_args,weight_distr,_lines=False,_maxx=False,_scatter=False)
 			degree_label = 180-round(np.rad2deg(slope(weight_distr[file][0],weight_distr[file][1])),2)
 			plt.scatter(*zip(*weight_distr[file]), label=str(degree_label)+' '+re.sub(r'\.fas.*','',file), marker='.',color=color)
 			plt.plot(*zip(*weight_distr[file]),color=color)
-		#if _scatter:
-			#plt.scatter(*zip(*weight_distr[file]), label=re.sub(r'\.fas.*','',file), marker='.',color=color)
+		if _scatter:
+			plt.scatter(*zip(*weight_distr[file]), label=re.sub(r'\.fas.*','',file), marker='.',color=color)
 		if _maxx:
 			plotlist=[]
 			for x in zip(weight_distr[file].keys(),weight_distr[file].values()):
@@ -210,19 +210,19 @@ def main(commandline_args):
 				max_weight_bylength[x[0]]=max(x[1])
 	
 	#Fitting a line
-	print(max_weight_bylength)
-	print(max_weight_bylength.keys(),max_weight_bylength.values())
-	slope, intercept, r_value, p_value, std_err = stats.linregress(list(max_weight_bylength.keys()),list(max_weight_bylength.values()))
-	print(slope, intercept, r_value, p_value, std_err)
-	axes = plt.gca()
-	plt.plot(list(max_weight_bylength.keys()),list(max_weight_bylength.values()), 'o', label='original data')
-	x_vals = np.array(axes.get_xlim())
-	y_vals = intercept + slope * x_vals
-	plt.plot(x_vals, y_vals, 'r', label='fitted line')
-	plt.legend()
-	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+	#print(max_weight_bylength)
+	#print(max_weight_bylength.keys(),max_weight_bylength.values())
+	#slope, intercept, r_value, p_value, std_err = stats.linregress(list(max_weight_bylength.keys()),list(max_weight_bylength.values()))
+	#print(slope, intercept, r_value, p_value, std_err)
+	#axes = plt.gca()
+	#plt.plot(list(max_weight_bylength.keys()),list(max_weight_bylength.values()), 'o', label='original data')
+	#x_vals = np.array(axes.get_xlim())
+	#y_vals = intercept + slope * x_vals
+	#plt.plot(x_vals, y_vals, 'r', label='fitted line')
+	#plt.legend()
+	#plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
 
-	'''
+	
 	if comm_args.ribbon_plot:
 		lendict, len_bin_edges = make_hist (length_distr)
 		ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
@@ -238,7 +238,7 @@ def main(commandline_args):
 		#	#print(file, slope(maxweight[file][0],maxweight[file][1]))
 		#scatter_plot(comm_args,maxweight,_lines=True)
 
-	'''
+	
 
 if __name__ == "__main__":
 	main(sys.argv[1:])

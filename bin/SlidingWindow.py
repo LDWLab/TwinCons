@@ -22,10 +22,11 @@ def uninterrupted_stretches(alnindex, alnindex_score):
 	"""
 	posdata={}
 	negdata={}
-	pos,neg=0,0
+	pos,neg,wei=0,0,0
 	for x,has_more in PhyMeas.lookahead(range(0,len(alnindex))):
 		if alnindex_score[alnindex[x]] > 0.5:
 			#print('pos',alnindex[x], alnindex_score[alnindex[x]][0])
+			wei+=alnindex_score[alnindex[x]]
 			pos+=1
 			if neg != 0:
 				negdata[alnindex[x-1]]=neg
@@ -34,19 +35,21 @@ def uninterrupted_stretches(alnindex, alnindex_score):
 			#print('neg',alnindex[x], alnindex_score[alnindex[x]][0])
 			neg+=1
 			if pos != 0:
-				posdata[alnindex[x-1]]=pos
+				posdata[alnindex[x-1]]=(pos,wei)
+				wei=0
 				pos = 0
 		else:				#in case of using some range between positive and negative scores for random
 			#print('rand',alnindex[x], alnindex_score[alnindex[x]][0])
 			if pos != 0:
-				posdata[alnindex[x-1]]=pos
+				posdata[alnindex[x-1]]=(pos,wei)
+				wei=0
 				pos = 0
 			if neg != 0:
 				negdata[alnindex[x-1]]=neg
 				neg = 0
 		if has_more is False:
 			if pos != 0:
-				posdata[alnindex[x]]=pos
+				posdata[alnindex[x]]=(pos,wei)
 			if neg != 0:
 				negdata[alnindex[x]]=neg
 	return posdata, negdata
@@ -64,8 +67,9 @@ def main(commandline_args):
 		second_aln = AlignIO.MultipleSeqAlignment([])
 		for record in sliced_alignments[sorted(list(sliced_alignments.keys()))[1]]:
 			second_aln.append(record)
-		newaln=sliced_alignments[first_aln][:,-(sliced_alignments[first_aln].get_alignment_length()-i):]+sliced_alignments[first_aln][:,:i]
-		for record in newaln:
+		#Reorders an alignment group using the specified window size
+		reordered_aln=sliced_alignments[first_aln][:,-(sliced_alignments[first_aln].get_alignment_length()-i):]+sliced_alignments[first_aln][:,:i]
+		for record in reordered_aln:
 			second_aln.append(record)
 		alnindex_score,sliced_alns=PhyMeas.main(['-as',second_aln.format("fasta"), '-r', '-bl'])
 		
