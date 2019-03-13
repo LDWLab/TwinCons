@@ -60,7 +60,7 @@ def uniq_AA_list(aln_obj):
 		pass
 	else:
 		raise ValueError("Alignment has AA letters not found in the IUPAC extended list!")
-	if Counter(list(hash_AA.keys())) == Counter(default_aa_sequence):
+	if len(Counter(list(hash_AA.keys()))) <= len(Counter(default_aa_sequence)):
 		return default_aa_sequence
 	else:								#Fix in case alignment has fewer than the all AAs!!!!
 		print(list(hash_AA.keys()))
@@ -286,7 +286,7 @@ def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 				for aln_index in alnindex_col_distr:
 					struc_annotation[alngroup_name][aln_index] = 'BEHOS'
 				for aln_index in alnindex_col_distr:
-						aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+					aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
 			else:
 				alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
 				struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)

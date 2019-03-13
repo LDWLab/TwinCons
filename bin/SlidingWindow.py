@@ -11,47 +11,47 @@ def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Slide two groups of an alignment and calculate a score for each sliding position')
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, default=1)
-	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
+	parser.add_argument('-bt','--bad_score_threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=0, required=False)
+	parser.add_argument('-st','--score_threshold', help='Absolute value of threshold for a position to be considered positive or negative', type=int, default=0.5, required=False)
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
-def uninterrupted_stretches(alnindex, alnindex_score):
-	"""Calculates lengths of uninterrupted lengths of positive and negative scores;
+def uninterrupted_stretches(alnindex, alnindex_score,comm_args):
+	"""Calculates lengths of uninterrupted lengths of positive and negative scores given a threshold;
 	Also associates these scores with the last position of the alignment index.
-	For now uses > 1 as positive and < -1 as negative. Can be a variable or changed as appropriate.
 	"""
-	posdata={}
-	negdata={}
-	pos,neg,wei=0,0,0
+	posdata,negdata={},{}
+	unint_pos_len,unint_neg_len,wei,bad_length=0,0,0,0
 	for x,has_more in PhyMeas.lookahead(range(0,len(alnindex))):
-		if alnindex_score[alnindex[x]] > 0.5:
-			#print('pos',alnindex[x], alnindex_score[alnindex[x]][0])
+		if alnindex_score[alnindex[x]] > comm_args.score_threshold:
 			wei+=alnindex_score[alnindex[x]]
-			pos+=1
-			if neg != 0:
-				negdata[alnindex[x-1]]=neg
-				neg = 0
-		elif alnindex_score[alnindex[x]] < -0.5:
-			#print('neg',alnindex[x], alnindex_score[alnindex[x]][0])
-			neg+=1
-			if pos != 0:
-				posdata[alnindex[x-1]]=(pos,wei)
-				wei=0
-				pos = 0
-		else:				#in case of using some range between positive and negative scores for random
-			#print('rand',alnindex[x], alnindex_score[alnindex[x]][0])
-			if pos != 0:
-				posdata[alnindex[x-1]]=(pos,wei)
-				wei=0
-				pos = 0
-			if neg != 0:
-				negdata[alnindex[x-1]]=neg
-				neg = 0
+			unint_pos_len+=1
+			if unint_neg_len != 0:
+				negdata[alnindex[x-1]]=unint_neg_len
+				unint_neg_len = 0
+		elif alnindex_score[alnindex[x]] < -comm_args.score_threshold:
+			unint_neg_len+=1
+			if bad_length >= comm_args.bad_score_threshold:
+				if unint_pos_len != 0:
+					posdata[alnindex[x-1]]=(unint_pos_len,wei)
+					wei,unint_pos_len,bad_length=0,0,0
+			else:
+				bad_length+=1
+		else:				#in case of score threshold different from 0
+			if bad_length >= comm_args.bad_score_threshold:
+				if unint_pos_len != 0:
+					posdata[alnindex[x-1]]=(unint_pos_len,wei)
+					unint_pos_len,wei,bad_length = 0,0,0
+			else:
+				bad_length+=1
+			if unint_neg_len != 0:
+				negdata[alnindex[x-1]]=unint_neg_len
+				unint_neg_len = 0
 		if has_more is False:
-			if pos != 0:
-				posdata[alnindex[x]]=(pos,wei)
-			if neg != 0:
-				negdata[alnindex[x]]=neg
+			if unint_pos_len != 0:
+				posdata[alnindex[x]]=(unint_pos_len,wei)
+			if unint_neg_len != 0:
+				negdata[alnindex[x]]=unint_neg_len
 	return posdata, negdata
 
 
@@ -83,7 +83,7 @@ def main(commandline_args):
 	for file in slided_scores:
 		print ("Increment is "+str(file))
 		alnindex = sorted(slided_scores[file].keys())
-		posdata,negdata = uninterrupted_stretches(alnindex, slided_scores[file])
+		posdata,negdata = uninterrupted_stretches(alnindex, slided_scores[file],comm_args)
 		for x in sorted(posdata.keys()):
 			print(x, posdata[x])
 

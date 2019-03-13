@@ -92,7 +92,7 @@ class AlignmentGroup:
 		column_distr={}
 		i=0
 		while i < alen:
-			col_aalist=self._freq_iterator(self.aln_obj[:, i], sorted(aa_list))
+			col_aalist=self._freq_iterator(self.aln_obj[:, i], aa_list)
 			i+=1
 			column_distr[i] = col_aalist
 		return column_distr

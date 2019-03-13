@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Calculates conservation score for multiple alignments"""
-import PhyMeas
+import PhyMeas, SlidingWindow
 import re, os, sys, getopt, plotly, single_cons_comp, argparse
 import plotly.graph_objs as go
 import matplotlib
@@ -19,6 +19,7 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('output_path', help='Path to image for output.')
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
 	parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
+	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, required=False)
 	output_group = parser.add_mutually_exclusive_group(required=True)
 	output_group.add_argument('-ps', '--scatter_plot', help='Plots a scatter of the length for positive stretches and their total score.', action="store_true")
 	output_group.add_argument('-pr', '--ribbon_plot', help='Plots a 3D ribbon of the length for positive stretches and their total score.', action="store_true")
@@ -178,6 +179,13 @@ def scatter_plot(comm_args,weight_distr,_lines=False,_maxx=False,_scatter=False)
 
 def main(commandline_args):
 	comm_args = create_and_parse_argument_options(commandline_args)
+	if comm_args.window:
+		if not os.path.isfile(comm_args.alignment_path):
+			raise ValueError("In case of specified window for sliding (-w argument), the alignment path  must be a single file!")
+		SlidingWindow.main([comm_args.alignment_path,'-w '+str(comm_args.window)])
+		sys.exit()
+
+
 	group_dict={}
 	aln_length={}
 	for file in os.listdir(comm_args.alignment_path):
