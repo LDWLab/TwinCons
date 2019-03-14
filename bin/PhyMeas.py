@@ -23,6 +23,7 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
+	output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined', action="store_true")
 	output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
 	entropy_group = parser.add_mutually_exclusive_group(required=True)
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
@@ -236,7 +237,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 	for x in sorted(out_dict.keys()):
 		data.append(out_dict[x][0])
 		stdevdata.append(out_dict[x][1])
-	bar = ax.bar(range(len(data)),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
+	bar = ax.bar(range(1,len(data)+1),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
 
 	def gradientbars(bars,positivegradient,negativegradient):
 		ax = bars[0].axes
@@ -255,14 +256,18 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
 	if min(data) < 0:
-		pamlarray = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+		pamlarray = np.array(blos_matrix())
 		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
-		plt.plot((0, len(data)), (0.5, 0.5), 'k-', linewidth=0.5)
+		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
 		gradientbars(bar,'Blues','Reds')
 	else:
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
 	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	return True
+
+def pymol_script_writer(out_dict,group_names,comm_args):
+	pass
 
 def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 	"""Checks through the commandline options and does the appropriate calculations; gap randomizations.
@@ -347,6 +352,8 @@ def main(commandline_arguments):
 	
 	if comm_args.plotit:									#for plotting
 		upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()))
+	elif comm_args.write_pml_script:
+		pymol_script_writer(output_dict, list(gapped_sliced_alns.keys()),comm_args)exit
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns
 
