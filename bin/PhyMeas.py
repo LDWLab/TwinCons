@@ -229,7 +229,7 @@ def plotter (entropyDict, blscor_resn):
 	dpi_scaling = 3*len(blscor_resn)
 	plt.savefig('./test.svg', dpi=dpi_scaling)
 
-def upsidedown_horizontal_gradient_bar(out_dict,group_names):
+def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 	plt.rcParams['image.composite_image'] = False					#So that bars are separate images
 	fig, ax = plt.subplots()
 	data=[]
@@ -255,42 +255,73 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(negativegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 		#ax.set_facecolor('Gray')
 		ax.axis(lim)
-	if min(data) < 0:
+	if comm_args.leegascuel or comm_args.blosum:
 		pamlarray = np.array(blos_matrix())
 		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
 		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
 		gradientbars(bar,'Blues','Reds')
-	else:
+	#In case of no negative values BUG!
+	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
+		plt.yticks(np.arange(0,4.2, step=0.5))
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
 	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
 	return True
 
-def pymol_script_writer(out_dict,group_names,comm_args):
+def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
+	"""Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
+	"""
+	#Similarly to upsidedown_horizontal_gradient_bar but it doesn't write out figures or plots.
 	fig, ax = plt.subplots()
 	data = []
-	stdevdata=[]
 	for x in sorted(out_dict.keys()):
 		data.append(out_dict[x][0])
-		stdevdata.append(out_dict[x][1])
-	bar = ax.bar(range(1,len(data)+1),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
+	bar = ax.bar(range(1,len(data)+1),data)
 	def gradientbars(bars,positivegradient,negativegradient):
+		"""Creates a dictionary with keys the alignment index and values a hex code for the color.
+		"""
 		aln_index_hexcmap = {}
 		aln_index=1
 		for bar in bars:
 			w, h = bar.get_width(), bar.get_height()
-			if h > 0:
+			if h > 0:		#Positive gradient for positive values
 				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
 				rgb = plt.get_cmap(positivegradient)(grad[len(grad)-1])[0][:3]
 				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
-			else:			#different gradient for negative values
-				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
+			else:			#Negative gradient for negative values
+				if min(data) != 0:
+					grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
+				else:
+					grad = np.atleast_2d(np.linspace(0,h/0.000001,256)).T
 				rgb = plt.get_cmap(negativegradient)(grad[len(grad)-1])[0][:3]
 				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
 			aln_index+=1
 		return aln_index_hexcmap
-	print(gradientbars(bar,'Blues','Reds'))
-	
+	if comm_args.leegascuel or comm_args.blosum:
+		alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
+	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
+		alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
+
+	group_names = list(gapped_sliced_alns.keys())
+	#Open .pml file for structure coloring
+	pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
+	for alngroup_name in group_names:
+		#Match groupnames with structure files
+		current_path = [s for s in comm_args.structure_paths if alngroup_name in s]
+		if len(current_path) < 1:
+			raise ValueError("Cannot write PyMOL coloring script without at least single matching structure and sequence!")
+		else:
+			#We have to recalculate the structure to alignment mapping
+			alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+			struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+			#Open the structure file
+			pml_output.write("load "+current_path[0]+", "+alngroup_name+"\n")
+			#For each alignment position, color the appropriate residue with the hex transformed color from the gradient
+			for aln_index in alnindex_to_hexcolors.keys():
+				if aln_index in struc_to_aln_index_mapping:
+					hexcolors_appropriate_for_pml = alnindex_to_hexcolors[aln_index].replace('#','0x')
+					pml_output.write("color "+hexcolors_appropriate_for_pml+", "+alngroup_name+" and resi "+str(struc_to_aln_index_mapping[aln_index])+"\n")
+	return True
 
 def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 	"""Checks through the commandline options and does the appropriate calculations; gap randomizations.
@@ -374,9 +405,9 @@ def main(commandline_arguments):
 			output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
 	
 	if comm_args.plotit:									#for plotting
-		upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()))
+		upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()),comm_args)
 	elif comm_args.write_pml_script:
-		pymol_script_writer(output_dict, list(gapped_sliced_alns.keys()),comm_args)
+		pymol_script_writer(output_dict, gapped_sliced_alns,comm_args)
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns
 
