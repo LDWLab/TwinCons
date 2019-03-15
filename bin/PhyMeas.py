@@ -267,7 +267,30 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names):
 	return True
 
 def pymol_script_writer(out_dict,group_names,comm_args):
-	pass
+	fig, ax = plt.subplots()
+	data = []
+	stdevdata=[]
+	for x in sorted(out_dict.keys()):
+		data.append(out_dict[x][0])
+		stdevdata.append(out_dict[x][1])
+	bar = ax.bar(range(1,len(data)+1),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
+	def gradientbars(bars,positivegradient,negativegradient):
+		aln_index_hexcmap = {}
+		aln_index=1
+		for bar in bars:
+			w, h = bar.get_width(), bar.get_height()
+			if h > 0:
+				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
+				rgb = plt.get_cmap(positivegradient)(grad[len(grad)-1])[0][:3]
+				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
+			else:			#different gradient for negative values
+				grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
+				rgb = plt.get_cmap(negativegradient)(grad[len(grad)-1])[0][:3]
+				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
+			aln_index+=1
+		return aln_index_hexcmap
+	print(gradientbars(bar,'Blues','Reds'))
+	
 
 def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 	"""Checks through the commandline options and does the appropriate calculations; gap randomizations.
@@ -353,7 +376,7 @@ def main(commandline_arguments):
 	if comm_args.plotit:									#for plotting
 		upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()))
 	elif comm_args.write_pml_script:
-		pymol_script_writer(output_dict, list(gapped_sliced_alns.keys()),comm_args)exit
+		pymol_script_writer(output_dict, list(gapped_sliced_alns.keys()),comm_args)
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns
 
