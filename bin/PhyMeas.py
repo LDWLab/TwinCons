@@ -308,8 +308,11 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 	for alngroup_name in group_names:
 		#Match groupnames with structure files
 		current_path = [s for s in comm_args.structure_paths if alngroup_name in s]
+		
 		if len(current_path) < 1:
-			raise ValueError("Cannot write PyMOL coloring script without at least single matching structure and sequence!")
+			pass		#Gotta fix this
+			#raise ValueError("Cannot write PyMOL coloring script without at least single matching structure \
+			#	and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
 		else:
 			#We have to recalculate the structure to alignment mapping
 			alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
