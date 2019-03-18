@@ -24,6 +24,7 @@ def create_and_parse_argument_options(argument_list):
 	output_group.add_argument('-ps', '--scatter_plot', help='Plots a scatter of the length for positive stretches and their total score.', action="store_true")
 	output_group.add_argument('-pr', '--ribbon_plot', help='Plots a 3D ribbon of the length for positive stretches and their total score.', action="store_true")
 	output_group.add_argument('-pm', '--multi_plot', help='Plots a scatter of the representation for each alignment. For many (>20) alignments.', action="store_true")
+	output_group.add_argument('-mm', '--multi_max', help='Plots a scatter of the max values for each alignment. Used for determining separation threshold.', action="store_true")
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -172,7 +173,7 @@ def scatter_plot(comm_args,weight_distr,_lines=False,_maxx=False,_scatter=False)
 				plotlist.append((x[0],max(x[1])))
 			plt.scatter(*zip(*plotlist), label=re.sub(r'\.fas.*','',file), marker='.',color=color)
 	#labelLines(plt.gca().get_lines(),align=False)
-	plt.plot((1,13),(4.5,0),color='black')
+	#plt.plot((1,13),(4.5,0),color='black')
 	plt.legend(bbox_to_anchor=(1.04,1), borderaxespad=0)
 	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
 	return True
@@ -185,14 +186,13 @@ def main(commandline_args):
 		SlidingWindow.main([comm_args.alignment_path,'-w '+str(comm_args.window)])
 		sys.exit()
 
-
 	group_dict={}
 	aln_length={}
 	for file in os.listdir(comm_args.alignment_path):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas)',comm_args.alignment_path+file):
 			# print(file)
 			out_dict={}
-			alnindex_score,sliced_alns=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
+			alnindex_score,sliced_alns=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-lg'])
 			for x in sliced_alns:
 				aln_length[file]=sliced_alns[x].get_alignment_length()
 				break
@@ -201,36 +201,10 @@ def main(commandline_args):
 			group_dict[file] = out_dict
 		else:
 			raise ValueError("Directory must have only .fas or .fasta alignment files!")
+	
 	df = pd.DataFrame.from_dict(group_dict)
 	length_distr, weight_distr, length_to_weight = make_length_distr(df,comm_args,group_dict)
-	
-	max_weight_bylength={}
-	for file in length_to_weight.keys():
-		plotlist=[]
-		for x in zip(length_to_weight[file].keys(),length_to_weight[file].values()):
-			plotlist.append((x[0],max(x[1])))
-			if x[0] in max_weight_bylength.keys():
-				if max(x[1]) > max_weight_bylength[x[0]]:
-					max_weight_bylength[x[0]]=max(x[1])
-				else:
-					pass
-			else:
-				max_weight_bylength[x[0]]=max(x[1])
-	
-	#Fitting a line
-	#print(max_weight_bylength)
-	#print(max_weight_bylength.keys(),max_weight_bylength.values())
-	#slope, intercept, r_value, p_value, std_err = stats.linregress(list(max_weight_bylength.keys()),list(max_weight_bylength.values()))
-	#print(slope, intercept, r_value, p_value, std_err)
-	#axes = plt.gca()
-	#plt.plot(list(max_weight_bylength.keys()),list(max_weight_bylength.values()), 'o', label='original data')
-	#x_vals = np.array(axes.get_xlim())
-	#y_vals = intercept + slope * x_vals
-	#plt.plot(x_vals, y_vals, 'r', label='fitted line')
-	#plt.legend()
-	#plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
 
-	
 	if comm_args.ribbon_plot:
 		lendict, len_bin_edges = make_hist (length_distr)
 		ribbon_plot(lendict, len_bin_edges,comm_args.output_path)
@@ -245,6 +219,35 @@ def main(commandline_args):
 		#	maxweight[file]=[max(weight_distr[file],key=itemgetter(0)),max(weight_distr[file],key=itemgetter(1))]
 		#	#print(file, slope(maxweight[file][0],maxweight[file][1]))
 		#scatter_plot(comm_args,maxweight,_lines=True)
+	
+	elif comm_args.multi_max:
+		#Grouping max values
+		max_weight_bylength={}
+		for file in length_to_weight.keys():
+			plotlist=[]
+			for x in zip(length_to_weight[file].keys(),length_to_weight[file].values()):
+				plotlist.append((x[0],max(x[1])))
+				if x[0] in max_weight_bylength.keys():
+					if max(x[1]) > max_weight_bylength[x[0]]:
+						max_weight_bylength[x[0]]=max(x[1])
+					else:
+						pass
+				else:
+					max_weight_bylength[x[0]]=max(x[1])
+		
+		#Fitting line on max values
+		#print(max_weight_bylength)
+		#print(max_weight_bylength.keys(),max_weight_bylength.values())
+		slope, intercept, r_value, p_value, std_err = stats.linregress(list(max_weight_bylength.keys()),list(max_weight_bylength.values()))
+		print(slope, intercept, r_value, p_value, std_err)
+		axes = plt.gca()
+		plt.plot(list(max_weight_bylength.keys()),list(max_weight_bylength.values()), 'o', label='Maximal scores from all alignments')
+		x_vals = np.array(axes.get_xlim())
+		y_vals = intercept + slope * x_vals
+		label_line = "Line fit with p value "+str(p_value)
+		plt.plot(x_vals, y_vals, 'r', label=label_line)
+		plt.legend()
+		plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
 
 	
 
