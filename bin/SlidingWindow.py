@@ -71,7 +71,7 @@ def main(commandline_args):
 		reordered_aln=sliced_alignments[first_aln][:,-(sliced_alignments[first_aln].get_alignment_length()-i):]+sliced_alignments[first_aln][:,:i]
 		for record in reordered_aln:
 			second_aln.append(record)
-		alnindex_score,sliced_alns=PhyMeas.main(['-as',second_aln.format("fasta"), '-r', '-bl'])
+		alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-as',second_aln.format("fasta"), '-r', '-bl'])
 		
 
 		out_dict={}

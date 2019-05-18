@@ -6,21 +6,25 @@ import pandas as pd
 import numpy as np
 from Bio import AlignIO
 from io import StringIO
-import seaborn as sns
+#import seaborn as sns
 from textwrap import wrap
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from AlignmentGroup import AlignmentGroup
+import Sequence_Weight_from_Tree
 from MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
+	parser.add_argument('-o','--output_path', help='Temp output path for svgs.')
 	input_file = parser.add_mutually_exclusive_group(required=True)
 	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
 	input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
+	parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
+	parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 	output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined', action="store_true")
@@ -44,6 +48,19 @@ def read_align(aln_path):
 	alignments = AlignIO.read(open(aln_path), "fasta")
 	return alignments
 
+def count_aligned_positions(aln_obj):
+	'''
+	Counts how many positions are aligned (less than 10% gaps)
+	'''
+	number_seqs = len(aln_obj)
+	aligned_positions = 0
+	for i in range(0,aln_obj.get_alignment_length()):
+		if aln_obj[:,i].count('-')/number_seqs < 0.1:
+			aligned_positions+=1
+	if aligned_positions == 0:
+		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas no positions with less than 90% gaps!")
+	return aligned_positions
+
 def uniq_AA_list(aln_obj):
 	'''
 	Creates list of unique AA residues in the given MSA to be used for frequency iterator.
@@ -60,10 +77,10 @@ def uniq_AA_list(aln_obj):
 	if all (x in IUPACData.extended_protein_letters for x in hash_AA.keys()):
 		pass
 	else:
-		raise ValueError("Alignment has AA letters not found in the IUPAC extended list!")
+		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas AA letters not found in the IUPAC extended list!")
 	if len(Counter(list(hash_AA.keys()))) <= len(Counter(default_aa_sequence)):
 		return default_aa_sequence
-	else:								#Fix in case alignment has fewer than the all AAs!!!!
+	else:
 		print(list(hash_AA.keys()))
 		raise ValueError("Alignment has non-standard AAs!")
 
@@ -122,9 +139,12 @@ def shannon_entropy(alnObject, aa_list, commandline_args):
 
 def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
-	return np.array(PAMLmatrix('../test_data/'+struc_anno+'.dat').lodd)
+	return np.array(PAMLmatrix('../matrices/'+struc_anno+'.dat').lodd)
 
 def blos_matrix():
+	'''Baseline and return a numpy form of the BLOSUM62 matrix.
+	Need to make it more general (eg use BLOSUM50 and so on)
+	'''
 	aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
 	loddmx = []
 	for aa in aa_sequence:
@@ -166,11 +186,11 @@ def compute_score(commandline_args,aln_index_dict, *args):
 					alnindex_score[aln_index] = vr1@struc_anno_matrices(''.join(common_chars))@vr2.T
 					#print(aln_index, vr1@struc_anno_matrices(''.join(common_chars))@vr2.T)
 				else:
-					lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+					lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
 					alnindex_score[aln_index] = vr1@lgmx@vr2.T
 					#print(aln_index,vr1@lgmx@vr2.T)
 			else:
-				lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+				lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
 				alnindex_score[aln_index] = vr1@lgmx@vr2.T
 				#print(aln_index,vr1@lgmx@vr2.T)
 	elif commandline_args.leegascuel:							#Case of no structure defined inputs
@@ -178,7 +198,7 @@ def compute_score(commandline_args,aln_index_dict, *args):
 		for aln_index in aln_index_dict:
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
 			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-			lgmx = np.array(PAMLmatrix('../test_data/LG.dat').lodd)
+			lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
 			alnindex_score[aln_index] = vr1@lgmx@vr2.T
 			#print(aln_index,vr1@lgmx@vr2.T)
 	elif commandline_args.blosum:
@@ -231,6 +251,7 @@ def plotter (entropyDict, blscor_resn):
 
 def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 	plt.rcParams['image.composite_image'] = False					#So that bars are separate images
+	plt.rcParams["figure.figsize"] = (8,8)
 	fig, ax = plt.subplots()
 	data=[]
 	stdevdata=[]
@@ -247,7 +268,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 			bar.set_facecolor("none")
 			x,y = bar.get_xy()
 			w, h = bar.get_width(), bar.get_height()
-			if h > 0:
+			if h >= 0:
 				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
 				ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(positivegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
 			else:			#different gradient for negative values
@@ -257,15 +278,17 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 		ax.axis(lim)
 	if comm_args.leegascuel or comm_args.blosum:
 		pamlarray = np.array(blos_matrix())
-		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)), step=1))
+		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
 		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
-		gradientbars(bar,'Blues','Reds')
+		#gradientbars(bar,'Blues','Reds')
+		gradientbars(bar,'Greens','Purples')
 	#In case of no negative values BUG!
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
 		plt.yticks(np.arange(0,4.2, step=0.5))
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
-	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	#plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
 	return True
 
 def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
@@ -298,16 +321,30 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 			aln_index+=1
 		return aln_index_hexcmap
 	if comm_args.leegascuel or comm_args.blosum:
-		alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
+		#alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
+		alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
 		alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
 
 	group_names = list(gapped_sliced_alns.keys())
 	#Open .pml file for structure coloring
 	pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
+	pml_output.write("set hash_max, 500\n\
+		set cartoon_loop_radius,0.4\n\
+		set cartoon_tube_radius,1\n\
+		set cartoon_ladder_radius,0.6\n\
+		set cartoon_oval_length,1.4\n\
+		set cartoon_oval_width,0.6\n\
+		set ray_opaque_background, off\n\
+		bg_color white\n\
+		set ray_trace_mode,1\n\
+		set ray_shadows,0\n")
+
+
+	#Bellow here needs fixing to properly do structures for plotting
 	for alngroup_name in group_names:
 		#Match groupnames with structure files
-		current_path = [s for s in comm_args.structure_paths if alngroup_name in s]
+		current_path = [s for s in comm_args.structure_pymol if alngroup_name in s]
 		
 		if len(current_path) < 1:
 			pass		#Gotta fix this
@@ -324,14 +361,32 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 				if aln_index in struc_to_aln_index_mapping:
 					hexcolors_appropriate_for_pml = alnindex_to_hexcolors[aln_index].replace('#','0x')
 					pml_output.write("color "+hexcolors_appropriate_for_pml+", "+alngroup_name+" and resi "+str(struc_to_aln_index_mapping[aln_index])+"\n")
+	pml_output.write("super "+group_names[0]+","+group_names[1]+"\n")
 	return True
 
-def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
+def csv_output(comm_args, file_to_data):
+	'''
+	Writes out data used for generating the plot in a csv file.
+	'''
+	#Assuming output path is always written with a .png at the end...
+	with open(re.sub(r'.png','.csv',comm_args.output_path), mode ="w") as output_csv:
+		csv_writer = csv.writer(output_csv)
+		csv_writer.writerow(['File name', 'Segment length', 'Average segment weight', 'Alignment position'])
+		for file, length_buckets in sorted(file_to_data.items()):
+			for length, weights in sorted(length_buckets.items()):
+				for single_weight in sorted(weights,key=itemgetter(0)): 
+					csv_writer.writerow([file, length, single_weight[0], single_weight[1]])
+	return True
+
+def decision_maker(commandline_args,alignIO_out_gapped,deepestanc_to_child,aa_list):
 	"""Checks through the commandline options and does the appropriate calculations; gap randomizations.
 	Returns a dictionary of alignment position -> computed score.
 	"""
 	alignIO_out=alignIO_out_gapped[:,:]
-	sliced_alns = slice_by_name(alignIO_out)
+	if commandline_args.phylo_split:
+		sliced_alns = Sequence_Weight_from_Tree.slice_by_anc(alignIO_out, deepestanc_to_child)
+	else:
+		sliced_alns = slice_by_name(alignIO_out)
 
 	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
 		return shannon_entropy(alignIO_out, aa_list, commandline_args)
@@ -364,7 +419,7 @@ def decision_maker(commandline_args,alignIO_out_gapped,aa_list):
 					struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
 				else:
 					parser.print_help()
-					raise ValueError("When a structure is defined, one of the matrix options are rquired!")
+					raise ValueError("When a structure is defined, one of the matrix options are required!")
 		return compute_score(commandline_args,aln_index_dict, struc_annotation)
 	elif commandline_args.leegascuel or commandline_args.blosum:							#Case of no structure defined outputs
 		for alngroup_name in sliced_alns:
@@ -383,26 +438,34 @@ def main(commandline_arguments):
 	elif comm_args.alignment_string:
 		alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
 	randindex_norm=defaultdict(dict)
-	gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
+	number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
 	
-	for rand_index in range(0,10):
+	if comm_args.phylo_split:
+		tree = Sequence_Weight_from_Tree.tree_contruct(alignIO_out_gapped)
+		deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)
+		gapped_sliced_alns = Sequence_Weight_from_Tree.slice_by_anc(alignIO_out_gapped, deepestanc_to_child)
+	else:
+		deepestanc_to_child = {}
+		gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
+
+	for rand_index in range(0,1):
 		"""Every calculation and gap filling of alignment is performed 10 times.
 		This is done to dampen the errors in heavily gapped regions.
 		Allows us to add errorbars on the output graph."""
-		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,uniq_AA_list(alignIO_out_gapped))
+		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_AA_list(alignIO_out_gapped))
 	
 	#Calculating mean and stdev per alignment position
 	position_defined_scores=defaultdict(dict)
 	for x in randindex_norm.keys():
 		for pos in randindex_norm[x]:
-			if pos in position_defined_scores:
-				position_defined_scores[pos].append(randindex_norm[x][pos])
-			else:
+			if pos not in position_defined_scores:
 				position_defined_scores[pos]=[]
-				position_defined_scores[pos].append(randindex_norm[x][pos])
+			position_defined_scores[pos].append(randindex_norm[x][pos])
+
 	output_dict = {}
 	for x in position_defined_scores.keys():				#If standard deviation is too big, set the result as 0
-		if 2*np.std(position_defined_scores[x]) > abs(np.average(position_defined_scores[x]))/2:
+		#print(x, position_defined_scores[x], abs(np.average(position_defined_scores[x])), np.std(position_defined_scores[x]))
+		if 2*np.std(position_defined_scores[x]) > abs(np.average(position_defined_scores[x]))/1.5:
 			output_dict[x] = (0, np.std(position_defined_scores[x]))
 		else:
 			output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
@@ -412,7 +475,7 @@ def main(commandline_arguments):
 	elif comm_args.write_pml_script:
 		pymol_script_writer(output_dict, gapped_sliced_alns,comm_args)
 	elif comm_args.return_within:
-		return output_dict, gapped_sliced_alns
+		return output_dict, gapped_sliced_alns, number_of_aligned_positions
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv[1:]))

@@ -29,7 +29,7 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 - For combinations of two classes:
 	- Calculate score using **frequency vectors**, **correspondence mapping**, and **matrices** defined by **structural data**
 - Generate output
-	- <span style="color:red">**.pml file** for all structures with residue colors defined by the score</span>
+	- **.pml file** for all structures with residue colors defined by the score
 	- **.svg** with score trace for residue number
 	- **optional data** if run as a module **for multiple alignment analysis**
 
@@ -45,4 +45,4 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 
 Sample output
 
-<img src="./bin/outputs/uL02b-uL02c.svg?sanitize=true">
+<img src="./bin/outputs/SVG/uL02b-uL02c.svg?sanitize=true">
