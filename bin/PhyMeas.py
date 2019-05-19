@@ -70,19 +70,14 @@ def uniq_AA_list(aln_obj):
 	hash_AA=dict()
 	for alignment in aln_obj:
 		for amac in alignment.seq:
-			if re.match(r'-|X',amac):
-				pass
-			else:
+			if not re.match(r'-|X',amac):
 				hash_AA[amac]='null'
-	if all (x in IUPACData.extended_protein_letters for x in hash_AA.keys()):
-		pass
-	else:
+	if not all (x in IUPACData.extended_protein_letters for x in hash_AA.keys()):
 		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas AA letters not found in the IUPAC extended list!")
-	if len(Counter(list(hash_AA.keys()))) <= len(Counter(default_aa_sequence)):
-		return default_aa_sequence
-	else:
-		print(list(hash_AA.keys()))
-		raise ValueError("Alignment has non-standard AAs!")
+	if len(Counter(hash_AA.keys())) > len(Counter(default_aa_sequence)):
+		raise ValueError("Alignment has non-standard AAs:\n"+' ,'.join(hash_AA.keys()))
+	return default_aa_sequence
+
 
 def slice_by_name(unsliced_aln_obj):
 	'''
@@ -163,9 +158,7 @@ def blos_matrix():
 	revtestA=np.add(np.array(loddmx), abs(baseline))
 	if int(testvr@revtestA@testvr.T) != 0:
 		raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-	else:
-		#print(baseline)
-		return np.add(np.array(loddmx),abs(baseline))
+	return np.add(np.array(loddmx),abs(baseline))
 
 def compute_score(commandline_args,aln_index_dict, *args):
 	'''
