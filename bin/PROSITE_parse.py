@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Crete mafft combination commands from directory with alignments."""
-import os, re, sys, argparse, itertools, glob
+import os, re, sys, argparse, itertools, glob, random
 import numpy as np
 from Bio import AlignIO
 
@@ -44,11 +44,19 @@ def parse_indeli_folder(comm_args):
 	alnfiles_list = os.listdir(comm_args.indeli_path)
 	pdc_to_ps={}
 	for alnfile in alnfiles_list:
-		if alnfile.split('.')[0] in pdc_to_ps:
-			pdc_to_ps[alnfile.split('.')[0]].append(comm_args.indeli_path+alnfile)
-		else:
+		if alnfile.split('.')[0] not in pdc_to_ps:
 			pdc_to_ps[alnfile.split('.')[0]]=[]
-			pdc_to_ps[alnfile.split('.')[0]].append(comm_args.indeli_path+alnfile)
+		pdc_to_ps[alnfile.split('.')[0]].append(comm_args.indeli_path+alnfile)
+	return(pdc_to_ps)
+
+def parse_indeli_folder_mine(comm_args):
+	'''
+	Creates a dictionary of sequences from a folder with sequences, for mafft merging.
+	Makes sure alignments with the same number of sequences are grouped together. (ConSurf becnhmarking files)
+	'''
+	alnfiles_list = os.listdir(comm_args.indeli_path)
+	pdc_to_ps={}
+	pdc_to_ps[1] = alnfiles_list
 	return(pdc_to_ps)
 
 def parse_rprot_folder(comm_args):
@@ -124,21 +132,43 @@ def merger_commands(sequence_groups,output_path):
 				os.system("rm "+alns_for_merging)
 	return True
 
+def prosite_good_merge(pdc_to_ps):
+	for pdc, ps_list in pdc_to_ps.items():
+		if len(ps_list) > 1:
+			print(pdc)
+			for fam_comb in itertools.combinations(ps_list, 2):
+				alns_for_merging = "concat_"+fam_comb[0]+"_"+fam_comb[1]+".fas"
+				os.system("cat ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > "+alns_for_merging)
+				os.system("ruby /usr/local/bin/makemergetable.rb "+"../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > subMSAtable")
+				os.system("mafft --merge subMSAtable "+alns_for_merging+" > "+"../../Score-test_data/PROSITE/merges/GOOD/"+fam_comb[0]+"_"+fam_comb[1]+".fas")
+				os.system("rm "+alns_for_merging)
+	return True
+
+def prosite_bad_merge(list_with_bad):
+	for fam_comb in itertools.combinations(list_with_bad, 2):
+		alns_for_merging = "concat_"+fam_comb[0]+"_"+fam_comb[1]+".fas"
+		os.system("cat ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > "+alns_for_merging)
+		os.system("ruby /usr/local/bin/makemergetable.rb "+"../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > subMSAtable")
+		os.system("mafft --merge subMSAtable "+alns_for_merging+" > "+"../../Score-test_data/PROSITE/merges/BAD/"+fam_comb[0]+"_"+fam_comb[1]+".fas")
+		os.system("rm "+alns_for_merging)
+	return True
+
 def main(commandline_arguments):
 	'''Main entry point'''
 	comm_args = create_and_parse_argument_options(commandline_arguments)
 	
 	if comm_args.prosite_path:
 		pdc_to_ps = read_parse_doc_file(comm_args)
+		#prosite_good_merge(pdc_to_ps)
+		prosite_bad_list = []
 		for pdc, ps_list in pdc_to_ps.items():
-			if len(ps_list) > 1:
-				print(pdc)
-				for fam_comb in itertools.combinations(ps_list, 2):
-					alns_for_merging = "concat_"+fam_comb[0]+"_"+fam_comb[1]+".fas"
-					os.system("cat ../test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > "+alns_for_merging)
-					os.system("ruby /usr/local/bin/makemergetable.rb "+"../test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > subMSAtable")
-					os.system("mafft --merge subMSAtable "+alns_for_merging+" > "+"../test_data/PROSITE/merges/GOOD/"+fam_comb[0]+"_"+fam_comb[1]+".fas")
-					os.system("rm "+alns_for_merging)
+			if len(ps_list) == 1:
+				prosite_bad_list.append(ps_list[0])
+		no_elements_to_delete = 1237
+		no_elements_to_keep = len(prosite_bad_list) - no_elements_to_delete
+		truncated_bad_list = set(random.sample(prosite_bad_list, no_elements_to_keep))
+		#print(truncated_bad_list)
+		prosite_bad_merge(truncated_bad_list)
 	
 	elif comm_args.rprot_path and comm_args.indeli_path:
 		pdc_to_ps = parse_rprot_folder(comm_args)

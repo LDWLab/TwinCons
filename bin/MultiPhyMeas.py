@@ -102,7 +102,7 @@ def scatter_plot(comm_args,weight_distr):
 		#In cases of just 10 alignments it assumes two sets of 5 each and uses a seismic/divergent gradient.
 		#colors = matplotlib.cm.seismic(np.linspace(0, 1, len(weight_distr)))
 		colors = matplotlib.cm.PRGn(np.linspace(0, 1, len(weight_distr)))
-	elif len(weight_distr) > 20 and 'A_' in weight_distr.keys():
+	elif len(weight_distr) > 20 and re.match('A_', sorted(weight_distr.keys())[0]):
 		#Creates a color mapping for groups of alignments defined with prepended A_, B_, C_ and so on.
 		#Used in cases where there are too many alignments to properly discriminate with colors.
 		colors=[]

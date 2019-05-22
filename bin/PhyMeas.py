@@ -272,7 +272,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 	if comm_args.leegascuel or comm_args.blosum:
 		pamlarray = np.array(blos_matrix())
 		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
-		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
+		plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
 		#gradientbars(bar,'Blues','Reds')
 		gradientbars(bar,'Greens','Purples')
 	#In case of no negative values BUG!
@@ -280,8 +280,8 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 		plt.yticks(np.arange(0,4.2, step=0.5))
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
-	#plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
-	plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
+	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	#plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
 	return True
 
 def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
@@ -441,7 +441,7 @@ def main(commandline_arguments):
 		deepestanc_to_child = {}
 		gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
 
-	for rand_index in range(0,1):
+	for rand_index in range(0,5):
 		"""Every calculation and gap filling of alignment is performed 10 times.
 		This is done to dampen the errors in heavily gapped regions.
 		Allows us to add errorbars on the output graph."""
