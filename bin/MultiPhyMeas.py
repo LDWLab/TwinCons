@@ -18,10 +18,15 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('output_path', help='Path to image for output.')
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
+	parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=int, default=1, required=False)
 	parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, required=False)
 	parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. Uses the output file name specified by appending .csv', required=False, action="store_true")
 	parser.add_argument('-l','--leg', help='Do not write out a legend', default=False, action="store_true")
+	calculation_type = parser.add_mutually_exclusive_group(required=True)
+	calculation_type.add_argument('-bl','--blosum', help='Use BLOSUM62 for calculation of scores', action="store_true")
+	calculation_type.add_argument('-lg','--le_gascuel', help='Use Le & Gascuel matrix for calculation of scores', action="store_true")
+	calculation_type.add_argument('-cons','--conservation', help='Use reverese entropy for calculation of scores.', action="store_true")
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -61,12 +66,12 @@ def make_length_distr(df,comm_args,group_dict,aln_total_lengths):
 						length_to_weight[file][i]=[]
 					length_to_weight[file][i].append((w,l,scaled_length))
 					###
-			if pos > 1:
+			if pos > comm_args.intensity_threshold:
 				#print(i, 'greater')
 				k=0
 				i+=1
 				w+=pos
-			elif pos <= 1:
+			elif pos <= comm_args.intensity_threshold:
 				scaled_length = i/aln_total_lengths[file][1]
 				if k == comm_args.threshold:
 					#print(i, 'smaller k is threshold')
@@ -179,7 +184,15 @@ def main(commandline_args):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas|\.fa)',comm_args.alignment_path+file):
 			# print(file)
 			out_dict={}
-			alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
+			if comm_args.conservation:
+				print("Using conservation for calculation of "+file)
+				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-c'])
+			elif comm_args.le_gascuel:
+				print("Using Le Gascuel matrix for calculation of "+file)
+				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-lg'])
+			elif comm_args.blosum:
+				print("Using BLOSUM62 for calculation of "+file)
+				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
 			for x in sliced_alns:
 				aln_lengths[file]=(sliced_alns[x].get_alignment_length(),number_of_aligned_positions)
 				break

@@ -8,7 +8,7 @@ set cartoon_oval_width,0.6
 
 set ray_opaque_background, off
 
-load ../test_data/DROME_eS12.pdb, eS12
+load ../../Score-test_data/PDBs/DROME_eS12.pdb, eS12
 color 0x08306b, eS12 and resi 1
 color 0x94c4df, eS12 and resi 2
 color 0xfff5f0, eS12 and resi 3
@@ -148,7 +148,7 @@ color 0xdeebf7, eS12 and resi 136
 color 0xfff5f0, eS12 and resi 137
 color 0xfff5f0, eS12 and resi 138
 color 0xd9e7f5, eS12 and resi 139
-load ../test_data/PYRFU_eL08c.pdb, eL08c
+load ../../Score-test_data/PDBs/PYRFU_eL08c.pdb, eL08c
 color 0x08306b, eL08c and resi 1
 color 0x94c4df, eL08c and resi 2
 color 0xfff5f0, eL08c and resi 3
