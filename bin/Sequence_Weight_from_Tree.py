@@ -5,8 +5,9 @@ import os, re, sys, Bio.Align, argparse, matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from Bio import AlignIO
 from Bio import Phylo
+from Bio import AlignIO
+from io import StringIO
 from AlignmentGroup import AlignmentGroup
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
@@ -17,6 +18,7 @@ import PhyMeas
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate importance of sequences based on phylogenetic tree.')
 	parser.add_argument('alignment_file', help='Path to alignment file')
+	parser.add_argument('-ind','--indelible_tree_file', help='Path to INDELible trees log file. If defined alignment_file, should lead to folder with alignments.')
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -34,6 +36,19 @@ def tree_contruct(aln_obj, nj=False):
 	tree.ladderize()
 	#print(Phylo.draw_ascii(tree))
 	return tree
+
+def read_indeli_trees_file(file_path):
+	'''Reads indelible trees.txt and outputs a dictionary with keys the REPs
+	and values Bio.Phylo tree objects based on the tree string.
+	'''
+	with open (file_path) as trees_file:
+		lines = trees_file.read().splitlines()
+	tree_data = lines[6:]
+	output_dict = {}
+	for tree_entry in tree_data:
+		tree = Phylo.read(StringIO(tree_entry.split('\t')[8]), "newick")
+		output_dict[tree_entry.split('\t')[3]] = tree
+	return output_dict
 
 def find_deepest_ancestors(tree):
 	'''
@@ -59,17 +74,16 @@ def slice_by_anc(unsliced_aln_obj, deepestanc_to_child):
 	Slices an alignment into different alignments
 	by the groupings defined in deepestanc_to_child.
 	'''
-	##Could be very buggy if there is no name splitting.
-	##Make sure you add exceptions to handle cases where there is no common name in the group
-	##or the names accross groups are the same.
 	anc_names={}
 	sliced_dict={}
+	i = 1
 	for anc in deepestanc_to_child:
 		anc_names[anc] = os.path.commonprefix(deepestanc_to_child[anc])[:-1]
-	####
-	####
-
-
+		#In the case of no common name found between sequences from 1 group
+		if os.path.commonprefix(deepestanc_to_child[anc])[:-1] is '':
+			anc_names[anc] = i
+			i += 1
+	
 	if len(anc_names) != 2:
 		raise ValueError("For now does not support more than two groups! Offending groups are "+str(', '.join(anc_names.values())))
 	
@@ -97,6 +111,18 @@ def generate_weight_vectors(tree):
 
 def main(commandline_arguments):
 	comm_args = create_and_parse_argument_options(commandline_arguments)
+	if comm_args.indelible_tree_file:
+		indeli_trees = read_indeli_trees_file(comm_args.indelible_tree_file)
+		for name,tree in indeli_trees.items():
+			alignIO_out = PhyMeas.read_align(comm_args.alignment_file+'INDELI_TRUE_'+name+'.fas')
+			deepest_anc = find_deepest_ancestors(tree)
+			gapped_sliced_alns = slice_by_anc (alignIO_out, deepest_anc)
+			print(name, gapped_sliced_alns)
+			with open (comm_args.alignment_file+'tg_'+name+'.fas', "w") as tagged_aln_file:
+				for aln_group_name, alignment in gapped_sliced_alns.items():
+					for entry in alignment:
+						tagged_aln_file.write(str(">"+str(aln_group_name)+"_"+str(entry.id)+"\n"+entry.seq+"\n"))
+		sys.exit()
 	alignIO_out = PhyMeas.read_align(comm_args.alignment_file)
 	#sliced_alns = PhyMeas.slice_by_name(alignIO_out)
 
