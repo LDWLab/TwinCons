@@ -22,6 +22,7 @@ def create_and_parse_argument_options(argument_list):
 	input_file = parser.add_mutually_exclusive_group(required=True)
 	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
 	input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
+	parser.add_argument('-cg','--cut_gaps', help='Paths to structure files, can be one or many.', action="store_true")
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
 	parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
 	parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
@@ -60,6 +61,31 @@ def count_aligned_positions(aln_obj):
 	if aligned_positions == 0:
 		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas no positions with less than 90% gaps!")
 	return aligned_positions
+
+def remove_extremely_gapped_regions(align,gap_perc):
+	'''
+	Removes columns of alignment with more than gap_perc gaps.
+	'''
+	n = float(len(align[0]))
+	i = 0
+	x=0
+	length=1
+	gap_mapping={}
+	while i < n:
+		x=align[:, i].count('-')/len(align)					#Get percentage of gaps in column
+		if x > float(gap_perc):
+			if i == 0:
+				align = align[:, 1:]
+			elif i+1 == n:
+				align = align[:, :i]
+			else:
+				align = align[:, :i] + align[:, i+1:]
+			n -= 1											#  seq. 1 shorter
+		else:												#  nothing to delete, proceed
+			i += 1
+		gap_mapping[int(length)]=i
+		length+=1
+	return gap_mapping,align,len(align[0])
 
 def uniq_AA_list(aln_obj):
 	'''
@@ -432,6 +458,11 @@ def main(commandline_arguments):
 		alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
 	randindex_norm=defaultdict(dict)
 	number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
+	
+	if comm_args.cut_gaps:
+		tempaln = alignIO_out_gapped[:,:]
+		alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
+		gp_mapping,alignIO_out_gapped,alen=remove_extremely_gapped_regions(tempaln,0.9)
 	
 	if comm_args.phylo_split:
 		tree = Sequence_Weight_from_Tree.tree_contruct(alignIO_out_gapped)

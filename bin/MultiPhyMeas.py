@@ -18,6 +18,7 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('output_path', help='Path to image for output.')
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
+	parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False)
 	parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=int, default=1, required=False)
 	parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, required=False)
@@ -129,7 +130,10 @@ def scatter_plot(comm_args,weight_distr):
 	label_order_tups,label_order = [], []
 	for file, color in zip(sorted_names,colors):
 		scaled_lengths = [n[0] for n in weight_distr[file]]
-		segment_weights = [n[1] for n in weight_distr[file]]
+		if comm_args.average_weight:
+			segment_weights = [n[1]/n[2] for n in weight_distr[file]]
+		else:
+			segment_weights = [n[1] for n in weight_distr[file]]
 		segment_lengths = [n[2] for n in weight_distr[file]]
 		abs_length = [n**2 for n in segment_lengths]
 		plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',s=abs_length,color=color)
