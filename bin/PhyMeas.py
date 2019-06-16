@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, sys, warnings, statistics, copy, itertools, random, Bio.Align, argparse, random, math, matplotlib
+import re, sys, random, Bio.Align, argparse, random, math, matplotlib
 matplotlib.use('Agg')
-import pandas as pd
 import numpy as np
 from Bio import AlignIO
 from io import StringIO
-#import seaborn as sns
 from textwrap import wrap
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter

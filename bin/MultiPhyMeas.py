@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Calculates conservation score for multiple alignments"""
 import PhyMeas, SlidingWindow
-import re, os, sys, csv, getopt, plotly, single_cons_comp, argparse
-import plotly.graph_objs as go
+import re, os, sys, csv, getopt, argparse
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 import pandas as pd
 from scipy import stats
