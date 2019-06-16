@@ -4,7 +4,7 @@ Using different types of matrices we can represent conservation within an alignm
 
 We will also use different substitution matrices based on external structural information.
 
-Finally we will try to map the score for each position in a 3D object, by prodcuing a .pml file and a bar graph.
+Finally we will try to map the score for each position in a 3D object, by producing a .pml file and a bar graph.
 
 ## Overall flow
 
@@ -46,3 +46,23 @@ Finally we will try to map the score for each position in a 3D object, by prodcu
 Sample output
 
 <img src="./bin/outputs/SVG/uL02b-uL02c.svg?sanitize=true">
+
+# Multiple alignment analysis
+
+Executes the previous code for a given folder with sequence alignments. Calculates length, weight, normalized lengths and positions of high scoring segments from the results of PhyMeas.
+
+Tries to guess the type of comparison and color code the included datasets. For lower number of alignments (up to 20) applies different color for each alignment. For greater number of alignments tagged in different groups (e.g. A_alignment-nameX.fas, B_alignment-nameY.fas and so on), uses the viridis colormap to color each group of alignments together. For exactly 10 alignments in a folder assumes they are ordered by similarity and colors them with a Purple Green gradient.
+
+Can pass all options for calculation already present in PhyMeas with the option -co. <span style="color:red">However, as of now it does not support structure mapping of scores or using structure defined matrices</span>. 
+
+It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed within single quotes after the flag -co without the dashes. For example:
+
+	-co 'cg phy bl'
+
+One of [**-lg**, **-bl**, **-e**, **-c**] is required to run properly. <span style="color:red">#Add a check to raise an error if not.</span>
+
+Can skip outputting a legend in the image with the flag -l; recommended 
+
+Sample output:
+
+<img src="./bin/outputs/PNG/longtest_it1nouS14.png">

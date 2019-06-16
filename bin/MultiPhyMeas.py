@@ -17,6 +17,7 @@ def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from multiple alignments.')
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('output_path', help='Path to image for output.')
+	parser.add_argument('-co', '--calculation_options',nargs='+', help='Options for score calculation. See README for details.', required=True)
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
 	parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False)
 	parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=int, default=1, required=False)
@@ -24,10 +25,11 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, required=False)
 	parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. Uses the output file name specified by appending .csv', required=False, action="store_true")
 	parser.add_argument('-l','--leg', help='Do not write out a legend', default=False, action="store_true")
-	calculation_type = parser.add_mutually_exclusive_group(required=True)
-	calculation_type.add_argument('-bl','--blosum', help='Use BLOSUM62 for calculation of scores', action="store_true")
-	calculation_type.add_argument('-lg','--le_gascuel', help='Use Le & Gascuel matrix for calculation of scores', action="store_true")
-	calculation_type.add_argument('-cons','--conservation', help='Use reverese entropy for calculation of scores.', action="store_true")
+	
+	#calculation_type = parser.add_mutually_exclusive_group(required=True)
+	#calculation_type.add_argument('-bl','--blosum', help='Use BLOSUM62 for calculation of scores', action="store_true")
+	#calculation_type.add_argument('-lg','--le_gascuel', help='Use Le & Gascuel matrix for calculation of scores', action="store_true")
+	#calculation_type.add_argument('-cons','--conservation', help='Use reverse entropy for calculation of scores.', action="store_true")
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -188,15 +190,20 @@ def main(commandline_args):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas|\.fa)',comm_args.alignment_path+file):
 			# print(file)
 			out_dict={}
-			if comm_args.conservation:
-				print("Using conservation for calculation of "+file)
-				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-c'])
-			elif comm_args.le_gascuel:
-				print("Using Le Gascuel matrix for calculation of "+file)
-				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-lg'])
-			elif comm_args.blosum:
-				print("Using BLOSUM62 for calculation of "+file)
-				alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
+			list_for_phymeas = ['-a',comm_args.alignment_path+file, '-r']
+			for opt in comm_args.calculation_options:
+				list_for_phymeas.append('-'+opt)
+			print(list_for_phymeas)
+			alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(list_for_phymeas)
+			#if comm_args.conservation:
+			#	print("Using conservation for calculation of "+file)
+			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-c'])
+			#elif comm_args.le_gascuel:
+			#	print("Using Le Gascuel matrix for calculation of "+file)
+			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-lg'])
+			#elif comm_args.blosum:
+			#	print("Using BLOSUM62 for calculation of "+file)
+			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
 			for x in sliced_alns:
 				aln_lengths[file]=(sliced_alns[x].get_alignment_length(),number_of_aligned_positions)
 				break
