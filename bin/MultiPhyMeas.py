@@ -32,9 +32,8 @@ def create_and_parse_argument_options(argument_list):
 	return commandline_args
 
 def make_length_distr(df,comm_args,group_dict,aln_total_lengths):
-	'''Takes in dataframe with values per file and returns
-	a length distribution dictionary with keys files and
-	values a tuple with: 
+	'''Takes in dataframe with values per file and returns a length distribution 
+	dictionary with keys files and values a tuple with:
 		normalized lengths of uninterrupted positive scoring positions (segments)
 		segment weights
 		segment lengths
@@ -46,7 +45,8 @@ def make_length_distr(df,comm_args,group_dict,aln_total_lengths):
 	weight_distr={}
 	length_to_weight={}
 	for file in df:
-		l,i,k,w=0,0,0,0		#l - alignment position; i - segment length; k - threshold memory; w - segment weight
+		###   l - alignment position; i - segment length; k - threshold memory; w - segment weight   ###
+		l,i,k,w=0,0,0,0
 		alignment_length = len(group_dict[file])
 		for pos,has_more in PhyMeas.lookahead(df[file]):
 			l+=1
@@ -158,7 +158,6 @@ def scatter_plot(comm_args,weight_distr):
 def csv_output(comm_args, file_to_data):
 	'''Writes out data used for generating the plot in a csv file.
 	'''
-	#Try to make this more general (capture file extension and then substitute it with .csv)
 	if comm_args.output_path.endswith('.png'):
 		file_for_writing = re.sub(r'.png','.csv',comm_args.output_path)
 	else:
@@ -186,22 +185,15 @@ def main(commandline_args):
 	aln_lengths={}
 	for file in os.listdir(comm_args.alignment_path):
 		if re.findall(r'(.*\/)(.*)(\.fasta|\.fas|\.fa)',comm_args.alignment_path+file):
-			# print(file)
+			###   Constructing arguments for PhyMeas   ###
 			out_dict={}
 			list_for_phymeas = ['-a',comm_args.alignment_path+file, '-r']
 			for opt in comm_args.calculation_options:
 				list_for_phymeas.append('-'+opt)
 			print(list_for_phymeas)
+			###   Executing PhyMeas   ###
 			alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(list_for_phymeas)
-			#if comm_args.conservation:
-			#	print("Using conservation for calculation of "+file)
-			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-c'])
-			#elif comm_args.le_gascuel:
-			#	print("Using Le Gascuel matrix for calculation of "+file)
-			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-lg'])
-			#elif comm_args.blosum:
-			#	print("Using BLOSUM62 for calculation of "+file)
-			#	alnindex_score,sliced_alns,number_of_aligned_positions=PhyMeas.main(['-a',comm_args.alignment_path+file, '-r', '-bl'])
+			###   Alignment lengths and organizing PhyMeas outputs   ###
 			for x in sliced_alns:
 				aln_lengths[file]=(sliced_alns[x].get_alignment_length(),number_of_aligned_positions)
 				break

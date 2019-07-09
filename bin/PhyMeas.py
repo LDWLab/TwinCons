@@ -295,8 +295,8 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 		ax.axis(lim)
 	if comm_args.leegascuel or comm_args.blosum:
 		pamlarray = np.array(blos_matrix())
-		plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
-		plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
+		#plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
+		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
 		#gradientbars(bar,'Blues','Reds')
 		gradientbars(bar,'Greens','Purples')
 	#In case of no negative values BUG!
@@ -338,8 +338,8 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 			aln_index+=1
 		return aln_index_hexcmap
 	if comm_args.leegascuel or comm_args.blosum:
-		#alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
-		alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
+		alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
+		#alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
 		alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
 
