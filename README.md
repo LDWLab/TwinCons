@@ -61,7 +61,7 @@ It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c*
 
 One of [**-lg**, **-bl**, **-e**, **-c**] is required to run properly. <span style="color:red">#Add a check to raise an error if not.</span>
 
-Can skip outputting a legend in the image with the flag -l; recommended 
+Can skip outputting a legend in the image with the flag -l; recommended with datasets involving many (above 20) alignments.
 
 Sample output:
 

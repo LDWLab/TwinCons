@@ -15,7 +15,7 @@ def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from multiple alignments.')
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('output_path', help='Path to image for output.')
-	parser.add_argument('-co', '--calculation_options',nargs='+', help='Options for score calculation. See README for details.', required=True)
+	parser.add_argument('-co', '--calculation_options', help='Options for score calculation. See README for details.', required=True, type=str)
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
 	parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False)
 	parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=int, default=1, required=False)
@@ -188,7 +188,7 @@ def main(commandline_args):
 			###   Constructing arguments for PhyMeas   ###
 			out_dict={}
 			list_for_phymeas = ['-a',comm_args.alignment_path+file, '-r']
-			for opt in comm_args.calculation_options:
+			for opt in comm_args.calculation_options.split():
 				list_for_phymeas.append('-'+opt)
 			print(list_for_phymeas)
 			###   Executing PhyMeas   ###

@@ -40,11 +40,11 @@ def load_our_data(csv_location):
         line_count = 0
         for row in csv_reader:
             if line_count != 0:
-                if re.match(r'^A_|^B_',row[0]):
+                if re.match(r'^A_|^B_',row[0]): #
                     data_xy.append([float(row[2]),float(row[3])])
                     data_identity.append(1)
                     data_weights.append(row[1])
-                elif re.match(r'^C_|^D_',row[0]):
+                elif re.match(r'^C_|^D_',row[0]):   #
                     data_xy.append([float(row[2]),float(row[3])])
                     data_identity.append(0)
                     data_weights.append(float(row[1]))
@@ -77,10 +77,16 @@ def test_function(comm_args, decision_function):
             line_count+=1
     return segment_pred_dist
 
-def mass_test(segment_pred_dist, max_threshold=2, step=0.1):
+def mass_test(segment_pred_dist, min_threshold=0,max_threshold=2, step=0.1):
     '''For evaluating the decision function with 
     great number of alignments in 4 separate groups.
     '''
+
+    def bypass_zero_division(x,y):
+        try:
+            return x/y
+        except ZeroDivisionError:
+            return 0
 
     ###   For each alignment calculate distance and number of positive segments   ###
     grouped_data={}
@@ -94,27 +100,27 @@ def mass_test(segment_pred_dist, max_threshold=2, step=0.1):
                 dist_sum+= segm[1][1]
         grouped_data[aln_name.split("_")[0]].append(dist_sum)
 
-    ###   Some nice plots to visualize different group results   ###
+    ###   Some plots to visualize different group results   ###
     #fig, axes = plt.subplots(2, 2, sharex=True)
     #fig.subplots_adjust(hspace=0.4, wspace=0.4)
     #for ax, group in zip(axes.ravel(), sorted(grouped_data.keys())):
     #    ax.hist(grouped_data[group])
     #    ax.set_title(group)
-    #plt.savefig('./outputs/SVM/2ftesting_dataset.png', dpi=600)
+    #plt.savefig('./outputs/SVM/2ftesting_bali.png', dpi=600)
     #plt.clf()
-##
+###
     #list_for_hist = []
     #for group in sorted(grouped_data.keys()):
     #    list_for_hist.append(grouped_data[group])
     #fig, axes = plt.subplots(1, 1)
     #axes.hist(list_for_hist, label=sorted(grouped_data.keys()),histtype='barstacked', bins=30)
     #axes.legend(prop={'size': 10})
-    #plt.savefig('./outputs/SVM/2ftesting_dataset_hists.png', dpi=600)
+    #plt.savefig('./outputs/SVM/2ftesting_bali_hists.png', dpi=600)
 
     ###   Calculate Sensitivity(tpr), Specificity(tnr) and Precision   ###
     ###   over a range of distances from the decision boundary         ###
     dist_to_stats = {}
-    for thr in np.arange(0,max_threshold,step):
+    for thr in np.arange(min_threshold,max_threshold,step):
         tp, tn, fp, fn = 0,0,0,0
         for group in grouped_data.keys():
             if group == 'A' or group == 'B':
@@ -123,8 +129,11 @@ def mass_test(segment_pred_dist, max_threshold=2, step=0.1):
             if group == 'C' or group == 'D':
                 tn += sum(i<thr for i in grouped_data[group])
                 fp += len(grouped_data[group])-sum(i<thr for i in grouped_data[group])
-        dist_to_stats[thr] = (tp/(tp+fn), tn/(tn+fp), tp/(tp+fp))
-        print ("Threshold "+str(thr),'\n',"tpr", tp/(tp+fn),"tnr", tn/(tn+fp),'\n',"precision",tp/(tp+fp))
+        tpr = bypass_zero_division(tp,tp+fn)
+        tnr = bypass_zero_division(tn,tn+fp)
+        precision = bypass_zero_division(tp,tp+fp)
+        dist_to_stats[thr] = (tpr, tnr, precision)
+        print ("Threshold "+str(thr),'\n',"tpr", tpr,"tnr", tnr,'\n',"precision",precision)
     return dist_to_stats
 
 def plot_decision_function(classifier,X,y, sample_weight, axis, fig, title, decision_levels=''):
@@ -192,7 +201,7 @@ def main(commandline_arguments):
             raise ValueError("In test mode providing maximal values for the classifier features is required!")
         decision_function = cPickle.load(open(comm_args.test, 'rb'))
         segment_pred_dist = test_function(comm_args, decision_function)
-        dist_to_se_sp_pr = mass_test(segment_pred_dist, 2, 0.1)
+        dist_to_se_sp_pr = mass_test(segment_pred_dist)
 
     ###   Plot the classifier   ###
     if comm_args.plot_df:
