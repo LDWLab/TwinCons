@@ -87,7 +87,7 @@ def remove_extremely_gapped_regions(align,gap_perc):
 
 def uniq_resi_list(aln_obj):
 	'''
-	Creates list of unique AA or nuclleotide residues in the given MSA to be used for frequency iterator.
+	Creates list of unique AA or nucleotide residues in the given MSA to be used for frequency iterator.
 	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters or the extended_dna_letters.
 	'''
 	default_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
