@@ -85,21 +85,23 @@ def remove_extremely_gapped_regions(align,gap_perc):
 		length+=1
 	return gap_mapping,align,len(align[0])
 
-def uniq_AA_list(aln_obj):
+def uniq_resi_list(aln_obj):
 	'''
-	Creates list of unique AA residues in the given MSA to be used for frequency iterator.
-	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters.
+	Creates list of unique AA or nuclleotide residues in the given MSA to be used for frequency iterator.
+	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters or the extended_dna_letters.
 	'''
 	default_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-	hash_AA=dict()
+	default_nucl_sequence = ['A', 'U', 'T', 'G', 'C']  #This needs a proper order!
+	hash_resi=dict()
 	for alignment in aln_obj:
 		for amac in alignment.seq:
 			if not re.match(r'-|X',amac):
-				hash_AA[amac]='null'
-	if not all (x in IUPACData.extended_protein_letters for x in hash_AA.keys()):
+				hash_resi[amac]='null'
+
+	if not all (x in IUPACData.extended_protein_letters for x in hash_resi.keys()):
 		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas AA letters not found in the IUPAC extended list!")
-	if len(Counter(hash_AA.keys())) > len(Counter(default_aa_sequence)):
-		raise ValueError("Alignment has non-standard AAs:\n"+' ,'.join(hash_AA.keys()))
+	if len(Counter(hash_resi.keys())) > len(Counter(default_aa_sequence)):
+		raise ValueError("Alignment has non-standard AAs:\n"+' ,'.join(hash_resi.keys()))
 	return default_aa_sequence
 
 
@@ -474,7 +476,7 @@ def main(commandline_arguments):
 		"""Every calculation and gap filling of alignment is performed 10 times.
 		This is done to dampen the errors in heavily gapped regions.
 		Allows us to add errorbars on the output graph."""
-		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_AA_list(alignIO_out_gapped))
+		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_resi_list(alignIO_out_gapped))
 	
 	#Calculating mean and stdev per alignment position
 	position_defined_scores=defaultdict(dict)
