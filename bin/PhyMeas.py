@@ -331,6 +331,18 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 	#plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
 	return True
 
+def data_to_diverging_gradients(datapoint, datalist, positivegradient, negativegradient):
+	'''Maps a data point to a diverging colormap depending on whether its above or bellow 0.
+	Returns a hex code.
+	'''
+	if datapoint >= 0:
+		grad = np.atleast_2d(np.linspace(0,datapoint/max(datalist),256)).T
+		rgb = plt.get_cmap(positivegradient)(grad[len(grad)-1])[0][:3]
+	else:
+		grad = np.atleast_2d(np.linspace(0,datapoint/min(datalist),256)).T
+		rgb = plt.get_cmap(negativegradient)(grad[len(grad)-1])[0][:3]
+	return matplotlib.colors.rgb2hex(rgb)
+
 def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 	"""Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
 	"""
@@ -347,17 +359,7 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 		aln_index=1
 		for bar in bars:
 			w, h = bar.get_width(), bar.get_height()
-			if h > 0:		#Positive gradient for positive values
-				grad = np.atleast_2d(np.linspace(0,h/max(data),256)).T
-				rgb = plt.get_cmap(positivegradient)(grad[len(grad)-1])[0][:3]
-				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
-			else:			#Negative gradient for negative values
-				if min(data) != 0:
-					grad = np.atleast_2d(np.linspace(0,h/min(data),256)).T
-				else:
-					grad = np.atleast_2d(np.linspace(0,h/0.000001,256)).T
-				rgb = plt.get_cmap(negativegradient)(grad[len(grad)-1])[0][:3]
-				aln_index_hexcmap[aln_index]=matplotlib.colors.rgb2hex(rgb)
+			aln_index_hexcmap[aln_index] = data_to_diverging_gradients(h, data, positivegradient, negativegradient)
 			aln_index+=1
 		return aln_index_hexcmap
 	if comm_args.leegascuel or comm_args.blosum:
@@ -368,7 +370,8 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 
 	group_names = list(gapped_sliced_alns.keys())
 	#Open .pml file for structure coloring
-	pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
+	pml_output = open(comm_args.output_path,"w")
+	#pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
 	pml_output.write("set hash_max, 500\n\
 		set cartoon_loop_radius,0.4\n\
 		set cartoon_tube_radius,1\n\
@@ -379,7 +382,6 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 		bg_color white\n\
 		set ray_trace_mode,1\n\
 		set ray_shadows,0\n")
-
 
 	#Bellow here needs fixing to properly do structures for plotting
 	for alngroup_name in group_names:
@@ -404,18 +406,21 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 	pml_output.write("super "+group_names[0]+","+group_names[1]+"\n")
 	return True
 
-def csv_output(comm_args, file_to_data):
+def jalview_output(output_dict, comm_args):
+	'''Writes out a Jalview alignment annotation file (http://www.jalview.org/help/html/features/annotationsFormat.html)
 	'''
-	Writes out data used for generating the plot in a csv file.
-	'''
-	#Assuming output path is always written with a .png at the end...
-	with open(re.sub(r'.png','.csv',comm_args.output_path), mode ="w") as output_csv:
-		csv_writer = csv.writer(output_csv)
-		csv_writer.writerow(['File name', 'Segment length', 'Average segment weight', 'Alignment position'])
-		for file, length_buckets in sorted(file_to_data.items()):
-			for length, weights in sorted(length_buckets.items()):
-				for single_weight in sorted(weights,key=itemgetter(0)): 
-					csv_writer.writerow([file, length, single_weight[0], single_weight[1]])
+	out_data=list()
+	for x in sorted(output_dict.keys()):
+		out_data.append(output_dict[x][0])
+	
+	jv_output = open(comm_args.output_path,"w")
+	jv_output.write('JALVIEW_ANNOTATION\n')
+	jv_output.write('# Created: '+str(date.today())+"\n")
+	jv_output.write('# Contact: ppenev@gatech.edu\n')
+	jv_output.write('BAR_GRAPH	TWINCONS	')
+	for position in sorted(output_dict.keys(), key=abs):
+		color_hex = data_to_diverging_gradients(output_dict[position][0], out_data, 'Greens', 'Purples')
+		jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
 	return True
 
 def decision_maker(commandline_args,alignIO_out_gapped,deepestanc_to_child,aa_list):
@@ -461,7 +466,7 @@ def decision_maker(commandline_args,alignIO_out_gapped,deepestanc_to_child,aa_li
 					parser.print_help()
 					raise ValueError("When a structure is defined, one of the matrix options are required!")
 		return compute_score(commandline_args,aln_index_dict, struc_annotation)
-	elif commandline_args.leegascuel or commandline_args.blosum:							#Case of no structure defined outputs
+	elif commandline_args.leegascuel or commandline_args.blosum or commandline_args.nucleotide:							#Case of no structure defined outputs
 		for alngroup_name in sliced_alns:
 			alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
 			AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
@@ -492,7 +497,7 @@ def main(commandline_arguments):
 		deepestanc_to_child = {}
 		gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
 
-	for rand_index in range(0,5):
+	for rand_index in range(0,10):
 		"""Every calculation and gap filling of alignment is performed 10 times.
 		This is done to dampen the errors in heavily gapped regions.
 		Allows us to add errorbars on the output graph."""
@@ -527,13 +532,7 @@ def main(commandline_arguments):
 		for x in sorted(output_dict.keys(), key=abs):
 			print(str(x)+','+str(output_dict[int(x)][0])+','+str(output_dict[int(x)][1]))
 	elif comm_args.jalview_output:
-		jv_output = open(comm_args.output_path,"w")
-		jv_output.write('JALVIEW_ANNOTATION\n')
-		jv_output.write('# Created: '+str(date.today())+"\n")
-		jv_output.write('# Contact: ppenev@gatech.edu\n')
-		jv_output.write('BAR_GRAPH	TWINCONS	')
-		for position in sorted(output_dict.keys(), key=abs):
-			jv_output.write(str(output_dict[position][0])+'|')
+		jalview_output(output_dict, comm_args)
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv[1:]))
