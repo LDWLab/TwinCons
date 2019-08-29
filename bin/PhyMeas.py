@@ -3,6 +3,7 @@
 import re, sys, random, Bio.Align, argparse, random, math, matplotlib
 matplotlib.use('Agg')
 import numpy as np
+from datetime import date
 from Bio import AlignIO
 from io import StringIO
 from textwrap import wrap
@@ -20,17 +21,20 @@ def create_and_parse_argument_options(argument_list):
 	input_file = parser.add_mutually_exclusive_group(required=True)
 	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
 	input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
-	parser.add_argument('-cg','--cut_gaps', help='Paths to structure files, can be one or many.', action="store_true")
-	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, can be one or many.')
+	parser.add_argument('-cg','--cut_gaps', help='Algorithm will cut alignment gaps with more than specified value gaps. Decimal format, eg 0.9', type=float)
+	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
 	parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
 	parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 	output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined', action="store_true")
 	output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
+	output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
+	output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
 	entropy_group = parser.add_mutually_exclusive_group(required=True)
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
+	entropy_group.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
 	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
 	structure_option = parser.add_mutually_exclusive_group()
@@ -88,16 +92,14 @@ def remove_extremely_gapped_regions(align,gap_perc):
 def uniq_resi_list(aln_obj):
 	'''
 	Creates list of unique AA or nucleotide residues in the given MSA to be used for frequency iterator.
-	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters or the extended_dna_letters.
+	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters.
 	'''
 	default_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-	default_nucl_sequence = ['A', 'U', 'T', 'G', 'C']  #This needs a proper order!
 	hash_resi=dict()
 	for alignment in aln_obj:
-		for amac in alignment.seq:
-			if not re.match(r'-|X',amac):
-				hash_resi[amac]='null'
-
+		for resi in alignment.seq:
+			if not re.match(r'-|X',resi):
+				hash_resi[resi]='null'
 	if not all (x in IUPACData.extended_protein_letters for x in hash_resi.keys()):
 		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas AA letters not found in the IUPAC extended list!")
 	if len(Counter(hash_resi.keys())) > len(Counter(default_aa_sequence)):
@@ -162,6 +164,19 @@ def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
 	return np.array(PAMLmatrix('../matrices/'+struc_anno+'.dat').lodd)
 
+def nucl_matrix():
+	'''Return a substitution matrix for nucleotides.
+	Should be merged with blos_matrix() intoone general matrix creation method
+	'''
+	nucl_sequence = ['A','U','G','C']
+	nuc_mx = np.array([[4,-5,-5,-5],[-5,4,-5,-5],[-5,-5,4,-5],[-5,-5,-5,4],])
+	testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
+	baseline = float(testvr@np.array(nuc_mx)@testvr.T)
+	revtestA=np.add(np.array(nuc_mx), abs(baseline))
+	if int(testvr@revtestA@testvr.T) != 0:
+		raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+	return np.add(np.array(nuc_mx),abs(baseline))
+
 def blos_matrix():
 	'''Baseline and return a numpy form of the BLOSUM62 matrix.
 	Need to make it more general (eg use BLOSUM50 and so on)
@@ -212,7 +227,7 @@ def compute_score(commandline_args,aln_index_dict, *args):
 				lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
 				alnindex_score[aln_index] = vr1@lgmx@vr2.T
 				#print(aln_index,vr1@lgmx@vr2.T)
-	elif commandline_args.leegascuel:							#Case of no structure defined inputs
+	elif commandline_args.leegascuel:							#Case of no structure defined inputs; improve this block...
 		groupnames = args[0]
 		for aln_index in aln_index_dict:
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
@@ -226,6 +241,12 @@ def compute_score(commandline_args,aln_index_dict, *args):
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
 			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
 			alnindex_score[aln_index] = vr1@blos_matrix()@vr2.T
+	elif commandline_args.nucleotide:
+		groupnames = args[0]
+		for aln_index in aln_index_dict:
+			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
+			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
+			alnindex_score[aln_index] = vr1@nucl_matrix()@vr2.T
 	return alnindex_score
 
 def lookahead(iterable):
@@ -458,11 +479,10 @@ def main(commandline_arguments):
 		alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
 	randindex_norm=defaultdict(dict)
 	number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
-	
 	if comm_args.cut_gaps:
 		tempaln = alignIO_out_gapped[:,:]
 		alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
-		gp_mapping,alignIO_out_gapped,alen=remove_extremely_gapped_regions(tempaln,0.9)
+		gp_mapping,alignIO_out_gapped,alen=remove_extremely_gapped_regions(tempaln,float(comm_args.cut_gaps))
 	
 	if comm_args.phylo_split:
 		tree = Sequence_Weight_from_Tree.tree_contruct(alignIO_out_gapped)
@@ -476,8 +496,11 @@ def main(commandline_arguments):
 		"""Every calculation and gap filling of alignment is performed 10 times.
 		This is done to dampen the errors in heavily gapped regions.
 		Allows us to add errorbars on the output graph."""
-		randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_resi_list(alignIO_out_gapped))
-	
+		if comm_args.nucleotide:
+			#Add function to Change alignIO_out_gapped so that T -> U
+			randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,['A','U','G','C'])
+		else:
+			randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_resi_list(alignIO_out_gapped))
 	#Calculating mean and stdev per alignment position
 	position_defined_scores=defaultdict(dict)
 	for x in randindex_norm.keys():
@@ -500,6 +523,17 @@ def main(commandline_arguments):
 		pymol_script_writer(output_dict, gapped_sliced_alns,comm_args)
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns, number_of_aligned_positions
+	elif comm_args.return_csv:
+		for x in sorted(output_dict.keys(), key=abs):
+			print(str(x)+','+str(output_dict[int(x)][0])+','+str(output_dict[int(x)][1]))
+	elif comm_args.jalview_output:
+		jv_output = open(comm_args.output_path,"w")
+		jv_output.write('JALVIEW_ANNOTATION\n')
+		jv_output.write('# Created: '+str(date.today())+"\n")
+		jv_output.write('# Contact: ppenev@gatech.edu\n')
+		jv_output.write('BAR_GRAPH	TWINCONS	')
+		for position in sorted(output_dict.keys(), key=abs):
+			jv_output.write(str(output_dict[position][0])+'|')
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv[1:]))
