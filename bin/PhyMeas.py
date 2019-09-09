@@ -362,7 +362,7 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 			aln_index_hexcmap[aln_index] = data_to_diverging_gradients(h, data, positivegradient, negativegradient)
 			aln_index+=1
 		return aln_index_hexcmap
-	if comm_args.leegascuel or comm_args.blosum:
+	if comm_args.leegascuel or comm_args.blosum or comm_args.nucleotide:
 		alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
 		#alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
@@ -379,7 +379,7 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 		set cartoon_oval_length,1.4\n\
 		set cartoon_oval_width,0.6\n\
 		set ray_opaque_background, off\n\
-		bg_color white\n\
+		bg_color black\n\
 		set ray_trace_mode,1\n\
 		set ray_shadows,0\n")
 
