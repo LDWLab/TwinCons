@@ -39,15 +39,13 @@ class AlignmentGroup:
 			if re.search(struc_name, alignment.id) is not None: # else error as wrong structure was passed
 				anchor_seq=alignment 							# anchor_seq will hold the sequence data from the name of the pdb file
 				for x in anchor_seq:
+					dictseq[a] = []
 					if (x=="-"):
-						dictseq[a] = []
 						dictseq[a].append(0)
-						a+=1
 					else:
 						i+=1
-						dictseq[a] = []
 						dictseq[a].append(i)
-						a+=1
+					a+=1
 		dictList={} 							# gives the complement between the location in pdb (key) and the location in alns (value) after removing gaps
 		for k,v in dictseq.items():
 			if v[0]==0:

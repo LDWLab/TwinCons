@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, sys, random, Bio.Align, argparse, random, math, matplotlib
+import re, csv, sys, random, Bio.Align, argparse, random, math, matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from datetime import date
@@ -25,6 +25,7 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
 	parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
 	parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
+	parser.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', action="store_true")
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 	output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined', action="store_true")
@@ -34,7 +35,6 @@ def create_and_parse_argument_options(argument_list):
 	entropy_group = parser.add_mutually_exclusive_group(required=True)
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
-	entropy_group.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
 	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
 	structure_option = parser.add_mutually_exclusive_group()
@@ -529,8 +529,12 @@ def main(commandline_arguments):
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns, number_of_aligned_positions
 	elif comm_args.return_csv:
-		for x in sorted(output_dict.keys(), key=abs):
-			print(str(x)+','+str(output_dict[int(x)][0])+','+str(output_dict[int(x)][1]))
+		with open(comm_args.output_path, mode='w') as output_csv:
+			csv_writer = csv.writer(output_csv, delimiter=',')
+			csv_writer.writerow(["Alignment index", "Score", "STDEV"])
+			for x in sorted(output_dict.keys(), key=abs):
+				csv_writer.writerow([x,output_dict[int(x)][0],output_dict[int(x)][1]])
+				print(str(x)+','+str(output_dict[int(x)][0])+','+str(output_dict[int(x)][1]))
 	elif comm_args.jalview_output:
 		jalview_output(output_dict, comm_args)
 
