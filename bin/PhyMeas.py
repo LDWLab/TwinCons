@@ -17,7 +17,7 @@ from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
-	parser.add_argument('-o','--output_path', help='Temp output path for svgs.')
+	parser.add_argument('-o','--output_path', help='Output path ')
 	input_file = parser.add_mutually_exclusive_group(required=True)
 	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
 	input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
@@ -32,7 +32,7 @@ def create_and_parse_argument_options(argument_list):
 	output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
 	output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
 	output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
-	entropy_group = parser.add_mutually_exclusive_group(required=True)
+	entropy_group = parser.add_mutually_exclusive_group()
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
@@ -91,7 +91,7 @@ def remove_extremely_gapped_regions(align,gap_perc):
 
 def uniq_resi_list(aln_obj):
 	'''
-	Creates list of unique AA or nucleotide residues in the given MSA to be used for frequency iterator.
+	Creates list of unique AA residues in the given MSA to be used for frequency iterator.
 	Also checks if the alignment has AA letters from the IUPAC extended_protein_letters.
 	'''
 	default_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
@@ -169,7 +169,8 @@ def nucl_matrix():
 	Should be merged with blos_matrix() intoone general matrix creation method
 	'''
 	nucl_sequence = ['A','U','G','C']
-	nuc_mx = np.array([[4,-5,-5,-5],[-5,4,-5,-5],[-5,-5,4,-5],[-5,-5,-5,4],])
+	nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
+	#nuc_mx = np.array([[4,-5,-5,-5],[-5,4,-5,-5],[-5,-5,4,-5],[-5,-5,-5,4],])
 	testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
 	baseline = float(testvr@np.array(nuc_mx)@testvr.T)
 	revtestA=np.add(np.array(nuc_mx), abs(baseline))
@@ -327,7 +328,8 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 		plt.yticks(np.arange(0,4.2, step=0.5))
 		gradientbars(bar,'viridis','binary')
 	dpi_scaling = 3*len(out_dict)
-	plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
+	plt.savefig(comm_args.output_path+'.svg',format = 'svg',dpi=dpi_scaling)
+	#plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
 	#plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
 	return True
 
@@ -363,14 +365,14 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 			aln_index+=1
 		return aln_index_hexcmap
 	if comm_args.leegascuel or comm_args.blosum or comm_args.nucleotide:
-		alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
-		#alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
+		#alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
+		alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
 		alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
 
 	group_names = list(gapped_sliced_alns.keys())
 	#Open .pml file for structure coloring
-	pml_output = open(comm_args.output_path,"w")
+	pml_output = open(comm_args.output_path+".pml","w")
 	#pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
 	pml_output.write("set hash_max, 500\n\
 		set cartoon_loop_radius,0.4\n\
@@ -413,7 +415,7 @@ def jalview_output(output_dict, comm_args):
 	for x in sorted(output_dict.keys()):
 		out_data.append(output_dict[x][0])
 	
-	jv_output = open(comm_args.output_path,"w")
+	jv_output = open(comm_args.output_path+".jlv","w")
 	jv_output.write('JALVIEW_ANNOTATION\n')
 	jv_output.write('# Created: '+str(date.today())+"\n")
 	jv_output.write('# Contact: ppenev@gatech.edu\n')
@@ -529,7 +531,7 @@ def main(commandline_arguments):
 	elif comm_args.return_within:
 		return output_dict, gapped_sliced_alns, number_of_aligned_positions
 	elif comm_args.return_csv:
-		with open(comm_args.output_path, mode='w') as output_csv:
+		with open(comm_args.output_path+".csv", mode='w') as output_csv:
 			csv_writer = csv.writer(output_csv, delimiter=',')
 			csv_writer.writerow(["Alignment index", "Score", "STDEV"])
 			for x in sorted(output_dict.keys(), key=abs):
