@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, csv, sys, random, Bio.Align, argparse, random, math, matplotlib
+import re, os, csv, sys, random, Bio.Align, argparse, random, math, matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from datetime import date
@@ -16,7 +16,7 @@ from MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
-	parser = argparse.ArgumentParser(description='Calculate and visualize conservation between two groups of sequences from one alignment')
+	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument('-o','--output_path', help='Output path ')
 	input_file = parser.add_mutually_exclusive_group(required=True)
 	input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
@@ -36,7 +36,7 @@ def create_and_parse_argument_options(argument_list):
 	entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
 	entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
-	entropy_group.add_argument('-c','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
+	entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
 	structure_option = parser.add_mutually_exclusive_group()
 	structure_option.add_argument('-ss','--secondary_structure', help = 'Use substitution matrices derived from data dependent on the secondary structure assignment.', action="store_true")
 	structure_option.add_argument('-be','--burried_exposed', help = 'Use substitution matrices derived from data dependent on the solvent accessability of a residue.', action="store_true")
@@ -74,8 +74,8 @@ def remove_extremely_gapped_regions(align,gap_perc):
 	length=1
 	gap_mapping={}
 	while i < n:
-		x=align[:, i].count('-')/len(align)					#Get percentage of gaps in column
-		if x > float(gap_perc):
+		x = align[:, i].count('-')/len(align)					#Get percentage of gaps in column
+		if float(x) > abs(float(gap_perc)):
 			if i == 0:
 				align = align[:, 1:]
 			elif i+1 == n:
@@ -162,7 +162,7 @@ def shannon_entropy(alnObject, aa_list, commandline_args):
 
 def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
-	return np.array(PAMLmatrix('../matrices/'+struc_anno+'.dat').lodd)
+	return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
 
 def nucl_matrix():
 	'''Return a substitution matrix for nucleotides.
@@ -221,11 +221,11 @@ def compute_score(commandline_args,aln_index_dict, *args):
 					alnindex_score[aln_index] = vr1@struc_anno_matrices(''.join(common_chars))@vr2.T
 					#print(aln_index, vr1@struc_anno_matrices(''.join(common_chars))@vr2.T)
 				else:
-					lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
+					lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
 					alnindex_score[aln_index] = vr1@lgmx@vr2.T
 					#print(aln_index,vr1@lgmx@vr2.T)
 			else:
-				lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
+				lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
 				alnindex_score[aln_index] = vr1@lgmx@vr2.T
 				#print(aln_index,vr1@lgmx@vr2.T)
 	elif commandline_args.leegascuel:							#Case of no structure defined inputs; improve this block...
@@ -233,7 +233,7 @@ def compute_score(commandline_args,aln_index_dict, *args):
 		for aln_index in aln_index_dict:
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
 			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-			lgmx = np.array(PAMLmatrix('../matrices/LG.dat').lodd)
+			lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
 			alnindex_score[aln_index] = vr1@lgmx@vr2.T
 			#print(aln_index,vr1@lgmx@vr2.T)
 	elif commandline_args.blosum:
@@ -320,7 +320,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
 	if comm_args.leegascuel or comm_args.blosum:
 		pamlarray = np.array(blos_matrix())
 		#plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
-		#plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
+		plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)				#Horizontal line
 		#gradientbars(bar,'Blues','Reds')
 		gradientbars(bar,'Greens','Purples')
 	#In case of no negative values BUG!
@@ -490,7 +490,6 @@ def main(commandline_arguments):
 		tempaln = alignIO_out_gapped[:,:]
 		alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
 		gp_mapping,alignIO_out_gapped,alen=remove_extremely_gapped_regions(tempaln,float(comm_args.cut_gaps))
-	
 	if comm_args.phylo_split:
 		tree = Sequence_Weight_from_Tree.tree_contruct(alignIO_out_gapped)
 		deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)

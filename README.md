@@ -55,11 +55,11 @@ Tries to guess the type of comparison and color code the included datasets. For 
 
 Can pass all options for calculation already present in PhyMeas with the option -co. <span style="color:red">However, as of now it does not support structure mapping of scores or using structure defined matrices</span>. 
 
-It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed within single quotes after the flag -co without the dashes. For example:
+It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed within single quotes after the flag -co without the dashes and underscore for flags with parameters. For example:
 
-	-co 'cg phy bl'
+	-co 'cg_0.9 phy bl'
 
-One of [**-lg**, **-bl**, **-e**, **-c**] is required to run properly. <span style="color:red">#Add a check to raise an error if not.</span>
+One of [**-lg**, **-bl**, **-e**, **-c**] is required to run properly.
 
 Can skip outputting a legend in the image with the flag -l; recommended with datasets involving many (above 20) alignments.
 
