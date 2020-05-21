@@ -225,8 +225,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         plt.legend(scatter.legend_elements()[0], aln_labels,
                     loc="upper right", title="Alignments")
 
-    if distance_or_identity == '':
-        axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.75, s=abs_length,
+    #if distance_or_identity == '':
+    axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.75, s=abs_length,
                  cmap=plt.cm.bone, edgecolors='black')
     #axis.axis('off')
     axis.set_title(title)
@@ -317,11 +317,10 @@ def main(commandline_arguments):
                 plot_decision_function(decision_function,X,y, sample_weight, axes, fig,
                                     "Decision function",aln_names, decision_levels=dist_to_se_sp_pr)
         if comm_args.train:
-            plot_decision_function(decision_function,X,y, sample_weight, axes, fig, aln_names,
-                                    "Decision function")
+            plot_decision_function(decision_function,X,y, sample_weight, axes, fig,
+                                    "Decision function", aln_names)
         plt.tight_layout()
         plt.savefig(comm_args.plot_df, dpi=600, bbox_inches='tight')
-
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
