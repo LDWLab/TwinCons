@@ -6,7 +6,7 @@ Two modes:
     Test: Evaluates alignment entries in csv with a provided decision function
 """
 #print(__doc__)
-import re, sys, csv, argparse
+import re, sys, csv, math, argparse
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -124,11 +124,11 @@ def flatten_alignment_segment_stats_to_groups(segment_pred_dist):
         grouped_data[aln_name.split("_")[0]].append((dist_sum, pos_sum, tot_segm))
     return grouped_data
 
-def bypass_zero_division(x,y):
-    try:
-        return x/y
-    except ZeroDivisionError:
-        return 0
+# def bypass_zero_division(x,y):
+#     if y != 0:
+#         return x/y
+#     else:
+#         return 0
 
 def calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn):
     for group, segments in grouped_data.items():
@@ -170,9 +170,10 @@ def mass_test(segment_pred_dist, grouped_data, distance_or_identity, min_thresho
             tp, tn, fp, fn = calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn)
         elif distance_or_identity == 'id':
             tp, tn, fp, fn = calc_identity_stats(grouped_data, tp, tn, fp, fn)
-        tpr = bypass_zero_division(tp,tp+fn)
-        tnr = bypass_zero_division(tn,tn+fp)
-        precision = bypass_zero_division(tp,tp+fp)
+        # can use bypass_zero_division if you want to remove the nans
+        tpr = tp/(tp+fn)
+        tnr = tn/(tn+fp)
+        precision = tp/(tp+fp)
         dist_to_stats[thr] = (tpr, tnr, precision)
         print ("Threshold "+str(thr),'\n',"tpr", tpr,"tnr", tnr,'\n',"precision",precision)
     return dist_to_stats
@@ -183,7 +184,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     and plots it as a size of the datapoints. If they are different than 1.
     '''
     # plot the decision function
-    xx, yy = np.meshgrid(np.linspace(0, 1, 100), np.linspace(0, 1, 100))
+    xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
     vir_cmap = plt.cm.get_cmap('viridis')
@@ -199,11 +200,12 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         cbar = fig.colorbar(CS1, ticks=sorted(decision_levels.keys()))
         levels_labels = ["%.2f, %.2f, %.2f" %decision_levels[thr] for thr in sorted(decision_levels.keys())]
         cbar.set_ticklabels(["%.1f %s" % (thr,lev) for lev,thr in zip(levels_labels, sorted(decision_levels.keys()))])
+        cbar.ax.set_title('Dist  tpr, tnr, prec', x=5)
         ###   Draws a line for each decision level   ###
         if (sorted(decision_levels.keys())[1] - sorted(decision_levels.keys())[0]) >= 0.5:
-            CS2 = axis.contour(xx, yy, Z, colors='black', levels=sorted(decision_levels.keys()),
-                              alpha=0.75, linestyles=['-'], linewidths=0.5)
-            axis.clabel(CS2, fmt='%2.1f', colors='black', fontsize=4)
+            CS2 = axis.contour(xx, yy, Z, colors='magenta', levels=sorted(decision_levels.keys()),
+                              alpha=0.75, linestyles=[':'], linewidths=0.5)
+            axis.clabel(CS2, fmt='%2.1f', colors='magenta', fontsize=5)
 
     ###   Draws the decision function as a red line   ###
     else:
@@ -225,10 +227,16 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         plt.legend(scatter.legend_elements()[0], aln_labels,
                     loc="upper right", title="Alignments")
 
-    #if distance_or_identity == '':
-    axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.75, s=abs_length,
-                 cmap=plt.cm.bone, edgecolors='black')
-    #axis.axis('off')
+    ###   Plot scatter of segments   ###
+    scatter = axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.5, s=abs_length, cmap=plt.cm.bone, edgecolors='black')
+    #Size legend needs work
+    # handles, labels = scatter.legend_elements(prop="sizes", alpha=0.6)
+    # size_labels = list()
+    # for label in labels:
+    #     size_labels.append(round(math.sqrt(int(re.findall(r'\d+', label)[0]))))
+    # legend2 = axis.legend(handles, size_labels, loc="upper right", title="Segment length")
+    plt.xlim(0, math.ceil(max(X[:, 0])))
+    plt.ylim(0, math.ceil(max(X[:, 1])))
     axis.set_title(title)
 
 def plot_test_histograms(grouped_data):
@@ -294,6 +302,9 @@ def main(commandline_arguments):
         max_features = read_max_features(comm_args.max_features)
         decision_function = cPickle.load(open(comm_args.test, 'rb'))
         segment_pred_dist = test_function(csv_list, decision_function, max_features)
+        for aln in sorted(segment_pred_dist.keys()):
+            print(aln, segment_pred_dist[aln])
+        #sys.exit()
         if comm_args.test_classifier_precision:
             grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
             dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
