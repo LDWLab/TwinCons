@@ -30,7 +30,7 @@ def create_and_parse_argument_options(argument_list):
                                         \n- by average distance of segments fom the decision boundary (dist);\
                                         \n- by the presence of at least one positive segment (id).', choices=['dist', 'id'])
     commandline_args = parser.parse_args(argument_list)
-    return commandline_args
+    return commandline_args, parser
 
 def csv_iterator(csv_location):
     '''Put csv in list'''
@@ -124,20 +124,20 @@ def flatten_alignment_segment_stats_to_groups(segment_pred_dist):
         grouped_data[aln_name.split("_")[0]].append((dist_sum, pos_sum, tot_segm))
     return grouped_data
 
-# def bypass_zero_division(x,y):
-#     if y != 0:
-#         return x/y
-#     else:
-#         return 0
+def bypass_zero_division(x,y):
+    if y != 0:
+        return x/y
+    else:
+        return 0
 
 def calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn):
-    for group, segments in grouped_data.items():
+    for group, alignments in grouped_data.items():
         if group == 'A' or group == 'B':
-            fn += sum(i[0]/i[2] <  thr for i in segments)
-            tp += sum(i[0]/i[2] >= thr for i in segments)
+            fn += sum(aln[0]/aln[2] <  thr for aln in alignments)
+            tp += sum(aln[0]/aln[2] >= thr for aln in alignments)
         if group == 'C' or group == 'D':
-            tn += sum(i[0]/i[2] <  thr for i in segments)
-            fp += sum(i[0]/i[2] >= thr for i in segments)
+            tn += sum(aln[0]/aln[2] <  thr for aln in alignments)
+            fp += sum(aln[0]/aln[2] >= thr for aln in alignments)
     return tp, tn, fp, fn
 
 def calc_identity_stats(grouped_data, tp, tn, fp, fn):
@@ -171,9 +171,9 @@ def mass_test(segment_pred_dist, grouped_data, distance_or_identity, min_thresho
         elif distance_or_identity == 'id':
             tp, tn, fp, fn = calc_identity_stats(grouped_data, tp, tn, fp, fn)
         # can use bypass_zero_division if you want to remove the nans
-        tpr = tp/(tp+fn)
-        tnr = tn/(tn+fp)
-        precision = tp/(tp+fp)
+        tpr = bypass_zero_division(tp,tp+fn)
+        tnr = bypass_zero_division(tn,tn+fp)
+        precision = bypass_zero_division(tp,tp+fp)
         dist_to_stats[thr] = (tpr, tnr, precision)
         print ("Threshold "+str(thr),'\n',"tpr", tpr,"tnr", tnr,'\n',"precision",precision)
     return dist_to_stats
@@ -287,7 +287,7 @@ def train_classifier(comm_args, X, y, maxX, maxY, penalty=10, gamma='auto', samp
 
 def main(commandline_arguments):
     '''Main entry point'''
-    comm_args = create_and_parse_argument_options(commandline_arguments)
+    comm_args, parser = create_and_parse_argument_options(commandline_arguments)
 
     ###   Load alignment segment data   ###
     csv_list = csv_iterator(comm_args.csv_path)
