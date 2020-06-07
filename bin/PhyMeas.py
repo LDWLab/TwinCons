@@ -51,17 +51,17 @@ def read_align(aln_path):
 	alignments = AlignIO.read(open(aln_path), "fasta")
 	return alignments
 
-def count_aligned_positions(aln_obj):
+def count_aligned_positions(aln_obj, gap_threshold=0.1):
 	'''
-	Counts how many positions are aligned (less than 10% gaps)
+	Counts how many positions are aligned (less than gap_threshold gaps)
 	'''
 	number_seqs = len(aln_obj)
 	aligned_positions = 0
 	for i in range(0,aln_obj.get_alignment_length()):
-		if aln_obj[:,i].count('-')/number_seqs < 0.1:
+		if aln_obj[:,i].count('-')/number_seqs < float(gap_threshold):
 			aligned_positions+=1
 	if aligned_positions == 0:
-		raise ValueError("Alignment:\n"+str(aln_obj)+"\nhas no positions with less than 90% gaps!")
+		raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
 	return aligned_positions
 
 def remove_extremely_gapped_regions(align,gap_perc):
@@ -485,11 +485,13 @@ def main(commandline_arguments):
 	elif comm_args.alignment_string:
 		alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
 	randindex_norm=defaultdict(dict)
-	number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
 	if comm_args.cut_gaps:
+		number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped, comm_args.cut_gaps)
 		tempaln = alignIO_out_gapped[:,:]
 		alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
 		gp_mapping,alignIO_out_gapped,alen=remove_extremely_gapped_regions(tempaln,float(comm_args.cut_gaps))
+	else:
+		number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
 	if comm_args.phylo_split:
 		tree = Sequence_Weight_from_Tree.tree_contruct(alignIO_out_gapped)
 		deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)

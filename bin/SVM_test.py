@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Generate SVM from alignment segments.
-Two modes:
-    Train: Computes a decision function from csv generated with MultiPhyMeas
-    Test: Evaluates alignment entries in csv with a provided decision function
+Evaluates alignment entries in csv generated from MultiPhyMeas.
+Requires a decision function and max features generated from SVM_train.
+Train and test only with the same parameters!
+Such parameters can be % cutting gaps, center segment mass, top segments.
 """
 #print(__doc__)
 import re, sys, csv, math, argparse
@@ -18,15 +18,13 @@ import _pickle as cPickle
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument('-tr','--train',help='Provide path to save classifier as a pickle binary file.', type=str)
-    mode.add_argument('-te','--test',help='Provide path to classifier pickle binary file.', type=str)
+    parser.add_argument('pickle',help='Provide path to classifier pickle binary file.', type=str)
+    parser.add_argument('max_features',help='Provide path to file with comma separated maximal values \
+                                        \nfor each feature class used to generate the classifier.', type=str, required=True)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
-    parser.add_argument('-mf','--max_features',help='Provide path to file with comma separated maximal values \
-                                                    \nfor each feature class used to generate the classifier.', type=str)
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to longest N segments.', type=int)
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
-                                                    \nfrom all segments per alignment. No sample weighing.', action="store_true")
+                                        \nfrom all segments per alignment. No sample weighing.', action="store_true")
     parser.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier. \
                                         \nChoose between two ways of determining a positive result:\
                                         \n- by average distance of segments fom the decision boundary (dist);\
@@ -77,7 +75,7 @@ def recalculate_data_by_averaging_segments(csv_list):
         output_list.append([aln_id, averaged_results[0]*100, averaged_results[2], averaged_results[1], 'NA'])
     return output_list
 
-def load_csv_data(comm_args, csv_list, max_features=''):
+def load_csv_data(csv_list, max_features=''):
     '''
     Reads a csv outputted from MultiPhyMeas.py, entries starting with A_ and B_ are considered as + data
     and entries starting with C_ and D_ as - data. Normalizes all the data for x and y in the range 0,1
@@ -106,13 +104,10 @@ def load_csv_data(comm_args, csv_list, max_features=''):
         maxX = float(max_features[0])
         maxY = float(max_features[1])
     for tups in data_xy:
-        if comm_args.train:
-            data_xy_normx.append([float(tups[0]/maxX),float(tups[1]/maxY)])
-        elif comm_args.test:
-            data_xy_normx.append([float(tups[0])/maxX,float(tups[1])/maxY])
+        data_xy_normx.append([float(tups[0])/maxX,float(tups[1])/maxY])
     return np.asarray(data_xy_normx), np.asarray(data_identity), data_weights, maxX, maxY, aln_names
 
-def test_function(csv_list, decision_function, max_features):
+def test_function(csv_list, classifier, max_features):
     '''
     Executes prediction and distance calculation on each
     segment from the input for a given decision function.
@@ -120,8 +115,8 @@ def test_function(csv_list, decision_function, max_features):
     segment_pred_dist = {}
     for entry in csv_list:
         test_segment = np.array([float(entry[2])/float(max_features[0]),float(entry[3])/float(max_features[1])])
-        segment_pred = decision_function.predict(test_segment.reshape(1,-1))[0]
-        segment_dist = decision_function.decision_function(test_segment.reshape(1,-1))[0]
+        segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
+        segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
         if str(entry[0]) not in segment_pred_dist.keys():
             segment_pred_dist[str(entry[0])] = []
         segment_pred_dist[str(entry[0])].append([entry[4],(segment_pred,segment_dist)])
@@ -188,7 +183,6 @@ def mass_test(segment_pred_dist, grouped_data, distance_or_identity, min_thresho
             tp, tn, fp, fn = calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn)
         elif distance_or_identity == 'id':
             tp, tn, fp, fn = calc_identity_stats(grouped_data, tp, tn, fp, fn)
-        # can use bypass_zero_division if you want to remove the nans
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)
         precision = bypass_zero_division(tp,tp+fp)
@@ -282,27 +276,6 @@ def read_max_features(max_features_path):
         for first_row in csv_reader:
             return first_row
 
-def train_classifier(comm_args, X, y, maxX, maxY, penalty=10, gamma='auto', sample_weight=''):
-
-    ###   Fit the classifier   ###
-    decision_function = svm.SVC(C=penalty, gamma=gamma)
-    if sample_weight != '':
-        decision_function.fit(X, y, sample_weight=sample_weight)
-    else:
-        decision_function.fit(X, y)
-    
-    ###   Save max values of features   ###
-    with open(str(comm_args.train)+".maxvals", 'w') as max_features:
-        csv_writer = csv.writer(max_features, delimiter=',')
-        csv_writer.writerow([maxX, maxY])
-    print("Max on X axis:", maxX, "\nMax on Y axis:", maxY)
-    
-    ###   Save the classifier   ###
-    with open(comm_args.train, 'wb') as fid:
-        cPickle.dump(decision_function, fid)
-    
-    return decision_function
-
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args, parser = create_and_parse_argument_options(commandline_arguments)
@@ -314,42 +287,29 @@ def main(commandline_arguments):
     if comm_args.center_mass_segments:
         csv_list = recalculate_data_by_averaging_segments(csv_list)
 
-    ###   Testing mode   ###
-    if comm_args.test:
-        if not comm_args.max_features:
-            parser.print_help()
-            raise ValueError("In test mode providing maximal values for the classifier features is required!")
-        max_features = read_max_features(comm_args.max_features)
-        decision_function = cPickle.load(open(comm_args.test, 'rb'))
-        segment_pred_dist = test_function(csv_list, decision_function, max_features)
-        for aln in sorted(segment_pred_dist.keys()):
-            print(aln, segment_pred_dist[aln])
-        #sys.exit()
-        if comm_args.test_classifier_precision:
-            grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
-            dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
-                comm_args.test_classifier_precision, min_threshold=-1, max_threshold=0.5, step=0.1)
-            #plot_test_histograms(grouped_data)
-
-    ###   Training mode  ###
-    if comm_args.train:
-        X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(comm_args, csv_list)
-        decision_function = train_classifier(comm_args, X, y, maxX, maxY, sample_weight=sample_weight)
+    ###   Test data   ###
+    max_features = read_max_features(comm_args.max_features)
+    classifier = cPickle.load(open(comm_args.pickle, 'rb'))
+    segment_pred_dist = test_function(csv_list, classifier, max_features)
+    for aln in sorted(segment_pred_dist.keys()):
+        print(aln, segment_pred_dist[aln])
+    #sys.exit()
+    if comm_args.test_classifier_precision:
+        grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
+        dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
+            comm_args.test_classifier_precision, min_threshold=-1, max_threshold=0.5, step=0.1)
+        #plot_test_histograms(grouped_data)
 
     ###   Plot the classifier   ###
     if comm_args.plot_df:
         fig, axes = plt.subplots(1, 1, )
-        if comm_args.test:
-            X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(comm_args, csv_list, max_features=max_features)
-            if comm_args.test_classifier_precision:
-                plot_decision_function(decision_function,X,y, sample_weight, axes, fig,
-                                    "Decision function",aln_names, comm_args.test_classifier_precision, decision_levels=dist_to_se_sp_pr)
-            else:
-                plot_decision_function(decision_function,X,y, sample_weight, axes, fig,
-                                    "Decision function",aln_names, decision_levels=dist_to_se_sp_pr)
-        if comm_args.train:
-            plot_decision_function(decision_function,X,y, sample_weight, axes, fig,
-                                    "Decision function", aln_names)
+        X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(csv_list, max_features=max_features)
+        if comm_args.test_classifier_precision:
+            plot_decision_function(classifier,X,y, sample_weight, axes, fig,
+                                "Decision function",aln_names, comm_args.test_classifier_precision, decision_levels=dist_to_se_sp_pr)
+        else:
+            plot_decision_function(classifier,X,y, sample_weight, axes, fig,
+                                "Decision function",aln_names, decision_levels=dist_to_se_sp_pr)
         plt.tight_layout()
         plt.savefig(comm_args.plot_df, dpi=600, bbox_inches='tight')
 
