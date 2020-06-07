@@ -119,8 +119,6 @@ def slice_by_name(unsliced_aln_obj):
 	for entry in unsliced_aln_obj:
 		prot_list.append(entry.id.split("_")[0])
 	uniq_prot_list=set(prot_list)
-	if len(uniq_prot_list) != 2:
-		raise ValueError("For now does not support more than two groups! Offending groups are "+str(uniq_prot_list))
 	for prot in uniq_prot_list:
 		what = Bio.Align.MultipleSeqAlignment([])
 		for entry in unsliced_aln_obj:
@@ -435,6 +433,9 @@ def decision_maker(commandline_args,alignIO_out_gapped,deepestanc_to_child,aa_li
 	else:
 		sliced_alns = slice_by_name(alignIO_out)
 
+	if len(sliced_alns.keys()) != 2:
+		raise ValueError("For now does not support more than two groups! Offending groups are "+str(sliced_alns.keys()))
+
 	if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
 		return shannon_entropy(alignIO_out, aa_list, commandline_args)
 	
@@ -499,6 +500,9 @@ def main(commandline_arguments):
 	else:
 		deepestanc_to_child = {}
 		gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
+
+	if len(gapped_sliced_alns.keys()) != 2:
+		raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
 	for rand_index in range(0,10):
 		"""Every calculation and gap filling of alignment is performed 10 times.
