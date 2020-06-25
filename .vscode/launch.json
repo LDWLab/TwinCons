@@ -1,0 +1,78 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "SVM train",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_train.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBSM_onlylong.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong.png",
+				"-tp", "1",
+			]
+		},{
+			"name": "SVM test BBS",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBSM_onlylong.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_BBSMlong.png",
+				"-tcp", "dist"
+			]
+		},
+		{
+			"name": "SVM test barrel",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/barrels_cg08.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_barrels.png",
+			]
+		},{
+			"name": "SVM test ds20",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/ds20_cg08.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_ds20.png",
+			]
+		},{
+			"name": "SVM test SSUcomb",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/SSUcomb.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_SSUcomb.png",
+			]
+		},{
+			"name": "SVM test SameFold",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/Same_fold_test.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_SameFold.png",
+			]
+		}
+	]
+}
