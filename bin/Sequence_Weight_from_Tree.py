@@ -6,6 +6,8 @@ import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from io import StringIO
+from statistics import mean, stdev
+from itertools import combinations, product
 from AlignmentGroup import AlignmentGroup
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
@@ -101,10 +103,31 @@ def generate_weight_vectors(tree):
     wei_vr = []
     for leaf in sorted(dict_clades):
         #wei_vr.append((1/2**treedepths_int[dict_clades[leaf]]))        #Accounting for topology of tree
+        #print (leaf, 1/2**treedepths_int[dict_clades[leaf]])
         wei_vr.append(treedepths[dict_clades[leaf]])
         #print(leaf, treedepths[dict_clades[leaf]])
-        #print (leaf, 1/2**treedepths_int[dict_clades[leaf]])
     return wei_vr
+
+def calc_d_hat(tree, seq_names1, seq_names2):
+
+    named_intra1, intra1 = pairwise_dist(tree, seq_names1)
+    named_intra2, intra2 = pairwise_dist(tree, seq_names2)
+    named_inter_dist, inter_dist = dict(), list()
+    for p1, p2 in product(seq_names1, seq_names2):
+        d = tree.distance(p1, p2)
+        inter_dist.append(d)
+        named_inter_dist[(p1, p2)] = d
+
+    dhat = ((mean(intra1)+mean(intra2))/2)/mean(inter_dist)
+    return dhat
+
+def pairwise_dist(tree, seq_names):
+    dmat, dlist = {}, []
+    for p1, p2 in combinations(seq_names, 2):
+        d = tree.distance(p1, p2)
+        dmat[(p1, p2)] = d
+        dlist.append(d)
+    return dmat, dlist
 
 def write_group_tagged_alns(file_handle, alngroup_name, alignment):
     with open(file_handle, "w") as tagged_aln_file:
@@ -121,6 +144,7 @@ def output_split_alignments(sliced_aln_dict, comm_args):
 
 def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
+    aln_name = str(comm_args.alignment_file).split("/")[-1].replace(".fas", "")
     if comm_args.indelible_tree_file:
         indeli_trees = read_indeli_trees_file(comm_args.indelible_tree_file)
         for name,tree in indeli_trees.items():
@@ -134,24 +158,43 @@ def main(commandline_arguments):
                         tagged_aln_file.write(str(">"+str(aln_group_name)+"_"+str(entry.id)+"\n"+entry.seq+"\n"))
         sys.exit()
     alignIO_out = PhyMeas.read_align(comm_args.alignment_file)
-    #sliced_alns = PhyMeas.slice_by_name(alignIO_out)
-
     tree = tree_contruct(alignIO_out)
-    deepestanc_to_child = find_deepest_ancestors(tree)
-    sliced_dict = slice_by_anc(alignIO_out, deepestanc_to_child)
-    
+
     if comm_args.split_by_tree:
+        deepestanc_to_child = find_deepest_ancestors(tree)
+        sliced_dict = slice_by_anc(alignIO_out, deepestanc_to_child)
         if output_split_alignments(sliced_dict, comm_args):
             sys.exit()
+    else:
+        sliced_dict = PhyMeas.slice_by_name(alignIO_out)
 
-    wei_vr_dict = {}
+    # #D hat here figure out why it always ranges between 0.4-0.7
+    # seq_names = list()
+    # group_names = list()
+    # for group in sliced_dict:
+    #     group_names.append(group)
+    #     seq_names.append([x.id for x in sliced_dict[group]])
+    # dhat = calc_d_hat(tree, seq_names[0], seq_names[1])
+    # print(aln_name, "\t", ' '.join(group_names), dhat)
+    # sys.exit()
+
+    wei_vr_dict, pairwise_dict, pairwise_lists = {}, {}, {}
     for alngroup_name in sliced_dict:
         tree = tree_contruct(sliced_dict[alngroup_name])
+        seq_names = tree.get_terminals()
+        pairwise_dict[alngroup_name], pairwise_lists[alngroup_name] = pairwise_dist(tree, seq_names)
         wei_vr_dict[alngroup_name] = generate_weight_vectors(tree)
     
+    print (aln_name, end="\t")
+    for group in pairwise_lists:
+        print(group, mean(pairwise_lists[group]),stdev(pairwise_lists[group]), end="\t")
+        #print(group, [x for x in pairwise_lists[group]])
+    print()
     # for group in wei_vr_dict:
-    #     print(group, sum(wei_vr_dict[group]))
-    #     print(group, [x / max(wei_vr_dict[group]) for x in wei_vr_dict[group]])
+    #     print(group, sum(wei_vr_dict[group])/len(wei_vr_dict[group]))
+    #     print(group, [x for x in wei_vr_dict[group]])
+    #     #print(group, [x / max(wei_vr_dict[group]) for x in wei_vr_dict[group]])
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

@@ -17,12 +17,12 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('output_path', help='Path to image for output.')
 	parser.add_argument('-co', '--calculation_options', help='Options for score calculation. See README for details.', required=True, type=str)
 	parser.add_argument('-t','--threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
-	parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False)
+	parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False, default=False)
 	parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=float, default=1, required=False)
 	parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, required=False)
 	parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. Uses the output file name specified by appending .csv', required=False, action="store_true")
-	parser.add_argument('-l','--leg', help='Do not write out a legend', default=False, action="store_true")
+	parser.add_argument('-l','--legend', help='Draw a legend', default=False, action="store_true")
 	
 	#calculation_type = parser.add_mutually_exclusive_group(required=True)
 	#calculation_type.add_argument('-bl','--blosum', help='Use BLOSUM62 for calculation of scores', action="store_true")
@@ -97,11 +97,11 @@ def make_length_distr(df,comm_args,group_dict,aln_total_lengths):
 					k+=1
 	return weight_distr, length_to_weight
 
-def scatter_plot(comm_args,weight_distr):
+def scatter_plot(weight_distr, legend=False, average_weight=False):
 	'''Outputs scatter plot image with colors depending on the number of the input alignments.
 	'''
 	###   Defining Color scheme   ###
-	ax = plt.subplot()
+	fig, ax = plt.subplots(1, 1, )
 	if len(weight_distr) == 20:
 		colors = matplotlib.cm.tab20(np.linspace(0, 1, len(weight_distr)))
 	elif len(weight_distr) == 10:
@@ -130,7 +130,7 @@ def scatter_plot(comm_args,weight_distr):
 	label_order_tups,label_order = [], []
 	for file, color in zip(sorted_names,colors):
 		scaled_lengths = [n[0] for n in weight_distr[file]]
-		if comm_args.average_weight:
+		if average_weight:
 			segment_weights = [n[1]/n[2] for n in weight_distr[file]]
 		else:
 			segment_weights = [n[1] for n in weight_distr[file]]
@@ -148,18 +148,19 @@ def scatter_plot(comm_args,weight_distr):
 	ordered_handles = [handles[idx] for idx in label_order]
 
 	###   Legend block   ###
-	if not comm_args.leg:
+	if legend:
 		lgnd = plt.legend(ordered_handles,ordered_labels,bbox_to_anchor=(1.04,1), borderaxespad=0)
 		for n in range(len(weight_distr)):
 			lgnd.legendHandles[n]._sizes = [30]
-	plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
-	return True
+	return fig, ax, plt
 
 def csv_output(comm_args, file_to_data):
 	'''Writes out data used for generating the plot in a csv file.
 	'''
 	if comm_args.output_path.endswith('.png'):
 		file_for_writing = re.sub(r'.png','.csv',comm_args.output_path)
+	elif comm_args.output_path.endswith('.csv'):
+		file_for_writing = comm_args.output_path
 	else:
 		file_for_writing = comm_args.output_path+'.csv'
 
@@ -209,8 +210,14 @@ def main(commandline_args):
 	
 	df = pd.DataFrame.from_dict(group_dict)
 	weight_distr, length_to_weight = make_length_distr(df,comm_args,group_dict,aln_lengths)
-	scatter_plot(comm_args,weight_distr)
 	
+	fig, ax, plt = scatter_plot(weight_distr, legend=comm_args.legend, average_weight=comm_args.average_weight)
+	if comm_args.output_path.endswith('.png'):
+		plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+	else:
+		plt.savefig(comm_args.output_path+'.png', dpi=600, bbox_inches='tight')
+
+
 	if comm_args.csv:
 		csv_output(comm_args, length_to_weight)
 

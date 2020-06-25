@@ -1,0 +1,14 @@
+[
+    {
+        "maxX": 0.13761467889908258,
+        "maxY": 74.0992361111111
+    },
+    [
+        "./data/CSV/BBSM_onlylong.csv",
+        "./data/PKL/BBSMlong.pkl",
+        "-pd",
+        "./data/outputs/SVM/BBSMlong.png",
+        "-tp",
+        "1"
+    ]
+]
