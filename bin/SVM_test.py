@@ -165,14 +165,17 @@ def bypass_zero_division(x,y):
     else:
         return 0
 
+def eval_calc(val):
+    return math.exp(val*-1)
+
 def calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn):
     for group, alignments in grouped_data.items():
         if group == 'A' or group == 'B':
-            fn += sum(aln[0]/aln[2] <  thr for aln in alignments)
-            tp += sum(aln[0]/aln[2] >= thr for aln in alignments)
+            fn += sum(eval_calc(aln[0]/aln[2]) >  eval_calc(thr) for aln in alignments)
+            tp += sum(eval_calc(aln[0]/aln[2]) <= eval_calc(thr) for aln in alignments)
         if group == 'C' or group == 'D':
-            tn += sum(aln[0]/aln[2] <  thr for aln in alignments)
-            fp += sum(aln[0]/aln[2] >= thr for aln in alignments)
+            tn += sum(eval_calc(aln[0]/aln[2]) >  eval_calc(thr) for aln in alignments)
+            fp += sum(eval_calc(aln[0]/aln[2]) <= eval_calc(thr) for aln in alignments)
     return tp, tn, fp, fn
 
 def calc_identity_stats(grouped_data, tp, tn, fp, fn):
@@ -279,7 +282,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         import seaborn as sns
         from operator import itemgetter
         dummy_levels = dict()
-        for thr in np.arange(-0.5,1,0.1):
+        for thr in np.arange(-1,0.6,0.1):
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
@@ -290,7 +293,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
 
         count_bellow_1=0
         for tup in sorted(label_order_tups, key = itemgetter(1)):
-            if tup[1] < 0.05:
+            if tup[1] < 1:
                 count_bellow_1+=1
             label_order.append(tup[2])
         ordered_labels = [labels[idx] for idx in label_order]
@@ -361,7 +364,7 @@ def main(commandline_arguments):
     if comm_args.test_classifier_precision:
         grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist, by_group=True)
         dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
-            comm_args.test_classifier_precision, min_threshold=-1, max_threshold=0.5, step=0.1)
+            comm_args.test_classifier_precision, min_threshold=-1, max_threshold=0.6, step=0.1)
         #plot_test_histograms(grouped_data)
     else:
         grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)

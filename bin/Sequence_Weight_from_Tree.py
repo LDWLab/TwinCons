@@ -18,15 +18,20 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('alignment_file', help='Path to alignment file')
     parser.add_argument('-ind','--indelible_tree_file', help='Path to INDELible trees log file. If defined alignment_file, should lead to folder with alignments.', type=str)
-    parser.add_argument('-split','--split_by_tree', help='Split the provided alignment in two files by the deepest branching point of a constructed tree. Path for output.', type=str)
+    parser.add_argument('-split','--split_by_tree', help='Split the provided alignment in two files by the deepest branching point of a constructed tree. Path for output.', action="store_true")
+    parser.add_argument('-save','--save_split_alignments', help='Path for output of split trees', type=str)
+    parser.add_argument('-nc','--nucleotide_alignments', help='Alignments are nucleotidic', action="store_true")
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
-def tree_contruct(aln_obj, nj=False):
+def tree_contruct(aln_obj, nj=False, nucl=False):
     '''
     Constructs and returns a tree from an alignment object.
     '''
-    calculator = DistanceCalculator('blosum62')
+    if nucl:
+        calculator = DistanceCalculator('blastn')
+    else:
+        calculator = DistanceCalculator('blosum62')
     dist_mx = calculator.get_distance(aln_obj)
     constructor = DistanceTreeConstructor()
     if nj:
@@ -65,7 +70,7 @@ def find_deepest_ancestors(tree):
                     if anc not in deepestanc_to_child:
                         deepestanc_to_child[anc]=[]
                     deepestanc_to_child[anc].append(child.name)
-    
+
     return deepestanc_to_child
 
 def slice_by_anc(unsliced_aln_obj, deepestanc_to_child):
@@ -77,7 +82,8 @@ def slice_by_anc(unsliced_aln_obj, deepestanc_to_child):
     sliced_dict={}
     i = 1
     for anc in deepestanc_to_child:
-        anc_names[anc] = os.path.commonprefix(deepestanc_to_child[anc])[:-1]
+        #print(anc, os.path.commonprefix(deepestanc_to_child[anc]).replace("_",""))
+        anc_names[anc] = os.path.commonprefix(deepestanc_to_child[anc]).replace("_","")
         #In the case of no common name found between sequences from 1 group
         if os.path.commonprefix(deepestanc_to_child[anc])[:-1] is '':
             anc_names[anc] = i
@@ -135,16 +141,16 @@ def write_group_tagged_alns(file_handle, alngroup_name, alignment):
             tagged_aln_file.write(str(">"+str(alngroup_name)+"_"+str(entry.id)+"\n"+entry.seq+"\n"))
     return True
 
-def output_split_alignments(sliced_aln_dict, comm_args):
-    alignment_file_name = comm_args.alignment_file.rsplit('/',1)[1]
+def output_split_alignments(sliced_aln_dict, output_path, aln_file):
+    alignment_file_name = aln_file.rsplit('/',1)[1]
     for alngroup_name, alignment in sliced_aln_dict.items():
-        output_handle = comm_args.split_by_tree+str(alngroup_name)+"_"+alignment_file_name
+        output_handle = output_path+str(alngroup_name)+"_"+alignment_file_name
         write_group_tagged_alns(output_handle, alngroup_name, alignment)
     return True
 
 def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
-    aln_name = str(comm_args.alignment_file).split("/")[-1].replace(".fas", "")
+    aln_name = str(comm_args.alignment_file).split("/")[-1].replace(".fasta", "").replace(".fas", "")
     if comm_args.indelible_tree_file:
         indeli_trees = read_indeli_trees_file(comm_args.indelible_tree_file)
         for name,tree in indeli_trees.items():
@@ -158,25 +164,33 @@ def main(commandline_arguments):
                         tagged_aln_file.write(str(">"+str(aln_group_name)+"_"+str(entry.id)+"\n"+entry.seq+"\n"))
         sys.exit()
     alignIO_out = PhyMeas.read_align(comm_args.alignment_file)
-    tree = tree_contruct(alignIO_out)
+    if comm_args.nucleotide_alignments:
+        for sequence in alignIO_out:
+            sequence.seq = sequence.seq.back_transcribe()
+        tree = tree_contruct(alignIO_out, nucl=True)
+    else:
+        tree = tree_contruct(alignIO_out)
 
     if comm_args.split_by_tree:
         deepestanc_to_child = find_deepest_ancestors(tree)
         sliced_dict = slice_by_anc(alignIO_out, deepestanc_to_child)
-        if output_split_alignments(sliced_dict, comm_args):
+        if comm_args.save_split_alignments:
+            output_split_alignments(sliced_dict, comm_args.save_split_alignments, comm_args.alignment_file)
             sys.exit()
     else:
         sliced_dict = PhyMeas.slice_by_name(alignIO_out)
 
     # #D hat here figure out why it always ranges between 0.4-0.7
-    # seq_names = list()
-    # group_names = list()
-    # for group in sliced_dict:
-    #     group_names.append(group)
-    #     seq_names.append([x.id for x in sliced_dict[group]])
-    # dhat = calc_d_hat(tree, seq_names[0], seq_names[1])
-    # print(aln_name, "\t", ' '.join(group_names), dhat)
-    # sys.exit()
+    seq_names = list()
+    group_names = list()
+    for group in sliced_dict:
+        if group[-1] == 'b':
+            continue
+        group_names.append(group)
+        seq_names.append([x.id for x in sliced_dict[group]])
+    dhat = calc_d_hat(tree, seq_names[0], seq_names[1])
+    print(aln_name, "\t", ' '.join(group_names), dhat)
+    sys.exit()
 
     wei_vr_dict, pairwise_dict, pairwise_lists = {}, {}, {}
     for alngroup_name in sliced_dict:

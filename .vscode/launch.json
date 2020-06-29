@@ -12,9 +12,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBSM_onlylong.csv",
-				"./data/PKL/BBSMlong.pkl",
-				"-pd", "./data/outputs/SVM/BBSMlong.png",
-				"-tp", "1",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_alls.png",
+				"-tp", "1.5",
+				"-ts", "1",
 			]
 		},{
 			"name": "SVM test BBS",
@@ -26,10 +27,34 @@
 				"./data/CSV/BBSM_onlylong.csv",
 				"./data/PKL/BBSMlong.pkl",
 				"-pd", "./data/outputs/SVM/BBSMlong_vs_BBSMlong.png",
-				"-tcp", "dist"
+				"-tcp", "dist",
 			]
-		},
-		{
+		},{
+			"name": "SVM test BBS all segments",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBSM_onlylong.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_BBSMl-alls.png",
+				"-tcp", "dist",
+				"-ts", "1",
+			]
+		},{
+			"name": "SVM test rProtGB",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/rProtGB_BL_it1_cg08_newlength.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_rProtGB.png",
+				"-tcp", "dist",
+			]
+		},{
 			"name": "SVM test barrel",
 			"type": "python",
 			"request": "launch",
@@ -72,6 +97,101 @@
 				"./data/CSV/Same_fold_test.csv",
 				"./data/PKL/BBSMlong.pkl",
 				"-pd", "./data/outputs/SVM/BBSMlong_vs_SameFold.png",
+			]
+		},{
+			"name": "SVM test ECODanalog",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/ECOD_analog.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_ECODanalog.png",
+			]
+		},{
+			"name": "SVM test rProtGB alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/rProtGB_BL_it1_cg08_newlength.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_rProtGB.png",
+				"-tcp", "dist",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test barrel alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/barrels_cg08.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_barrels.png",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test ds20 alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/ds20_cg08.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_ds20.png",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test SSUcomb alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/SSUcomb.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_SSUcomb.png",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test SameFold alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/Same_fold_test.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_SameFold.png",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test ECODanalog alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/ECOD_analog.csv",
+				"./data/PKL/BBSMlong_alls.pkl",
+				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_ECODanalog.png",
+				"-ts", "1"
+			]
+		},{
+			"name": "SVM test arnapa alls",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"~/Desktop/cutarnap.csv",
+				"./data/PKL/BBSMlong.pkl",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_ctrnp.png",
 			]
 		}
 	]

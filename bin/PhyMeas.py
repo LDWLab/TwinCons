@@ -49,6 +49,8 @@ def read_align(aln_path):
 	Reads the fasta file and gets the sequences.
 	'''
 	alignments = AlignIO.read(open(aln_path), "fasta")
+	for record in alignments:
+		record.seq = record.seq.upper()
 	return alignments
 
 def count_aligned_positions(aln_obj, gap_threshold=0.1):
