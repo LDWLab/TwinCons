@@ -5,12 +5,12 @@
     },
     [
         "./data/CSV/BBSM_onlylong.csv",
-        "./data/PKL/BBSMlong_ts02.pkl",
+        "./data/PKL/BBSMlong_alls.pkl",
         "-pd",
-        "./data/outputs/SVM/BBSMlong_ts02.png",
+        "./data/outputs/SVM/BBSMlong_alls.png",
         "-tp",
-        "0.3",
+        "1.5",
         "-ts",
-        "0.2"
+        "1"
     ]
 ]
