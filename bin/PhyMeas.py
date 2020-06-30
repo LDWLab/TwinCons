@@ -25,7 +25,7 @@ def create_and_parse_argument_options(argument_list):
 	parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
 	parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
 	parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
-	parser.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', action="store_true")
+	parser.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', choices=['blastn', 'identity', 'trans'])
 	output_type_group = parser.add_mutually_exclusive_group(required=True)
 	output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
 	output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined', action="store_true")
@@ -164,13 +164,18 @@ def struc_anno_matrices (struc_anno):
 	'''Returns a log odds matrix from a given name of a PAML type matrix'''
 	return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
 
-def nucl_matrix():
+def nucl_matrix(mx_def):
 	'''Return a substitution matrix for nucleotides.
 	Should be merged with blos_matrix() intoone general matrix creation method
 	'''
-	nucl_sequence = ['A','U','G','C']
-	nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
-	#nuc_mx = np.array([[4,-5,-5,-5],[-5,4,-5,-5],[-5,-5,4,-5],[-5,-5,-5,4],])
+	nucl_sequence = ['A','U','C','G']
+	if mx_def == 'identity':
+		nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
+	elif mx_def == 'blastn':
+		nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
+	elif mx_def == 'trans':
+		nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
+
 	testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
 	baseline = float(testvr@np.array(nuc_mx)@testvr.T)
 	revtestA=np.add(np.array(nuc_mx), abs(baseline))
@@ -247,7 +252,7 @@ def compute_score(commandline_args,aln_index_dict, *args):
 		for aln_index in aln_index_dict:
 			vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
 			vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-			alnindex_score[aln_index] = vr1@nucl_matrix()@vr2.T
+			alnindex_score[aln_index] = vr1@nucl_matrix(commandline_args.nucleotide)@vr2.T
 	return alnindex_score
 
 def lookahead(iterable):
