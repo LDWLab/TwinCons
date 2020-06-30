@@ -369,6 +369,8 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
 		alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 	elif comm_args.reflected_shannon or comm_args.shannon_entropy:
 		alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
+	else:
+		alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
 
 	group_names = list(gapped_sliced_alns.keys())
 	#Open .pml file for structure coloring
@@ -468,7 +470,6 @@ def decision_maker(commandline_args,alignIO_out_gapped,deepestanc_to_child,aa_li
 				elif commandline_args.both:
 					struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
 				else:
-					parser.print_help()
 					raise ValueError("When a structure is defined, one of the matrix options are required!")
 		return compute_score(commandline_args,aln_index_dict, struc_annotation)
 	elif commandline_args.leegascuel or commandline_args.blosum or commandline_args.nucleotide:							#Case of no structure defined outputs
