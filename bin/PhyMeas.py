@@ -518,7 +518,7 @@ def main(commandline_arguments):
 		Allows us to add errorbars on the output graph."""
 		if comm_args.nucleotide:
 			#Add function to Change alignIO_out_gapped so that T -> U
-			randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,['A','U','G','C'])
+			randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,['A','U','C','G'])
 		else:
 			randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_resi_list(alignIO_out_gapped))
 	#Calculating mean and stdev per alignment position
