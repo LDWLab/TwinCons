@@ -171,27 +171,35 @@ def eval_calc(val):
 def calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn):
     for group, alignments in grouped_data.items():
         if group == 'A' or group == 'B':
-            fn += sum(eval_calc(aln[0]/aln[2]) >  eval_calc(thr) for aln in alignments)
-            tp += sum(eval_calc(aln[0]/aln[2]) <= eval_calc(thr) for aln in alignments)
+            fn += sum((aln[0]/aln[2]) >  (thr) for aln in alignments)
+            tp += sum((aln[0]/aln[2]) <= (thr) for aln in alignments)
         if group == 'C' or group == 'D':
-            tn += sum(eval_calc(aln[0]/aln[2]) >  eval_calc(thr) for aln in alignments)
-            fp += sum(eval_calc(aln[0]/aln[2]) <= eval_calc(thr) for aln in alignments)
+            tn += sum((aln[0]/aln[2]) >  (thr) for aln in alignments)
+            fp += sum((aln[0]/aln[2]) <= (thr) for aln in alignments)
     return tp, tn, fp, fn
 
-def calc_identity_stats(grouped_data, tp, tn, fp, fn):
-    for group, segments in grouped_data.items():
-        if group == 'A' or group == 'B':
-            for i in segments:
-                if i[1] == 0:
-                    fn += 1
-                else:
-                    tp += 1
-        if group == 'C' or group == 'D':
-            for i in segments:
-                if i[1] == 0:
-                    tn += 1
-                else:
-                    fp += 1
+def calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn):
+    
+    def compare_thr(thr, segments):
+        negative, positive = 0, 0
+        for i in segments:
+            if i[1][1] < thr:
+                negative += 1
+            else:
+                positive += 1
+        return (negative, positive)
+
+    for aln, segments in segment_pred_dist.items():
+        if re.match('^A_|^B_', aln) is not None:
+            if compare_thr(thr, segments)[1] == 0:
+                fn += 1
+            if compare_thr(thr, segments)[1] > 0:
+                tp += 1
+        if re.match('^C_|^D_', aln) is not None:
+            if compare_thr(thr, segments)[1] == 0:
+                tn += 1
+            if compare_thr(thr, segments)[1] > 0:
+                fp += 1
     print(tp, tn, fp, fn)
     return tp, tn, fp, fn
 
@@ -207,7 +215,7 @@ def mass_test(segment_pred_dist, grouped_data, distance_or_identity, min_thresho
         if distance_or_identity == 'dist':
             tp, tn, fp, fn = calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn)
         elif distance_or_identity == 'id':
-            tp, tn, fp, fn = calc_identity_stats(grouped_data, tp, tn, fp, fn)
+            tp, tn, fp, fn = calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn)
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)
         precision = bypass_zero_division(tp,tp+fp)
@@ -250,29 +258,14 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     vir_cmap = plt.cm.get_cmap('viridis')
 
     ###   Draws each decision level (if present) with color from the viridis colormap   ###
-    if decision_levels is not '' and distance_or_identity == 'dist':
-        draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels)
+    #if decision_levels is not '' and distance_or_identity == 'dist':
+    draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels)
 
     ###   Draws the decision function as a red line   ###
-    else:
-        axis.contour(xx, yy, Z, levels=[0],colors='r', linestyles=['-'], linewidths=0.5)
+    #else:
+    axis.contour(xx, yy, Z, levels=[0],colors='r', linestyles=['-'], linewidths=0.5)
 
     abs_length = [float(n)**2 for n in sample_weight]
-    if distance_or_identity == 'id':
-        if decision_levels is not '':
-            title +=" with tpr "+"{:2.2f}".format(decision_levels[next(iter(decision_levels))][0])\
-                    +" and tnr "+"{:2.2f}".format(decision_levels[next(iter(decision_levels))][1])\
-                    +" per alignment"
-        mappedDict = dict(zip(sorted(set(aln_names)), range(len(aln_names))))
-        aln_identities = list(map(lambda x: mappedDict[x], aln_names))
-        scatter = axis.scatter(X[:, 0], X[:, 1], c=aln_identities, alpha=0.75, s=abs_length,
-                 cmap=plt.cm.tab20, edgecolors='black')
-        inv_map = {v: k for k, v in mappedDict.items()}
-        aln_labels = list()
-        for label in scatter.legend_elements()[1]:
-            aln_labels.append(inv_map[int(re.findall(r'\d+', label)[0])])
-        plt.legend(scatter.legend_elements()[0], aln_labels,
-                    loc="upper right", title="Alignments")
 
     ###   Plot scatter of segments   ###
     if decision_levels is not '':
@@ -364,7 +357,7 @@ def main(commandline_arguments):
     if comm_args.test_classifier_precision:
         grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist, by_group=True)
         dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
-            comm_args.test_classifier_precision, min_threshold=-1, max_threshold=0.6, step=0.1)
+            comm_args.test_classifier_precision, min_threshold=-0.7, max_threshold=0.9, step=0.1)
         #plot_test_histograms(grouped_data)
     else:
         grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
