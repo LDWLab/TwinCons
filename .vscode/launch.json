@@ -5,6 +5,18 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "CalcSegm",
+			"type": "python",
+			"request": "launch",
+			"program": "${fileDirname}/CalculateSegments.py",
+			"console": "integratedTerminal",
+			"args": [
+				"~/Desktop/oldalns/",
+				"~/Desktop/cutarnap",
+				"-l", "-c", "-t" ,"2",
+				"-co", "cg_0.8", "bl"
+			]
+		},{
 			"name": "SVM train",
 			"type": "python",
 			"request": "launch",
@@ -26,8 +38,8 @@
 			"args": [
 				"./data/CSV/BBSM_onlylong.csv",
 				"./data/PKL/BBSMlong.pkl",
-				"-pd", "./data/outputs/SVM/BBSMlong_vs_BBSMlong.png",
-				"-tcp", "dist",
+				"-pd", "./data/outputs/SVM/BBSMlong_vs_BBSMlongid.png",
+				"-tcp", "id",
 			]
 		},{
 			"name": "SVM test BBS all segments",
