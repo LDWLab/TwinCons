@@ -32,8 +32,14 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
                                     \nfrom all segments per alignment.', action="store_true")
     calculate_positive = parser.add_mutually_exclusive_group(required=True)
-    calculate_positive.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier.', action="store_true")
-    calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier.', action="store_true")
+    calculate_positive.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier. \
+                                    \nChoose between two ways of determining a positive result:\
+                                    \n- by average distance of segments fom the decision boundary (dist);\
+                                    \n- by the presence of at least one positive segment (id).', choices=['dist', 'id'])
+    calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier. \
+                                    \nChoose between two ways of determining a positive result:\
+                                    \n- by average distance of segments fom the decision boundary (dist);\
+                                    \n- by the presence of at least one positive segment (id).', choices=['dist', 'id'])
     parser.add_argument('-dt', '--range_distance_thresholds', nargs=3, metavar=('Start', 'End', 'Step'), 
                                     help='To be used with -tcp. Range of distances from the decision boundary to evaluate.\
                                     \nDefault (-5, 5, 0.05).', default=[-5, 5, 0.05])
@@ -171,6 +177,16 @@ def bypass_zero_division(x,y):
 def eval_calc(val):
     return math.exp(val*-1)
 
+def calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn):
+    for group, alignments in grouped_data.items():
+        if group == 'A' or group == 'B':
+            fn += sum((aln[0]/aln[2]) <= (thr) for aln in alignments)
+            tp += sum((aln[0]/aln[2]) >  (thr) for aln in alignments)
+        if group == 'C' or group == 'D':
+            tn += sum((aln[0]/aln[2]) <= (thr) for aln in alignments)
+            fp += sum((aln[0]/aln[2]) >  (thr) for aln in alignments)
+    return tp, tn, fp, fn
+
 def compare_thr(thr, segments):
     negative, positive = 0, 0
     for i in segments:
@@ -195,7 +211,7 @@ def calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn):
     #print(tp, tn, fp, fn)
     return tp, tn, fp, fn
 
-def mass_test(segment_pred_dist, grouped_data, min_threshold=0,max_threshold=2, step=0.1):
+def mass_test(segment_pred_dist, grouped_data, distance_or_identity, min_threshold=0,max_threshold=2, step=0.1):
     '''For evaluating the decision function with 
     great number of alignments in separate groups.
     '''
@@ -204,7 +220,10 @@ def mass_test(segment_pred_dist, grouped_data, min_threshold=0,max_threshold=2, 
     dist_to_stats = {}
     for thr in np.arange(min_threshold,max_threshold,step):
         tp, tn, fp, fn = 0,0,0,0
-        tp, tn, fp, fn = calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn)
+        if distance_or_identity == 'dist':
+            tp, tn, fp, fn = calc_avedist_stats(grouped_data, thr, tp, tn, fp, fn)
+        elif distance_or_identity == 'id':
+            tp, tn, fp, fn = calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn)
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)
         precision = bypass_zero_division(tp,tp+fp)
@@ -233,11 +252,12 @@ def draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels, clean=False):
         cbar.ax.set_title('Distance')
     else:
         levels_labels = ["%.2f, %.2f, %.2f" %decision_levels[thr] for thr in sorted(decision_levels.keys())]
+        #levels_labels_csv = [decision_levels[thr] for thr in sorted(decision_levels.keys())]
         cbar.set_ticklabels(["%.1f %s" % (thr,lev) for lev,thr in zip(levels_labels, sorted(decision_levels.keys()))])
         cbar.ax.set_title('Dist  tpr, tnr, prec', x=5)
     return True
 
-def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, aln_names, label_order_tups=None, cms_or_identity=False, decision_levels=''):
+def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, aln_names, label_order_tups=None, distance_or_identity='', decision_levels=''):
     '''
     Plots the data and the decision function. Besides the classifier function, takes in the sample weights
     and plots it as a size of the datapoints. If they are different than 1.
@@ -276,12 +296,12 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         handles, labels = axis.get_legend_handles_labels()
 
         count_bellow_1=0
-        if cms_or_identity:
+        if distance_or_identity == "dist":
             for tup in sorted(label_order_tups, key = itemgetter(1)):
                 if tup[1] < 1:
                     count_bellow_1+=1
                 label_order.append(tup[2])
-        else:
+        elif distance_or_identity == "id":
             for tup in sorted(label_order_tups, key = itemgetter(1), reverse=True):
                 if tup[1] > 0:
                     count_bellow_1+=1
@@ -305,16 +325,19 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     axis.set_title(title)
     return True
 
+def read_max_features(max_features_path):
+    with open(max_features_path) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for first_row in csv_reader:
+            return first_row
+
 def read_features(features_path):
     with open(features_path) as f:
         data = json.load(f)
     return data[1], [data[0]["maxX"],data[0]["maxY"]]
 
-def write_aln_rows(segments, csv_writer, aln):
-    for segment in segments:
-        if segment[1][0] != 0:
-            csv_writer.writerow([aln, segment[1][1], segment[0], math.exp(segment[1][1]*-1)])
-    return True
+def output_significant_results():
+    pass
 
 def main(commandline_arguments):
     '''Main entry point'''
@@ -334,7 +357,8 @@ def main(commandline_arguments):
 
     if comm_args.test_classifier_precision:
         grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist, by_group=True)
-        dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data,
+        dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data, 
+            comm_args.test_classifier_precision, 
             min_threshold=float(comm_args.range_distance_thresholds[0]), 
             max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
             step=float(comm_args.range_distance_thresholds[2]))
@@ -342,9 +366,6 @@ def main(commandline_arguments):
         roc_stats = [(thr,lev) for lev,thr in zip(levels_labels_csv, sorted(dist_to_se_sp_pr.keys()))]
         with open(comm_args.output_path, mode ="w") as output_csv:
             csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
-            for aln, segments in segment_pred_dist.items():
-                write_aln_rows(segments, csv_writer, aln)
             csv_writer.writerow(['ROC stats'])
             csv_writer.writerow(['Distance from boundary', 'TPR', 'TNR', 'PREC'])
             for row in roc_stats:
@@ -352,23 +373,32 @@ def main(commandline_arguments):
     if comm_args.test_query_alignments:
         alnid_with_evalue = list()
         alnid_to_eval = dict()
-        i = 0
-        if comm_args.center_mass_segments:
+        if comm_args.test_query_alignments == "dist":
+            i=0
             grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
-            for aln in sorted(grouped_data.keys()):
-                eval = math.exp(grouped_data[aln][0][0]*-1)
-                alnid_to_eval[aln] = eval
-                alnid_with_evalue.append((aln, eval, i))
-                i+=1
-        with open(comm_args.output_path, mode ="w") as output_csv:
-            csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
-            for aln, segments in segment_pred_dist.items():
-                segment_id = compare_thr(0, segments)
-                alnid_with_evalue.append((aln, segment_id[1], i))
-                alnid_to_eval[aln] = segment_id[1]
-                i+=1
-                write_aln_rows(segments, csv_writer, aln)
+            with open(comm_args.output_path, mode ="w") as output_csv:
+                csv_writer = csv.writer(output_csv)
+                csv_writer.writerow(['Alignment name', 'E-value'])
+                for aln in sorted(grouped_data.keys()):
+                    eval = math.exp((grouped_data[aln][0][0]/grouped_data[aln][0][2])*-1)
+                    csv_writer.writerow([aln, eval])
+                    alnid_to_eval[aln] = eval
+                    alnid_with_evalue.append((aln, eval, i))
+                    i+=1
+        elif comm_args.test_query_alignments == "id":
+            i = 0
+            with open(comm_args.output_path, mode ="w") as output_csv:
+                csv_writer = csv.writer(output_csv)
+                csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position'])
+                for aln, segments in segment_pred_dist.items():
+                    segment_id = compare_thr(0, segments)
+                    alnid_with_evalue.append((aln, segment_id[1], i))
+                    alnid_to_eval[aln] = segment_id[1]
+                    i+=1
+                    for segment in segments:
+                        if segment[1][0] != 0:
+                            csv_writer.writerow([aln, segment[1][1], segment[0]])
+
 
     ###   Plot the classifier   ###
     if comm_args.plot_df:
@@ -379,17 +409,17 @@ def main(commandline_arguments):
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
                                 plot_title, aln_names, 
                                 decision_levels=dist_to_se_sp_pr, 
-                                cms_or_identity=comm_args.center_mass_segments)
+                                distance_or_identity=comm_args.test_classifier_precision)
         elif comm_args.test_query_alignments:
             aln_names_eval = list()
             for alnid in aln_names:
-                if comm_args.center_mass_segments:
-                    aln_names_eval.append(("{:2.1e}".format(alnid_to_eval[alnid])+" "+alnid[:15]))
-                else:
+                if comm_args.test_query_alignments == "id":
                     aln_names_eval.append((str(alnid_to_eval[alnid])+" "+alnid[:15]))
+                elif comm_args.test_query_alignments == "dist":
+                    aln_names_eval.append(("{:2.1e}".format(alnid_to_eval[alnid])+" "+alnid[:15]))
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
                                 plot_title,aln_names_eval,label_order_tups=alnid_with_evalue,
-                                cms_or_identity=comm_args.center_mass_segments)
+                                distance_or_identity=comm_args.test_query_alignments)
         plt.tight_layout()
         plt.savefig(comm_args.plot_df, dpi=600, bbox_inches='tight')
 
