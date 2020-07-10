@@ -2,17 +2,18 @@
 """Calculate importance of sequences based on phylogenetic tree."""
 
 import os, re, sys, Bio.Align, argparse
-import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from io import StringIO
+from numpy.random import choice
+from collections import Counter
 from statistics import mean, stdev
 from itertools import combinations, product
-from AlignmentGroup import AlignmentGroup
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
 import TwinCons
+from AlignmentGroup import AlignmentGroup
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -21,25 +22,72 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-split','--split_by_tree', help='Split the provided alignment in two files by the deepest branching point of a constructed tree. Path for output.', action="store_true")
     parser.add_argument('-save','--save_split_alignments', help='Path for output of split trees', type=str)
     parser.add_argument('-nc','--nucleotide_alignments', help='Alignments are nucleotidic', action="store_true")
+    parser.add_argument('-d','--dhat', help='Calculate D average.', action="store_true")
+    parser.add_argument('-w','--weight_by_tree', help='Weight sequences by tree topology.', action="store_true")
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
-def tree_contruct(aln_obj, nj=False, nucl=False):
+def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosum62'):
     '''
     Constructs and returns a tree from an alignment object.
     '''
     if nucl:
-        calculator = DistanceCalculator('blastn')
+        if calc_mx == 'blosum62':
+            calc_mx = 'blastn'
+        calculator = DistanceCalculator(calc_mx)
     else:
-        calculator = DistanceCalculator('blosum62')
+        calculator = DistanceCalculator(calc_mx)
     dist_mx = calculator.get_distance(aln_obj)
     constructor = DistanceTreeConstructor()
     if nj:
         tree = constructor.nj(dist_mx)
     else:
         tree = constructor.upgma(dist_mx)
-    tree.ladderize()
+    if ladderize:
+        tree.ladderize()
     return tree
+
+def generate_sequence_sampled_from_alignment(aln_obj):
+    outseq = ''
+    i = 0
+    while i < len(aln_obj[0]):
+        aa_list = list(set(aln_obj[:, i]))
+        distribution = Counter(aln_obj[:, i])
+        choice_distr = []
+        for aa in aa_list:
+            choice_distr.append(distribution[aa]/len(aln_obj[:, i]))
+        outseq += choice(aa_list)
+        i+=1
+    return outseq
+
+def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='ident', repeat=1000, nucl=False):
+    alg_types = ['voronoi', 'pairwise']
+    if algorithm not in alg_types:
+        raise ValueError("Invalid algorithm type. Expected one of: %s" % alg_types)
+    i = 0
+    if algorithm == 'voronoi':
+        calculator = DistanceCalculator(calc_mx)
+        convergence_vr = [0] * len(aln_obj)
+        while i < repeat:
+            test_seq = generate_sequence_sampled_from_alignment(aln_obj)
+            wei_vr = list()
+            for seq_obj in aln_obj:
+                wei_vr.append(calculator._pairwise(seq_obj.seq, test_seq))
+            closest_seq = min(wei_vr)
+            closest_sequences = [i for i, j in enumerate(wei_vr) if j == closest_seq]
+            for pos in closest_sequences:
+                convergence_vr[pos] += 1/len(closest_sequences)
+            i += 1
+        return [i/sum(convergence_vr) for i in convergence_vr]
+    if algorithm == 'pairwise':
+        tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
+        distance_sums = list()
+        for seq_obj in aln_obj:
+            curr_seq_dist = 0
+            for seq_obj2 in aln_obj:
+                curr_seq_dist += tree.distance(seq_obj.id, seq_obj2.id)
+            distance_sums.append(curr_seq_dist)
+        return [i/sum(distance_sums) for i in distance_sums]
 
 def read_indeli_trees_file(file_path):
     '''Reads indelible trees.txt and outputs a dictionary with keys the REPs
@@ -111,7 +159,7 @@ def generate_weight_vectors(tree):
         #wei_vr.append((1/2**treedepths_int[dict_clades[leaf]]))        #Accounting for topology of tree
         #print (leaf, 1/2**treedepths_int[dict_clades[leaf]])
         wei_vr.append(treedepths[dict_clades[leaf]])
-        #print(leaf, treedepths[dict_clades[leaf]])
+        print(leaf, treedepths[dict_clades[leaf]])
     return wei_vr
 
 def calc_d_hat(tree, seq_names1, seq_names2):
@@ -167,9 +215,9 @@ def main(commandline_arguments):
     if comm_args.nucleotide_alignments:
         for sequence in alignIO_out:
             sequence.seq = sequence.seq.back_transcribe()
-        tree = tree_contruct(alignIO_out, nucl=True)
+        tree = tree_construct(alignIO_out, nucl=True)
     else:
-        tree = tree_contruct(alignIO_out)
+        tree = tree_construct(alignIO_out)
 
     if comm_args.split_by_tree:
         deepestanc_to_child = find_deepest_ancestors(tree)
@@ -178,23 +226,28 @@ def main(commandline_arguments):
             output_split_alignments(sliced_dict, comm_args.save_split_alignments, comm_args.alignment_file)
             sys.exit()
     else:
-        sliced_dict = TwinCons.slice_by_name(alignIO_out)
+        sliced_dict = slice_by_name(alignIO_out)
 
-    # #D hat here figure out why it always ranges between 0.4-0.7
-    seq_names = list()
-    group_names = list()
-    for group in sliced_dict:
-        if group[-1] == 'b':
-            continue
-        group_names.append(group)
-        seq_names.append([x.id for x in sliced_dict[group]])
-    dhat = calc_d_hat(tree, seq_names[0], seq_names[1])
-    print(aln_name, "\t", ' '.join(group_names), dhat)
-    sys.exit()
+    if comm_args.dhat:
+        # #D hat here figure out why it always ranges between 0.4-0.7
+        seq_names = list()
+        group_names = list()
+        for group in sliced_dict:
+            if group[-1] == 'b':
+                continue
+            group_names.append(group)
+            seq_names.append([x.id for x in sliced_dict[group]])
+        dhat = calc_d_hat(tree, seq_names[0], seq_names[1])
+        named_intra1, intra1 = pairwise_dist(tree, seq_names[0])
+        named_intra2, intra2 = pairwise_dist(tree, seq_names[1])
+        print(aln_name, "\t", ' '.join(group_names), dhat)
+        print(named_intra1, intra1)
+        print(named_intra2, intra2)
+        sys.exit()
 
     wei_vr_dict, pairwise_dict, pairwise_lists = {}, {}, {}
     for alngroup_name in sliced_dict:
-        tree = tree_contruct(sliced_dict[alngroup_name])
+        tree = tree_construct(sliced_dict[alngroup_name])
         seq_names = tree.get_terminals()
         pairwise_dict[alngroup_name], pairwise_lists[alngroup_name] = pairwise_dist(tree, seq_names)
         wei_vr_dict[alngroup_name] = generate_weight_vectors(tree)

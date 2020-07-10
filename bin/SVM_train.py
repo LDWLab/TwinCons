@@ -18,7 +18,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('output_path', help='Output path', type=str)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
-    parser.add_argument('-tp','--penalty', help='Penalty for training algorithm', type=float, default=10)
+    parser.add_argument('-tp','--penalty', help='Penalty for training algorithm', type=float, default=1)
     parser.add_argument('-k','--kernel', help='Kernel for the training algorithm', type=str, 
                                             choices=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], default='rbf')
     parser.add_argument('-g','--gamma', help='Gamma function for training algorithm', \

@@ -45,24 +45,36 @@ Finally we will try to map the score for each position in a 3D object, by produc
 
 Sample output
 
-<img src="./bin/outputs/SVG/uL02b-uL02c.svg?sanitize=true">
+<img src="./data/outputs/SVG/uL02b-uL02c.svg?sanitize=true">
 
 # Multiple alignment analysis
 
-Executes the previous code for a given folder with sequence alignments. Calculates length, weight, normalized lengths and positions of high scoring segments from the results of PhyMeas.
+CalculateSegments.py executes the TwinCons.py code for a given folder with sequence alignments. Calculates length, weight, normalized lengths and positions of high scoring segments from the results of TwinCons.
 
 Tries to guess the type of comparison and color code the included datasets. For lower number of alignments (up to 20) applies different color for each alignment. For greater number of alignments tagged in different groups (e.g. A_alignment-nameX.fas, B_alignment-nameY.fas and so on), uses the viridis colormap to color each group of alignments together. For exactly 10 alignments in a folder assumes they are ordered by similarity and colors them with a Purple Green gradient.
 
-Can pass all options for calculation already present in PhyMeas with the option -co. <span style="color:red">However, as of now it does not support structure mapping of scores or using structure defined matrices</span>. 
+Can pass all options for calculation already present in TwinCons with the option -co. <span style="color:red">However, as of now it does not support structure mapping of scores or using structure defined matrices</span>. 
 
-It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed within single quotes after the flag -co without the dashes and underscore for flags with parameters. For example:
+It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed as separate arguments after the flag -co without the dashes and underscore for flags with parameters. -co should be the last argument passed to CalculateSegments.py since any argument following -co will be passed to TwinCons.py. For example:
 
-	-co 'cg_0.9 phy bl'
+	./bin/CalculateSegments.py ./folder_with_alignments/ ./output_file -c -t 1 -co cg_0.9 phy bl
 
-One of [**-lg**, **-bl**, **-e**, **-c**] is required to run properly.
-
-Can skip outputting a legend in the image with the flag -l; recommended with datasets involving many (above 20) alignments.
 
 Sample output:
 
-<img src="./bin/outputs/PNG/longtest_it1nouS14.png">
+<img src="./data/CSV/BBSMl_cg08_lt1.png">
+
+# Analyzing TWC results
+
+## Training a classifier
+
+<img src="./data/outputs/SVM/BBSMl_alls.png">
+
+## Testing a classifier
+
+### Average distance
+In the case of large segments there will be few segments and they will be far away from the boundary => cost nearing 0. In the case of many small segments their distance to the boundary will be accumulated resulting in big negative number (larger than any segment can attain on it's own) => cost nearing infinity.
+
+### Identifying significant segments
+
+<img src="./data/outputs/SVM/BBSMl-alls_vs_BBSMl-alls.png">

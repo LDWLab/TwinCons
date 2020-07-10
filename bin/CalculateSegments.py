@@ -12,16 +12,23 @@ from scipy import stats
 from operator import itemgetter
 
 def create_and_parse_argument_options(argument_list):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('alignment_path', help='Path to folder with alignment files.')
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    input_path = parser.add_mutually_exclusive_group(required=True)
+    input_path.add_argument('-a', '--alignment_path', help='Path to folder with alignment files.')
+    input_path.add_argument('-twc', '--twincons_path', help='Path to folder with csv output files from TwinCons.py')
     parser.add_argument('output_path', help='Path to image for output.')
-    parser.add_argument('-co', '--calculation_options', help='Options for score calculation. See README for details.', required=True, nargs='+')
-    parser.add_argument('-t','--length_threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=1, required=False)
-    parser.add_argument('-avew','--average_weight', help='Instead of plotting total weight per segment, plot average weight', action="store_true", required=False, default=False)
-    parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.', type=float, default=1, required=False)
-    parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
-    parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. Uses the output file name specified by appending .csv', required=False, action="store_true")
-    parser.add_argument('-l','--legend', help='Draw a legend', default=False, action="store_true")
+    parser.add_argument('-t','--length_threshold', help='Threshold for consecutive low scores that split positive segments.\
+                                                \nDefault: 2', type=int, default=2)
+    parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.\
+                                                \nDefault: 1', type=float, default=1)
+    parser.add_argument('-avew','--average_weight', help='Use average weight for segments, instead of using their total weight.', action="store_true", default=False)
+    parser.add_argument('-np','--treat_highly_negative_as_conserved', help='Treat low scoring positions as conserved for segment calculation. \
+                                                \nConsiders the absolute for negative positions when comparing with intensity threshold.', action="store_true", default=False)
+    parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. \
+                                                \nUses the output file name specified by appending .csv', action="store_true")
+    parser.add_argument('-l','--legend', help='Draw a legend.', default=False, action="store_true")
+    parser.add_argument('-co', '--calculation_options', help='Options for TwinCons calculation. See README for details.', nargs='+')
+    #parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
@@ -102,16 +109,20 @@ def csv_output(output_path, alns_to_segment_stats):
                 csv_writer.writerow([file, one_segment[0], one_segment[1],one_segment[2], aln_pos])
     return True
 
-def split_by_thresholds(score_list, intensity_thr, length_low):
+def split_by_thresholds(score_list, intensity_thr, length_low, treat_highly_negative_as_conserved=False):
     '''Takes in list with alignment positions and scores 
     returns a list of list with segments split by thresholds
     '''
     low_count, high_count = 0, 0
     split_by = list()
     for i in range(len(score_list)):
-        if score_list[i][1] < intensity_thr:
+        if treat_highly_negative_as_conserved:
+            test_score = abs(score_list[i][1])
+        else:
+            test_score = score_list[i][1]
+        if test_score < intensity_thr:
             low_count += 1
-        if score_list[i][1] >= intensity_thr:
+        if test_score >= intensity_thr:
             high_count += 1
             low_count = 0
         if low_count >= length_low and high_count != 0:
@@ -120,7 +131,7 @@ def split_by_thresholds(score_list, intensity_thr, length_low):
     segments = [score_list[i : j] for i, j in zip([0] + split_by, split_by + [None])] 
     return segments
 
-def calculate_segment_stats(unfiltered_segment_list, thr, aln_length):
+def calculate_segment_stats(unfiltered_segment_list, thr, aln_length, treat_highly_negative_as_conserved=False):
     segment_stats = list()
     for unf_segment in unfiltered_segment_list:
         weight = 0
@@ -129,48 +140,81 @@ def calculate_segment_stats(unfiltered_segment_list, thr, aln_length):
             continue
         segment = unf_segment[res[0]:res[len(res)-1]+1]
         for pos in segment:
-           if pos[1] > thr:
-               weight += pos[1]
+            if treat_highly_negative_as_conserved:
+                pos_score = abs(pos[1])
+            else:
+                pos_score = pos[1]
+            if pos_score > thr:
+               weight += pos_score
         segment_stats.append((len(segment), len(segment)/aln_length, weight, (segment[0][0],segment[len(segment)-1][0])))
     return segment_stats
+
+def run_twincons(file_dir, calculation_options):
+    ###   Constructing arguments for TwinCons   ###
+    list_for_twincons = ['-a',file_dir, '-r']
+    for opt in calculation_options:
+        if re.search(r'_', opt):
+            list_for_twincons.append('-'+opt.split('_')[0])
+            list_for_twincons.append(opt.split('_')[1])
+        else:
+            list_for_twincons.append('-'+opt)
+    print(list_for_twincons)
+    
+    ###   Executing TwinCons   ###
+    return TwinCons.main(list_for_twincons)
+
+def load_twincons_csv(file_dir):
+    first_line = True
+    alnindex_score = dict()
+    with open(file_dir) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for row in csv_reader:
+            if first_line:
+                first_line = False
+                continue
+            alnindex_score[row[0]] = float(row[1])
+    return alnindex_score, len(alnindex_score), dict()
 
 def main(commandline_args):
     comm_args = create_and_parse_argument_options(commandline_args)
     alns_to_segment_stats = dict()
-    for file in os.listdir(comm_args.alignment_path):
-        if not re.findall(r'(.*\/)(.*)(\.fasta|\.fas|\.fa)',comm_args.alignment_path+file):
-            print("Skipping non-alignment file "+file)
+    if comm_args.alignment_path:
+        if not comm_args.calculation_options:
+            raise IOError("Must specify twincons options when running on alignment files!")
+        file_dir = comm_args.alignment_path
+        regex = r'(.*\/)(.*)(\.fasta|\.fas|\.fa)'
+    if comm_args.twincons_path:
+        file_dir = comm_args.twincons_path
+        regex = r'(.*\/)(.*)(\.csv)'
+    
+    for file in os.listdir(file_dir):
+        if not re.findall(regex, file_dir+file):
             continue
-        
-        ###   Constructing arguments for TwinCons   ###
-        out_dict={}
-        list_for_twincons = ['-a',comm_args.alignment_path+file, '-r']
-        for opt in comm_args.calculation_options:
-            if re.search(r'_', opt):
-                list_for_twincons.append('-'+opt.split('_')[0])
-                list_for_twincons.append(opt.split('_')[1])
-            else:
-                list_for_twincons.append('-'+opt)
-        print(list_for_twincons)
-        
-        ###   Executing TwinCons   ###
-        alnindex_score, sliced_alns, number_of_aligned_positions, gap_mapping = TwinCons.main(list_for_twincons)
-        inv_map = dict()
-        for k, v in gap_mapping.items():
-            if v in inv_map.keys():
-                continue
-            inv_map[v] = k
-        
+        if comm_args.alignment_path:
+            alnindex_score, sliced_alns, number_of_aligned_positions, gap_mapping = run_twincons(file_dir+file, comm_args.calculation_options)
+        if comm_args.twincons_path:
+            alnindex_score, number_of_aligned_positions, gap_mapping = load_twincons_csv(file_dir+file)
         ###   Calculating segment stats  ###
+        out_dict = dict()
         score_list = list()
         for x in alnindex_score.keys():
-            pos = x
-            if len(inv_map) > 0:
-                pos = inv_map[x]
-            score_list.append((pos,alnindex_score[x][0]))
-            out_dict[pos] = alnindex_score[x][0]
-        unfiltered_segment_list = split_by_thresholds(score_list, comm_args.intensity_threshold, comm_args.length_threshold+1)
-        segment_stats = calculate_segment_stats(unfiltered_segment_list, comm_args.intensity_threshold, number_of_aligned_positions)
+            position = x
+            if comm_args.alignment_path:
+                pos_score = alnindex_score[x][0]
+            if comm_args.twincons_path:
+                pos_score = alnindex_score[x]
+            if len(gap_mapping) > 0:
+                position = gap_mapping[x]
+            score_list.append((position, pos_score))
+            out_dict[position] = pos_score
+        unfiltered_segment_list = split_by_thresholds(score_list, 
+                                                      comm_args.intensity_threshold, 
+                                                      comm_args.length_threshold, 
+                                                      treat_highly_negative_as_conserved=comm_args.treat_highly_negative_as_conserved)
+        segment_stats = calculate_segment_stats(unfiltered_segment_list, 
+                                                comm_args.intensity_threshold, 
+                                                number_of_aligned_positions, 
+                                                treat_highly_negative_as_conserved=comm_args.treat_highly_negative_as_conserved)
         alns_to_segment_stats[file.split('.')[0]] = segment_stats
 
     fig, ax, plt = scatter_plot(alns_to_segment_stats, legend=comm_args.legend, average_weight=comm_args.average_weight)
