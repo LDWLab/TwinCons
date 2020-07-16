@@ -36,7 +36,7 @@ def create_and_parse_argument_options(argument_list):
     calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier.', action="store_true")
     parser.add_argument('-dt', '--range_distance_thresholds', nargs=3, metavar=('Start', 'End', 'Step'), 
                                     help='To be used with -tcp. Range of distances from the decision boundary to evaluate.\
-                                    \nDefault (-5, 5, 0.05).', default=[-5, 5, 0.05])
+                                    \nDefault (-10, 10, 0.05).', default=[-10, 10, 0.05])
     commandline_args = parser.parse_args(argument_list)
     return commandline_args, parser
 

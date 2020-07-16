@@ -19,7 +19,7 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-o','--output_path', help='Output path ')
     input_file = parser.add_mutually_exclusive_group(required=True)
-    input_file.add_argument('-a','--alignment_path', help='Path to alignment file')
+    input_file.add_argument('-a','--alignment_path', nargs='+', help='Path to alignment files', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
     parser.add_argument('-cg','--cut_gaps', help='Algorithm will cut alignment gaps with more than specified value gaps. Decimal format, eg 0.9', type=float)
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
@@ -45,18 +45,69 @@ def create_and_parse_argument_options(argument_list):
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
-def read_align(aln_path):
+def required_length(nmin,nmax):
+    '''Limiter for passed arguments.
     '''
-    Reads the fasta file and gets the sequences.
+    class RequiredLength(argparse.Action):
+        def __call__(self, parser, args, values, option_string=None):
+            if not nmin<=len(values)<=nmax:
+                msg='argument "{f}" requires between {nmin} and {nmax} arguments'.format(
+                    f=self.dest,nmin=nmin,nmax=nmax)
+                raise argparse.ArgumentTypeError(msg)
+            setattr(args, self.dest, values)
+    return RequiredLength
+
+def read_align(aln_path):
+    '''Reads the fasta file and gets the sequences.
     '''
     alignments = AlignIO.read(open(aln_path), "fasta")
     for record in alignments:
         record.seq = record.seq.upper()
     return alignments
 
-def count_aligned_positions(aln_obj, gap_threshold=0.1):
+def deletefile(file_loc):
+    '''Tries to delete provided file path.
     '''
-    Counts how many positions are aligned (less than gap_threshold gaps)
+    import subprocess
+    try:
+        subprocess.run(['rm', file_loc], check = True)
+    except subprocess.CalledProcessError:
+        raise IOError("When using mafft for merging two alignments working directory must be writable!")
+
+def run_mafft(aln_paths):
+    '''Tags separate alignments for TwinCons and merges them with mafft --merge.
+    '''
+    import warnings
+    tempfiles = ['./tempsubMSAtable', './tempconcatfasta.fas', './tempmergedfasta.fas']
+    for tempfile in tempfiles:
+        if os.path.isfile(tempfile):
+            warnings.warn(f"When using mafft for merging two alignments working directory must be free of file {tempfile}. Trying to delete the file.")
+            deletefile(tempfile)
+    list_with_alns = [read_align(aln_path) for aln_path in aln_paths]
+    concatedfasta_handle = open("./tempconcatfasta.fas", "a")
+    mergertable_ix = list()
+    previous_len = 0
+    for i, aln in enumerate(list_with_alns, 1):
+        mergertable_ix.append((aln_paths[i-1],len(aln),previous_len))
+        previous_len = len(aln)
+        for seq in aln:
+            seq.id = str(i)+"_"+seq.id
+        AlignIO.write(aln, concatedfasta_handle, "fasta")
+    concatedfasta_handle.close()
+    mergertable = open("./tempsubMSAtable", "a")
+    for aln_len in mergertable_ix:
+        seq_list = [str(x) for x in list(range(aln_len[2]+1,aln_len[2]+aln_len[1]+1))]
+        seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
+        mergertable.write(" "+seq_nums)
+    mergertable.close()
+    os.system("mafft --quiet --merge ./tempsubMSAtable ./tempconcatfasta.fas > ./tempmergedfasta.fas")
+    merged_tagged_aln = read_align("./tempmergedfasta.fas")
+    for tempfile in tempfiles:
+        deletefile(tempfile)
+    return merged_tagged_aln
+
+def count_aligned_positions(aln_obj, gap_threshold=0.1):
+    '''Counts how many positions are aligned (less than gap_threshold gaps)
     '''
     number_seqs = len(aln_obj)
     aligned_positions = 0
@@ -68,8 +119,7 @@ def count_aligned_positions(aln_obj, gap_threshold=0.1):
     return aligned_positions
 
 def remove_extremely_gapped_regions(align, gap_perc, gap_mapping):
-    '''
-    Removes columns of alignment with more than gap_perc gaps.
+    '''Removes columns of alignment with more than gap_perc gaps.
     '''
     n = float(len(align[0]))
     i, x = 0, 0
@@ -450,10 +500,12 @@ def decision_maker(commandline_args, alignIO_out_gapped, deepestanc_to_child, aa
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
-    if comm_args.alignment_path:
-        alignIO_out_gapped=read_align(comm_args.alignment_path)
-    elif comm_args.alignment_string:
+    if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
+    elif len(comm_args.alignment_path) == 1:
+        alignIO_out_gapped=read_align(comm_args.alignment_path)
+    elif len(comm_args.alignment_path) == 2:
+        alignIO_out_gapped = run_mafft(comm_args.alignment_path)
     randindex_norm = defaultdict(dict)
     gp_mapping = dict()
     if comm_args.cut_gaps:
@@ -463,6 +515,8 @@ def main(commandline_arguments):
         gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.cut_gaps), gp_mapping)
     else:
         number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
+        for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
+            gp_mapping[i] = i
     if comm_args.phylo_split:
         tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
         deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)

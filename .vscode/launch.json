@@ -5,6 +5,13 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Python: Current File",
+			"type": "python",
+			"request": "launch",
+			"program": "${file}",
+			"console": "integratedTerminal"
+		},
+		{
 			"name": "SVM train",
 			"type": "python",
 			"request": "launch",
@@ -13,10 +20,14 @@
 			"args": [
 				"./data/CSV/BBSMl_cg08_lt1.csv",
 				"./data/PKL/BBSMl_cms.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl_cms.png",
-				"-tp", "1", "-cms",
+				"-pd",
+				"./data/outputs/SVM/BBSMl_cms.png",
+				"-tp",
+				"1",
+				"-cms",
 			]
-		},{
+		},
+		{
 			"name": "SVM train alls",
 			"type": "python",
 			"request": "launch",
@@ -25,11 +36,15 @@
 			"args": [
 				"./data/CSV/BBSMl_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl_alls.png",
-				"-tp", "1",
-				"-ts", "1",
+				"-pd",
+				"./data/outputs/SVM/BBSMl_alls.png",
+				"-tp",
+				"1",
+				"-ts",
+				"1",
 			]
-		},{
+		},
+		{
 			"name": "SVM test BBS",
 			"type": "python",
 			"request": "launch",
@@ -39,10 +54,17 @@
 				"./data/CSV/BBSMl_cg08_lt1.csv",
 				"~/Desktop/BBSMlong_vs_BBSMlong_cms.csv",
 				"./data/PKL/BBSMl_cms.pkl",
-				"-pd", "~/Desktop/BBSMlong_vs_BBSMlong_cms.png",
-				"-tcp", "-cms", "-dt", "-1", "1", "0.1"
+				"-pd",
+				"~/Desktop/BBSMlong_vs_BBSMlong_cms.png",
+				"-tcp",
+				"-cms",
+				"-dt",
+				"-1",
+				"1",
+				"0.1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test rProtGB",
 			"type": "python",
 			"request": "launch",
@@ -51,10 +73,13 @@
 			"args": [
 				"./data/CSV/rProtGB_cg08_lt1.csv",
 				"./data/PKL/BBSMl.pkl",
-				"-pd", "./data/outputs/SVM/BBSMlong_vs_rProtGB.png",
-				"-tcp", "id",
+				"-pd",
+				"./data/outputs/SVM/BBSMlong_vs_rProtGB.png",
+				"-tcp",
+				"id",
 			]
-		},{
+		},
+		{
 			"name": "SVM test IND",
 			"type": "python",
 			"request": "launch",
@@ -63,10 +88,13 @@
 			"args": [
 				"./data/CSV/IND_cg08_lt1.csv",
 				"./data/PKL/BBSMl.pkl",
-				"-pd", "./data/outputs/SVM/BBSMlong_vs_IND.png",
-				"-tcp", "id",
+				"-pd",
+				"./data/outputs/SVM/BBSMlong_vs_IND.png",
+				"-tcp",
+				"id",
 			]
-		},{
+		},
+		{
 			"name": "SVM test PRST",
 			"type": "python",
 			"request": "launch",
@@ -75,10 +103,13 @@
 			"args": [
 				"./data/CSV/PRST_cg08_lt1.csv",
 				"./data/PKL/BBSMl.pkl",
-				"-pd", "./data/outputs/SVM/BBSMlong_vs_PRST.png",
-				"-tcp", "id",
+				"-pd",
+				"./data/outputs/SVM/BBSMlong_vs_PRST.png",
+				"-tcp",
+				"id",
 			]
-		},{
+		},
+		{
 			"name": "SVM test query",
 			"type": "python",
 			"request": "launch",
@@ -88,10 +119,12 @@
 				"./data/CSV/query_set_cg08_lt1.csv",
 				"~/Desktop/BBSMlong_vs_query.csv",
 				"./data/PKL/BBSMl.pkl",
-				"-pd", "~/Desktop/BBSMlong_vs_query.png",
+				"-pd",
+				"~/Desktop/BBSMlong_vs_query.png",
 				"-tqa"
 			]
-		},{
+		},
+		{
 			"name": "SVM test BBS alls",
 			"type": "python",
 			"request": "launch",
@@ -100,11 +133,15 @@
 			"args": [
 				"./data/CSV/BBSMl_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_BBSMl-alls.png",
-				"-tcp", "id",
-				"-ts", "1",
+				"-pd",
+				"./data/outputs/SVM/BBSMl-alls_vs_BBSMl-alls.png",
+				"-tcp",
+				"id",
+				"-ts",
+				"1",
 			]
-		},{
+		},
+		{
 			"name": "SVM test rProtGB alls",
 			"type": "python",
 			"request": "launch",
@@ -113,11 +150,15 @@
 			"args": [
 				"./data/CSV/rProtGB_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_rProtGB.png",
-				"-tcp", "id",
-				"-ts", "1"
+				"-pd",
+				"./data/outputs/SVM/BBSMl-alls_vs_rProtGB.png",
+				"-tcp",
+				"id",
+				"-ts",
+				"1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test IND alls",
 			"type": "python",
 			"request": "launch",
@@ -126,11 +167,15 @@
 			"args": [
 				"./data/CSV/IND_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_IND.png",
-				"-tcp", "id",
-				"-ts", "1"
+				"-pd",
+				"./data/outputs/SVM/BBSMl-alls_vs_IND.png",
+				"-tcp",
+				"id",
+				"-ts",
+				"1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test PRST alls",
 			"type": "python",
 			"request": "launch",
@@ -139,11 +184,15 @@
 			"args": [
 				"./data/CSV/PRST_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_PRST.png",
-				"-tcp", "id",
-				"-ts", "1"
+				"-pd",
+				"./data/outputs/SVM/BBSMl-alls_vs_PRST.png",
+				"-tcp",
+				"id",
+				"-ts",
+				"1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test query alls",
 			"type": "python",
 			"request": "launch",
@@ -152,11 +201,17 @@
 			"args": [
 				"./data/CSV/query_set_cg08_lt1.csv",
 				"./data/PKL/BBSMl_alls.pkl",
-				"-pd", "./data/outputs/SVM/BBSMl-alls_vs_query.png",
-				"-ts", "1", "-tqa", "id",
-				"-o", "~/Desktop/test.csv"
+				"-pd",
+				"./data/outputs/SVM/BBSMl-alls_vs_query.png",
+				"-ts",
+				"1",
+				"-tqa",
+				"id",
+				"-o",
+				"~/Desktop/test.csv"
 			]
-		},{
+		},
+		{
 			"name": "BBS long cg08 thr1",
 			"type": "python",
 			"request": "launch",
@@ -165,10 +220,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
 				"./data/CSV/BBSMl_cg08_lt1",
-				"-c", "-t", "1",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"1",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "BBS long cg08 thr2 it1.5",
 			"type": "python",
 			"request": "launch",
@@ -177,10 +237,17 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
 				"./data/CSV/BBSMl_cg08_lt2_it1p5",
-				"-c", "-t" ,"2", "-it", "1.5",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"2",
+				"-it",
+				"1.5",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "rProtGB cg08 thr2",
 			"type": "python",
 			"request": "launch",
@@ -189,10 +256,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/rProt_Good_Bad_noS14/",
 				"./data/CSV/rProtGB_cg08_lt2",
-				"-c", "-t" ,"2",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"2",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "IND cg08 thr2",
 			"type": "python",
 			"request": "launch",
@@ -201,10 +273,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/INDELI/Final/",
 				"./data/CSV/IND_cg08_lt2",
-				"-c", "-t" ,"2",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"2",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "PRST cg08 thr2",
 			"type": "python",
 			"request": "launch",
@@ -213,10 +290,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/PROSITE/merges/GOOD_BAD_remove_non_diverging/",
 				"./data/CSV/PRST_cg08_lt2",
-				"-c", "-t" ,"2",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"2",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "QuerySet cg08 thr2",
 			"type": "python",
 			"request": "launch",
@@ -225,10 +307,16 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/query_set/",
 				"./data/CSV/query_set_cg08",
-				"-c", "-t" ,"2", "-l",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"2",
+				"-l",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "rProtGB cg08 thr1",
 			"type": "python",
 			"request": "launch",
@@ -237,10 +325,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/rProt_Good_Bad_noS14/",
 				"./data/CSV/rProtGB_cg08_lt1",
-				"-c", "-t", "1",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"1",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "IND cg08 thr1",
 			"type": "python",
 			"request": "launch",
@@ -249,10 +342,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/INDELI/Final/",
 				"./data/CSV/IND_cg08_lt1",
-				"-c", "-t", "1",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"1",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "PRST cg08 thr1",
 			"type": "python",
 			"request": "launch",
@@ -261,10 +359,15 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/PROSITE/merges/GOOD_BAD_remove_non_diverging/",
 				"./data/CSV/PRST_cg08_lt1",
-				"-c", "-t", "1",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-t",
+				"1",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "QuerySet cg08 thr1",
 			"type": "python",
 			"request": "launch",
@@ -273,20 +376,28 @@
 			"args": [
 				"~/Dropbox-Gatech/Programs/Score-test_data/query_set/",
 				"./data/CSV/query_set_cg08_lt1",
-				"-c", "-l", "-t", "1",
-				"-co", "cg_0.8", "bl"
+				"-c",
+				"-l",
+				"-t",
+				"1",
+				"-co",
+				"cg_0.8",
+				"bl"
 			]
-		},{
+		},
+		{
 			"name": "TWC",
 			"type": "python",
 			"request": "launch",
 			"program": "./bin/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-a", "~/Desktop/oldalns/bL27CP-uL16a-43.fa",
-				"-w", "pairwise",
-				"-bl", "-csv",
-				"-o", "~/Desktop/testingmay.csv"
+				"-a",
+				"~/Desktop/oldalns/bL27CP-uL16a-43.fa", "~/Desktop/oldalns/bL27CP-uL16b-31.fa",
+				"-bl",
+				"-csv",
+				"-o",
+				"~/Desktop/testingmay.csv"
 			]
 		},
 	]
