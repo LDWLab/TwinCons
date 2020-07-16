@@ -26,6 +26,7 @@ def create_and_parse_argument_options(argument_list):
                                                 \nConsiders the absolute for negative positions when comparing with intensity threshold.', action="store_true", default=False)
     parser.add_argument('-c','--csv', help='Output length and weight distributions in a csv file. \
                                                 \nUses the output file name specified by appending .csv', action="store_true")
+    parser.add_argument('-p','--plot', help='Plot a scatter of the segments.', default=False, action="store_true")
     parser.add_argument('-l','--legend', help='Draw a legend.', default=False, action="store_true")
     parser.add_argument('-co', '--calculation_options', help='Options for TwinCons calculation. See README for details.', nargs='+')
     #parser.add_argument('-s','--structure_path', help='Path to folder with structure files; names should match alignment groups within files.')
@@ -216,12 +217,12 @@ def main(commandline_args):
                                                 number_of_aligned_positions, 
                                                 treat_highly_negative_as_conserved=comm_args.treat_highly_negative_as_conserved)
         alns_to_segment_stats[file.split('.')[0]] = segment_stats
-
-    fig, ax, plt = scatter_plot(alns_to_segment_stats, legend=comm_args.legend, average_weight=comm_args.average_weight)
-    if comm_args.output_path.endswith('.png'):
-        plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
-    else:
-        plt.savefig(comm_args.output_path+'.png', dpi=600, bbox_inches='tight')
+    if comm_args.plot:
+        fig, ax, plt = scatter_plot(alns_to_segment_stats, legend=comm_args.legend, average_weight=comm_args.average_weight)
+        if comm_args.output_path.endswith('.png'):
+            plt.savefig(comm_args.output_path, dpi=600, bbox_inches='tight')
+        else:
+            plt.savefig(comm_args.output_path+'.png', dpi=600, bbox_inches='tight')
     if comm_args.csv:
         csv_output(comm_args.output_path, alns_to_segment_stats)
 
