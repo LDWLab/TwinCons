@@ -393,11 +393,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Desktop/oldalns/bL27CP-uL16a-43.fa", "~/Desktop/oldalns/bL27CP-uL16b-31.fa",
-				"-bl",
+				"~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas",
 				"-csv",
 				"-o",
-				"~/Desktop/testingmay.csv"
+				"~/Desktop/alntest"
 			]
 		},
 	]
