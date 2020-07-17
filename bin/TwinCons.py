@@ -19,7 +19,7 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-o','--output_path', help='Output path ')
     input_file = parser.add_mutually_exclusive_group(required=True)
-    input_file.add_argument('-a','--alignment_path', nargs='+', help='Path to alignment files', action=required_length(1,2))
+    input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
     parser.add_argument('-cg','--cut_gaps', help='Algorithm will cut alignment gaps with more than specified value gaps. Decimal format, eg 0.9', type=float)
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
@@ -34,8 +34,8 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
+    entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation. Default is blosum62.', choices=MatrixInfo.available_matrices, default='blosum62')
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
-    entropy_group.add_argument('-bl','--blosum', help='Use Blosum62 matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
     structure_option = parser.add_mutually_exclusive_group()
@@ -180,132 +180,6 @@ def slice_by_name(unsliced_aln_obj):
         sliced_dict[prot]=what
     return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
-def shannon_entropy(alnObject, aa_list, commandline_args):
-    '''
-    Function to calcuate the reflected Shannon entropy per alignment column.
-    Fully random sequence will have reflected entropy of 0, while fully conserved
-    column will be around 4.322
-    H=-sum_{i=1}^{M} P_i,log_2,P_i    (http://imed.med.ucm.es/Tools/svs_help.html)
-    Hrefl = abs(log_2,M) +sum_{i=1}^{M} P_i,log_2,P_i
-    For gapped regions a random selection is made from the present AAs.
-    '''
-    entropy_alignment = AlignmentGroup(alnObject)
-    AlignmentGroup.randomize_gaps(entropy_alignment, aa_list)
-    alnObject = AlignmentGroup._return_alignment_obj(entropy_alignment)
-    entropyDict={}
-    for i in range(0, alnObject.get_alignment_length()):
-        column_string=alnObject[:, i]
-        unique_base = set(column_string)                # Get only the unique bases in a column
-        M = len(column_string)                            # Number of residues in column
-        entropy_list = []
-        for base in unique_base:
-            n_i = column_string.count(base)                # Number of residues of type i
-            P_i = n_i/float(M)                            # n_i(Number of residues of type i) / M(Number of residues in column)
-            entropy_i = P_i*(math.log(P_i,2))
-            entropy_list.append(entropy_i)
-        if commandline_args.reflected_shannon:
-            refl_shentr = abs(math.log(1/len(aa_list),2))+sum(entropy_list)
-            entropyDict[i+1]=refl_shentr
-        elif commandline_args.shannon_entropy:
-            sh_entropy = abs(sum(entropy_list))
-            entropyDict[i+1]=sh_entropy
-    return entropyDict
-
-def struc_anno_matrices (struc_anno):
-    '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
-
-def nucl_matrix(mx_def):
-    '''Return a substitution matrix for nucleotides.
-    Should be merged with blos_matrix() intoone general matrix creation method
-    '''
-    nucl_sequence = ['A','U','C','G']
-    if mx_def == 'identity':
-        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
-    elif mx_def == 'blastn':
-        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
-    elif mx_def == 'trans':
-        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
-
-    testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
-    baseline = float(testvr@np.array(nuc_mx)@testvr.T)
-    revtestA=np.add(np.array(nuc_mx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    return np.add(np.array(nuc_mx),abs(baseline))
-
-def blos_matrix():
-    '''Baseline and return a numpy form of the BLOSUM62 matrix.
-    Need to make it more general (eg use BLOSUM50 and so on)
-    '''
-    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-    loddmx = []
-    for aa in aa_sequence:
-        linemx=[]
-        for aa2 in aa_sequence:
-
-            if (aa,aa2) in MatrixInfo.blosum62:
-                linemx.append(MatrixInfo.blosum62[(aa,aa2)])
-                #print(aa,aa2,MatrixInfo.blosum62[(aa,aa2)])
-            else:
-                linemx.append(MatrixInfo.blosum62[(aa2,aa)])
-                #print(aa2,aa,MatrixInfo.blosum62[(aa2,aa)])
-        loddmx.append(linemx)
-    testvr = np.repeat(1/len(aa_sequence),len(aa_sequence))
-    baseline = float(testvr@np.array(loddmx)@testvr.T)
-    revtestA=np.add(np.array(loddmx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    return np.add(np.array(loddmx),abs(baseline))
-
-def compute_score(commandline_args,aln_index_dict, *args):
-    '''
-    Computes transformation score between two groups, using substitution 
-    matrices on the common structural elements between two groups.
-    Returns a dictionary with key the alignment index and value the computed score.
-    '''
-    alnindex_score=defaultdict(dict)
-    if commandline_args.structure_paths:
-        struc_annotation = args[0]
-        groupnames = list(struc_annotation.keys())
-        for aln_index in aln_index_dict:
-            vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
-            vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-            if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
-                common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
-                if len(common_chars) > 0:
-                    alnindex_score[aln_index] = vr1@struc_anno_matrices(''.join(common_chars))@vr2.T
-                    #print(aln_index, vr1@struc_anno_matrices(''.join(common_chars))@vr2.T)
-                else:
-                    lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-                    alnindex_score[aln_index] = vr1@lgmx@vr2.T
-                    #print(aln_index,vr1@lgmx@vr2.T)
-            else:
-                lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-                alnindex_score[aln_index] = vr1@lgmx@vr2.T
-                #print(aln_index,vr1@lgmx@vr2.T)
-    elif commandline_args.leegascuel:                            #Case of no structure defined inputs; improve this block...
-        groupnames = args[0]
-        for aln_index in aln_index_dict:
-            vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
-            vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-            lgmx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-            alnindex_score[aln_index] = vr1@lgmx@vr2.T
-            #print(aln_index,vr1@lgmx@vr2.T)
-    elif commandline_args.blosum:
-        groupnames = args[0]
-        for aln_index in aln_index_dict:
-            vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
-            vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-            alnindex_score[aln_index] = vr1@blos_matrix()@vr2.T
-    elif commandline_args.nucleotide:
-        groupnames = args[0]
-        for aln_index in aln_index_dict:
-            vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
-            vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
-            alnindex_score[aln_index] = vr1@nucl_matrix(commandline_args.nucleotide)@vr2.T
-    return alnindex_score
-
 def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
     plt.rcParams['image.composite_image'] = False                    #So that bars are separate images
     plt.rcParams["figure.figsize"] = (8,8)
@@ -333,8 +207,8 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
                 ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(negativegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
         #ax.set_facecolor('Gray')
         ax.axis(lim)
-    if comm_args.leegascuel or comm_args.blosum:
-        pamlarray = np.array(blos_matrix())
+    if comm_args.leegascuel or comm_args.substitution_matrix:
+        pamlarray = np.array(subs_matrix(comm_args.substitution_matrix))
         #plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
         plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)                #Horizontal line
         #gradientbars(bar,'Blues','Reds')
@@ -380,7 +254,7 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
             aln_index_hexcmap[aln_index] = data_to_diverging_gradients(h, data, positivegradient, negativegradient)
             aln_index+=1
         return aln_index_hexcmap
-    if comm_args.leegascuel or comm_args.blosum or comm_args.nucleotide:
+    if comm_args.leegascuel or comm_args.nucleotide or comm_args.substitution_matrix:
         #alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
         alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
     elif comm_args.reflected_shannon or comm_args.shannon_entropy:
@@ -443,69 +317,163 @@ def jalview_output(output_dict, comm_args):
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
-def decision_maker(commandline_args, alignIO_out_gapped, deepestanc_to_child, aa_list, alngroup_to_sequence_weight):
-    """Checks through the commandline options and does the appropriate calculations; gap randomizations.
+def shannon_entropy(alnObject, aa_list, commandline_args):
+    '''
+    Function to calcuate the reflected Shannon entropy per alignment column.
+    Fully random sequence will have reflected entropy of 0, while fully conserved
+    column will be around 4.322
+    H=-sum_{i=1}^{M} P_i,log_2,P_i    (http://imed.med.ucm.es/Tools/svs_help.html)
+    Hrefl = abs(log_2,M) +sum_{i=1}^{M} P_i,log_2,P_i
+    For gapped regions a random selection is made from the present AAs.
+    '''
+    entropy_alignment = AlignmentGroup(alnObject)
+    AlignmentGroup.randomize_gaps(entropy_alignment, aa_list)
+    alnObject = AlignmentGroup._return_alignment_obj(entropy_alignment)
+    entropyDict={}
+    for i in range(0, alnObject.get_alignment_length()):
+        column_string=alnObject[:, i]
+        unique_base = set(column_string)                # Get only the unique bases in a column
+        M = len(column_string)                            # Number of residues in column
+        entropy_list = []
+        for base in unique_base:
+            n_i = column_string.count(base)                # Number of residues of type i
+            P_i = n_i/float(M)                            # n_i(Number of residues of type i) / M(Number of residues in column)
+            entropy_i = P_i*(math.log(P_i,2))
+            entropy_list.append(entropy_i)
+        if commandline_args.reflected_shannon:
+            refl_shentr = abs(math.log(1/len(aa_list),2))+sum(entropy_list)
+            entropyDict[i+1]=refl_shentr
+        elif commandline_args.shannon_entropy:
+            sh_entropy = abs(sum(entropy_list))
+            entropyDict[i+1]=sh_entropy
+    return entropyDict
+
+def nucl_matrix(mx_def):
+    '''Return a substitution matrix for nucleotides.
+    '''
+    nucl_sequence = ['A','U','C','G']
+    if mx_def == 'identity':
+        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
+    elif mx_def == 'blastn':
+        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
+    elif mx_def == 'trans':
+        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
+
+    testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
+    baseline = float(testvr@np.array(nuc_mx)@testvr.T)
+    revtestA=np.add(np.array(nuc_mx), abs(baseline))
+    if int(testvr@revtestA@testvr.T) != 0:
+        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    return np.add(np.array(nuc_mx),abs(baseline))
+
+def subs_matrix(matrix):
+    '''Baseline and return a numpy form of the substitution matrix.
+    '''
+    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+    loddmx = []
+    substitution_matrix = getattr(MatrixInfo,matrix)
+    for aa in aa_sequence:
+        linemx=[]
+        for aa2 in aa_sequence:
+            if (aa,aa2) in substitution_matrix:
+                linemx.append(substitution_matrix[(aa,aa2)])
+            else:
+                linemx.append(substitution_matrix[(aa2,aa)])
+        loddmx.append(linemx)
+    testvr = np.repeat(1/len(aa_sequence),len(aa_sequence))
+    baseline = float(testvr@np.array(loddmx)@testvr.T)
+    revtestA=np.add(np.array(loddmx), abs(baseline))
+    if int(testvr@revtestA@testvr.T) != 0:
+        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    return np.add(np.array(loddmx),abs(baseline))
+
+def struc_anno_matrices (struc_anno):
+    '''Returns a log odds matrix from a given name of a PAML type matrix'''
+    return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
+
+def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None):
+    '''
+    Computes transformation score between two groups, using substitution 
+    matrices on the common structural elements between two groups.
+    Returns a dictionary with key the alignment index and value the computed score.
+    '''
+    if struc_annotation and mx:
+        raise ValueError("Do not use structure defined matrices and sequence based matrices at the same time.")
+    alnindex_score = defaultdict(dict)
+    for aln_index in aln_index_dict:
+        vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
+        vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
+        if struc_annotation:
+            mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+            if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
+                common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
+                if len(common_chars) > 0:
+                    mx = struc_anno_matrices(''.join(common_chars))
+        alnindex_score[aln_index] = vr1@mx@vr2.T
+    return alnindex_score
+
+def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, alngroup_to_sequence_weight):
+    '''Checks through the commandline options and does the appropriate calculations; gap randomizations.
     Returns a dictionary of alignment position -> computed score.
-    """
-    alignIO_out=alignIO_out_gapped[:,:]
-    if commandline_args.phylo_split:
+    '''
+    alignIO_out = alignIO_out_gapped[:,:]
+    if comm_args.phylo_split:
         sliced_alns = Sequence_Weight_from_Tree.slice_by_anc(alignIO_out, deepestanc_to_child)
     else:
         sliced_alns = slice_by_name(alignIO_out)
-
     if len(sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(sliced_alns.keys()))
-
-    if commandline_args.shannon_entropy or commandline_args.reflected_shannon:
-        return shannon_entropy(alignIO_out, aa_list, commandline_args)
+    if comm_args.shannon_entropy or comm_args.reflected_shannon:
+        return shannon_entropy(alignIO_out, aa_list, comm_args)
     
-    aln_index_dict=defaultdict(dict)
+    aln_index_dict = defaultdict(dict)
     struc_annotation = defaultdict(dict)
-    if commandline_args.structure_paths:
-        for alngroup_name in sliced_alns:
-            current_path = [s for s in commandline_args.structure_paths if alngroup_name in s]
-            if len(current_path) < 1:                    #FIX In case number of structures is fewer than the number of alignment groups
-                alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
-                AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-                alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]), alngroup_to_sequence_weight[alngroup_name])
-                for aln_index in alnindex_col_distr:
-                    struc_annotation[alngroup_name][aln_index] = 'BEHOS'
-                for aln_index in alnindex_col_distr:
-                    aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+    for alngroup_name in sliced_alns:
+        alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+        if comm_args.structure_paths:
+            import ntpath
+            current_path = [s for s in comm_args.structure_paths if alngroup_name in ntpath.basename(s)]
+            if len(current_path) == 0:
+                raise IOError(f"When using structure-defined matrices the provided structure files must contain the name of the alignment group.\n\
+                    The alignment group {alngroup_name} was not found in the structure file names {' '.join(comm_args.structure_paths)}")
+            AlignmentGroup.add_struc_file(alngroup_name_object, current_path[0])
+            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+            if comm_args.secondary_structure:
+                struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+            elif comm_args.burried_exposed:
+                struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
+            elif comm_args.both:
+                struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
             else:
-                alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name],current_path[0])
-                struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
-                AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-                alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]), alngroup_to_sequence_weight[alngroup_name])
-                for aln_index in alnindex_col_distr:
-                        aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-                if commandline_args.secondary_structure:
-                    struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-                elif commandline_args.burried_exposed:
-                    struc_annotation[alngroup_name] = AlignmentGroup.depth_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-                elif commandline_args.both:
-                    struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
-                else:
-                    raise ValueError("When a structure is defined, one of the matrix options are required!")
-        return compute_score(commandline_args,aln_index_dict, struc_annotation)
-    elif commandline_args.leegascuel or commandline_args.blosum or commandline_args.nucleotide:       #Case of no structure defined outputs
-        for alngroup_name in sliced_alns:
-            alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
-            AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
-            alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,aa_list,len(alignIO_out[0]), alngroup_to_sequence_weight[alngroup_name])
-            for aln_index in alnindex_col_distr:
-                aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
-        return compute_score(commandline_args,aln_index_dict,list(sliced_alns.keys()))
+                raise IOError("When a structure is defined, one of the matrix options are required!")
+        AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
+        alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,
+                                                                            aa_list,
+                                                                            len(alignIO_out[0]), 
+                                                                            alngroup_to_sequence_weight[alngroup_name])
+        for aln_index in alnindex_col_distr:
+            aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
+    if comm_args.structure_paths:
+        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation)
+    if comm_args.nucleotide:
+        mx = nucl_matrix(comm_args.nucleotide)
+        return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
+    if comm_args.leegascuel:
+        mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+        return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
+    if comm_args.substitution_matrix:
+        mx = subs_matrix(comm_args.substitution_matrix)
+        return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
 
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
-    elif len(comm_args.alignment_path) == 1:
-        alignIO_out_gapped=read_align(comm_args.alignment_path)
-    elif len(comm_args.alignment_path) == 2:
-        alignIO_out_gapped = run_mafft(comm_args.alignment_path)
+    elif len(comm_args.alignment_paths) == 1:
+        alignIO_out_gapped=read_align(comm_args.alignment_paths[0])
+    elif len(comm_args.alignment_paths) == 2:
+        alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
     randindex_norm = defaultdict(dict)
     gp_mapping = dict()
     if comm_args.cut_gaps:

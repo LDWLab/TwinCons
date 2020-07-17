@@ -20,6 +20,9 @@ class AlignmentGroup:
         self.struc_file = struc_file if struc_file is not None else None
         self.sstruc_str = sstruc_str if sstruc_str is not None else None
 
+    def add_struc_file(self, struc_file):
+        self.struc_file = struc_file
+
     def create_aln_struc_mapping(self):
         '''
         Make a dictionary complementing the locations in 
