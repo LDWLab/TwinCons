@@ -18,7 +18,7 @@ def create_and_parse_argument_options(argument_list):
     input_path.add_argument('-twc', '--twincons_path', help='Path to folder with csv output files from TwinCons.py')
     parser.add_argument('output_path', help='Path to image for output.')
     parser.add_argument('-t','--length_threshold', help='Threshold for consecutive low scores that split positive segments.\
-                                                \nDefault: 2', type=int, default=2)
+                                                \nDefault: 3', type=int, default=3)
     parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.\
                                                 \nDefault: 1', type=float, default=1)
     parser.add_argument('-avew','--average_weight', help='Use average weight for segments, instead of using their total weight.', action="store_true", default=False)
