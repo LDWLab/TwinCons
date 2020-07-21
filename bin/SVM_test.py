@@ -313,7 +313,7 @@ def read_features(features_path):
 def write_aln_rows(segments, csv_writer, aln):
     for segment in segments:
         if segment[1][0] != 0:
-            csv_writer.writerow([aln, segment[1][1], segment[0], math.exp(segment[1][1]*-1)])
+            csv_writer.writerow([aln, segment[1][1]*math.log(segment[1][2]), segment[0], math.exp(segment[1][1]*math.log(segment[1][2])*-1)])
     return True
 
 def main(commandline_arguments):
