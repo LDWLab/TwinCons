@@ -62,13 +62,13 @@ It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c*
 
 Sample output:
 
-<img src="./data/CSV/BBSMl_cg08_lt1.png">
+<img src="./data/CSV/BBS_cg09_it1_lt3.png">
 
 # Analyzing TWC results
 
 ## Training a classifier
 
-<img src="./data/outputs/SVM/BBSMl_alls.png">
+<img src="./data/outputs/SVM/BBS.png">
 
 ## Testing a classifier
 
@@ -77,4 +77,4 @@ In the case of large segments there will be few segments and they will be far aw
 
 ### Identifying significant segments
 
-<img src="./data/outputs/SVM/BBSMl-alls_vs_BBSMl-alls.png">
+<img src="./data/outputs/SVM/BBS_vs_BBS.png">
