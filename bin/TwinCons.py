@@ -21,7 +21,7 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
-    parser.add_argument('-cg','--cut_gaps', help='Algorithm will cut alignment gaps with more than specified value gaps. Decimal format, eg 0.9', type=float)
+    parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value. Decimal format, eg 0.9 = 90%%', type=float)
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
@@ -34,7 +34,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
-    entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation. Default is blosum62.', choices=MatrixInfo.available_matrices)
+    entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation.', choices=MatrixInfo.available_matrices)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -223,44 +223,54 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
     #plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
     return True
 
-def data_to_diverging_gradients(datapoint, datalist, positivegradient, negativegradient):
+def data_to_diverging_gradients(datapoint, maxdata, mindata, positivegradient, negativegradient):
     '''Maps a data point to a diverging colormap depending on whether its above or bellow 0.
     Returns a hex code.
     '''
+    if datapoint == 'NA':
+        return '#808080'
     if datapoint >= 0:
-        grad = np.atleast_2d(np.linspace(0,datapoint/max(datalist),256)).T
+        grad = np.atleast_2d(np.linspace(0,datapoint/maxdata,256)).T
         rgb = plt.get_cmap(positivegradient)(grad[len(grad)-1])[0][:3]
     else:
-        grad = np.atleast_2d(np.linspace(0,datapoint/min(datalist),256)).T
+        grad = np.atleast_2d(np.linspace(0,datapoint/mindata,256)).T
         rgb = plt.get_cmap(negativegradient)(grad[len(grad)-1])[0][:3]
     return matplotlib.colors.rgb2hex(rgb)
 
 def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
     """Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
     """
+    def isfloat(value):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
     #Similarly to upsidedown_horizontal_gradient_bar but it doesn't write out figures or plots.
     fig, ax = plt.subplots()
     data = []
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
-    bar = ax.bar(range(1,len(data)+1),data)
-    def gradientbars(bars,positivegradient,negativegradient):
+    def gradients(data,positivegradient,negativegradient):
         """Creates a dictionary with keys the alignment index and values a hex code for the color.
         """
         aln_index_hexcmap = {}
         aln_index=1
-        for bar in bars:
-            w, h = bar.get_width(), bar.get_height()
-            aln_index_hexcmap[aln_index] = data_to_diverging_gradients(h, data, positivegradient, negativegradient)
+        for h in data:
+            aln_index_hexcmap[aln_index] = data_to_diverging_gradients(h, 
+                                max([float(x) for x in data if isfloat(x)]), 
+                                min([float(x) for x in data if isfloat(x)]),
+                                positivegradient, 
+                                negativegradient)
             aln_index+=1
         return aln_index_hexcmap
     if comm_args.leegascuel or comm_args.nucleotide or comm_args.substitution_matrix:
-        #alnindex_to_hexcolors = gradientbars(bar,'Blues','Reds')
-        alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
+        #alnindex_to_hexcolors = gradientbars(data,'Blues','Reds')
+        alnindex_to_hexcolors = gradients(data,'Greens','Purples')
     elif comm_args.reflected_shannon or comm_args.shannon_entropy:
-        alnindex_to_hexcolors = gradientbars(bar,'viridis','binary')
+        alnindex_to_hexcolors = gradients(data,'viridis','binary')
     else:
-        alnindex_to_hexcolors = gradientbars(bar,'Greens','Purples')
+        alnindex_to_hexcolors = gradients(data,'Greens','Purples')
 
     group_names = list(gapped_sliced_alns.keys())
     #Open .pml file for structure coloring
@@ -311,9 +321,9 @@ def jalview_output(output_dict, comm_args):
     jv_output.write('JALVIEW_ANNOTATION\n')
     jv_output.write('# Created: '+str(date.today())+"\n")
     jv_output.write('# Contact: ppenev@gatech.edu\n')
-    jv_output.write('BAR_GRAPH    TWINCONS    ')
+    jv_output.write('BAR_GRAPH\tTWINCONS\t')
     for position in sorted(output_dict.keys(), key=abs):
-        color_hex = data_to_diverging_gradients(output_dict[position][0], out_data, 'Greens', 'Purples')
+        color_hex = data_to_diverging_gradients(output_dict[position][0], max(out_data), min(out_data), 'Greens', 'Purples')
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
@@ -468,6 +478,9 @@ def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, 
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
+    if comm_args.cut_gaps and (comm_args.structure_pymol or comm_args.structure_paths):
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nCombining gap removal (-cg) and structural mapping (-sy) or structure based matrices (-s) produces inconsistent alignment mapping!")
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
     elif len(comm_args.alignment_paths) == 1:
@@ -521,18 +534,21 @@ def main(commandline_arguments):
                 position_defined_scores[pos]=[]
             position_defined_scores[pos].append(randindex_norm[x][pos])
 
-    output_dict = {}
+    output_dict = dict()
+    output_dict_pml = dict()
     for x in position_defined_scores.keys():                #If standard deviation is too big, set the result as 0
         #print(x, position_defined_scores[x], abs(np.average(position_defined_scores[x])), np.std(position_defined_scores[x]))
         if 2*np.std(position_defined_scores[x]) > abs(np.average(position_defined_scores[x]))/1.5:
             output_dict[x] = (0, np.std(position_defined_scores[x]))
+            output_dict_pml[x] = ('NA', np.std(position_defined_scores[x]))
         else:
             output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
+            output_dict_pml[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
     
     if comm_args.plotit:                                    #for plotting
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()),comm_args)
     elif comm_args.write_pml_script:
-        pymol_script_writer(output_dict, gapped_sliced_alns,comm_args)
+        pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args)
     elif comm_args.return_within:
         return output_dict, gapped_sliced_alns, number_of_aligned_positions, gp_mapping
     elif comm_args.return_csv:

@@ -19,7 +19,12 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas",
-				"-csv",
+				"-pml",
+				"-s", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
+				"-ssbe",
+				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
 				"-o",
 				"~/Desktop/alntest"
 		]
@@ -69,14 +74,14 @@
 			"program": "./bin/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/QS_cg09_it1_lt3.csv",
+				"./data/CSV/Queryset_for_plotting.csv",
 				"./data/outputs/SVM/BBS-QS.csv",
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
 				"./data/outputs/SVM/BBS_vs_QS.png",
 				"-ts", "1",
 				"-tqa",
-				"-dt", "-1", "1", "0.1"
+				"-dt", "-0.7", "0.7", "0.1"
 			]
 		},{
 			"name": "SVM test BBS",
