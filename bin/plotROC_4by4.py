@@ -68,7 +68,7 @@ Weighted: {it[0]}, Intensity thr: {it[1]}'
                 axs[row,col].set_ylabel("True positive rate")
     plt.savefig(file_name, dpi=600)
 
-directory = "./data/test_twc_parameters/out_stats/"
+directory = "./data/test_twc_parameters/out_stats/eval/"
 bbs,rprot,indeli = dict(),dict(),dict()
 for file in os.listdir(directory):
     if not re.findall(r'(.*)(\.csv)',file):
@@ -86,7 +86,7 @@ for file in os.listdir(directory):
     if split_label[0] == "BBSvIND":
         indeli = construct_param_struc(split_label, indeli, tpr, fpr)
 
-plot_five_by_two(bbs, "./data/outputs/PNG/param_test/BBS-BBS_allp.png","BBS vs BBS")
-plot_five_by_two(rprot, "./data/outputs/PNG/param_test/BBS-rProt_allp.png","BBS vs rProt")
-plot_five_by_two(indeli, "./data/outputs/PNG/param_test/BBS-INDELI_allp.png","BBS vs INDELI")
+plot_five_by_two(bbs, "./data/outputs/PNG/param_test/BBS-BBS_ev.png","BBS vs BBS")
+plot_five_by_two(rprot, "./data/outputs/PNG/param_test/BBS-rProt_ev.png","BBS vs rProt")
+plot_five_by_two(indeli, "./data/outputs/PNG/param_test/BBS-INDELI_ev.png","BBS vs INDELI")
 

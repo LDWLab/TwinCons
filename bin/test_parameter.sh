@@ -2,8 +2,9 @@
 
 
 
-for gap_cut in $(seq 0.7 0.1 0.9) 
-    do for mx in bl lg
+#for gap_cut in $(seq 0.7 0.1 0.9) do 
+    gap_cut=0.9
+    for mx in bl lg
         do for weight in pair noweight
             do twc_dir="./data/test_twc_parameters/TWC/"
             mx_param=-${mx}
@@ -66,11 +67,11 @@ for gap_cut in $(seq 0.7 0.1 0.9)
                                 train_dir="./data/test_twc_parameters/PKL/BBS/${twc_param}__${segment_param}__${train_param}.pkl"
                                 allparam=${twc_param}__${segment_param}__${train_param}
                                 echo $twc_param $segment_param $train_param
-                                echo ./bin/SVM_train.py $segment_dir $train_dir -ts $ts $avew_param
-                                outstat_dir="./data/test_twc_parameters/out_stats/"
-                                echo ./bin/SVM_test.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts $avew_param
-                                echo ./bin/SVM_test.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts $avew_param
-                                echo ./bin/SVM_test.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts $avew_param
+                                #./bin/SVM_train.py $segment_dir $train_dir -ts $ts $avew_param
+                                outstat_dir="./data/test_twc_parameters/out_stats/eval/"
+                                ./bin/SVM_test.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
+                                ./bin/SVM_test.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
+                                ./bin/SVM_test.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
                                 done
                             done
                         done
@@ -78,7 +79,7 @@ for gap_cut in $(seq 0.7 0.1 0.9)
                 done
             done
         done
-    done
+    #done
 
 
 # for gap_cut in $(seq 0.1 0.1 0.9)
