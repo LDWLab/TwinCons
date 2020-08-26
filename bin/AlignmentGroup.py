@@ -57,14 +57,38 @@ class AlignmentGroup:
                 dictList[k]=v[0]
         return dictList
     
-    def _freq_iterator(self, column, aa_list):
-        '''Calculates frequency of each AA in the column.'''
-        col_aalist=[]
-        for aa in aa_list:
-            #print(aa, column.count(aa)/len(column.replace("-", "")))
-            col_aalist.append(column.count(aa)/len(column))
-        #print()
-        return col_aalist
+    def _freq_iterator(self, column, aa_list, weight_aa_distr):
+        '''Calculates gap adjusted frequency of each AA in the column.'''
+        #Still doesn't handle ambiguous letters well
+        if type(aa_list) == list:
+            aa_list = ''.join(aa_list)
+        if len(aa_list) >= 20:
+            abs_length = 20
+            adjsuted_column_list = ['-' if resi=='X' else resi for resi in column]
+            all_residues = aa_list.replace('X', '')
+        else:
+            abs_length = 4
+            adjsuted_column_list = ['-' if resi=='N' else resi for resi in column]
+            aa_list.replace('N', '')
+
+        M   =  len(adjsuted_column_list)
+        
+        #Gap adjustment
+        num_gaps = adjsuted_column_list.count('-')
+        if '-' in weight_aa_distr.keys():
+            num_gaps = weight_aa_distr['-']*M
+        gap_freq = num_gaps/abs_length
+        frequency_list = list()
+        
+        # Number of residues in column
+        for base in aa_list:
+            n_i = adjsuted_column_list.count(base) # Number of residues of type i
+            if base in weight_aa_distr.keys():     # In case of weighted
+                n_i = weight_aa_distr[base]*M
+            n_i += gap_freq
+            P_i = n_i/float(M) # n_i(Number of residues of type i) / M(Number of residues in column)
+            frequency_list.append(P_i)
+        return frequency_list
 
     def randomize_gaps(self, aa_list):
         '''
@@ -94,22 +118,16 @@ class AlignmentGroup:
         col_ix = 0
         while col_ix < alignment_length:
             col_aalist = list()
-            if len(seq_weights) == 0:
-                col_aalist = self._freq_iterator(self.aln_obj[:, col_ix], aa_list)
-            elif len(seq_weights) > 0:
+            weighted_distr = dict()
+            if len(seq_weights) > 0:
                 col_aalist = list()
                 default_aa_ix, row_ix = 0, 0
-                weighted_distr = dict()
                 for col_aa in self.aln_obj[:, col_ix]:
                     if col_aa not in weighted_distr.keys():
                         weighted_distr[col_aa] = float()
                     weighted_distr[col_aa] += seq_weights[row_ix]
                     row_ix += 1
-                for aa in aa_list:
-                    if aa in weighted_distr.keys():
-                        col_aalist.append(weighted_distr[aa])
-                    else:
-                        col_aalist.append(0)
+            col_aalist = self._freq_iterator(self.aln_obj[:, col_ix], aa_list, weighted_distr)
             col_ix += 1
             column_distr[col_ix] = col_aalist
         return column_distr

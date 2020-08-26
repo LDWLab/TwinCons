@@ -21,7 +21,8 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
-    parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value. Decimal format, eg 0.9 = 90%%', type=float)
+    parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
+    parser.add_argument('-gt','--gap_threshold', help='Specify %% gaps per alignment position. (Default = the smaller between ((sequences of group1)/(all sequences) and (sequences of group2)/(all sequences)) minus 0.05)', type=float)
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
@@ -33,7 +34,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
-    entropy_group = parser.add_mutually_exclusive_group()
+    entropy_group = parser.add_mutually_exclusive_group(required=True)
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation.', choices=MatrixInfo.available_matrices)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
@@ -106,17 +107,20 @@ def run_mafft(aln_paths):
         deletefile(tempfile)
     return merged_tagged_aln
 
-def count_aligned_positions(aln_obj, gap_threshold=0.1):
+def count_aligned_positions(aln_obj, gap_threshold):
     '''Counts how many positions are aligned (less than gap_threshold gaps)
     '''
     number_seqs = len(aln_obj)
     aligned_positions = 0
+    extremely_gapped = dict()
     for i in range(0,aln_obj.get_alignment_length()):
+        extremely_gapped[i+1] = 'True'
         if aln_obj[:,i].count('-')/number_seqs <= float(gap_threshold):
             aligned_positions+=1
+            extremely_gapped[i+1] = 'False'
     if aligned_positions == 0:
         raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
-    return aligned_positions
+    return aligned_positions, extremely_gapped
 
 def remove_extremely_gapped_regions(align, gap_perc, gap_mapping):
     '''Removes columns of alignment with more than gap_perc gaps.
@@ -327,7 +331,7 @@ def jalview_output(output_dict, comm_args):
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
-def shannon_entropy(alnObject, aa_list, commandline_args):
+def shannon_entropy(alnObject, aa_list, commandline_args, alngroup_to_sequence_weight):
     '''
     Function to calcuate the reflected Shannon entropy per alignment column.
     Fully random sequence will have reflected entropy of 0, while fully conserved
@@ -337,25 +341,27 @@ def shannon_entropy(alnObject, aa_list, commandline_args):
     For gapped regions a random selection is made from the present AAs.
     '''
     entropy_alignment = AlignmentGroup(alnObject)
-    AlignmentGroup.randomize_gaps(entropy_alignment, aa_list)
-    alnObject = AlignmentGroup._return_alignment_obj(entropy_alignment)
-    entropyDict={}
-    for i in range(0, alnObject.get_alignment_length()):
-        column_string=alnObject[:, i]
-        unique_base = set(column_string)                # Get only the unique bases in a column
-        M = len(column_string)                            # Number of residues in column
-        entropy_list = []
-        for base in unique_base:
-            n_i = column_string.count(base)                # Number of residues of type i
-            P_i = n_i/float(M)                            # n_i(Number of residues of type i) / M(Number of residues in column)
-            entropy_i = P_i*(math.log(P_i,2))
+    sequence_weights = dict()
+    if len(alngroup_to_sequence_weight) != 0:
+        sequence_weights = alngroup_to_sequence_weight['shannon']
+    frequency_distribution = entropy_alignment.column_distribution_calculation(aa_list, 
+                                                                               alnObject.get_alignment_length(),
+                                                                               sequence_weights)
+    
+    entropyDict = dict()
+    for column_ix in sorted(frequency_distribution.keys(), key=abs):
+        entropy_list = list()
+        for P_i in frequency_distribution[column_ix]:
+            entropy_i = 0
+            if P_i != 0:
+                entropy_i = P_i*(math.log(P_i,2))
             entropy_list.append(entropy_i)
         if commandline_args.reflected_shannon:
             refl_shentr = abs(math.log(1/len(aa_list),2))+sum(entropy_list)
-            entropyDict[i+1]=refl_shentr
+            entropyDict[column_ix]=refl_shentr
         elif commandline_args.shannon_entropy:
             sh_entropy = abs(sum(entropy_list))
-            entropyDict[i+1]=sh_entropy
+            entropyDict[column_ix]=sh_entropy
     return entropyDict
 
 def nucl_matrix(mx_def):
@@ -434,7 +440,7 @@ def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, 
     if len(sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(sliced_alns.keys()))
     if comm_args.shannon_entropy or comm_args.reflected_shannon:
-        return shannon_entropy(alignIO_out, aa_list, comm_args)
+        return shannon_entropy(alignIO_out, aa_list, comm_args, alngroup_to_sequence_weight)
     
     aln_index_dict = defaultdict(dict)
     struc_annotation = defaultdict(dict)
@@ -456,10 +462,9 @@ def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, 
                 struc_annotation[alngroup_name] = AlignmentGroup.both_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
             else:
                 raise IOError("When a structure is defined, one of the matrix options are required!")
-        AlignmentGroup.randomize_gaps(alngroup_name_object, aa_list)
         alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,
                                                                             aa_list,
-                                                                            len(alignIO_out[0]), 
+                                                                            len(alignIO_out.get_alignment_length()), 
                                                                             alngroup_to_sequence_weight[alngroup_name])
         for aln_index in alnindex_col_distr:
             aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
@@ -489,15 +494,7 @@ def main(commandline_arguments):
         alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
     randindex_norm = defaultdict(dict)
     gp_mapping = dict()
-    if comm_args.cut_gaps:
-        number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped, comm_args.cut_gaps)
-        tempaln = alignIO_out_gapped[:,:]
-        alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
-        gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.cut_gaps), gp_mapping)
-    else:
-        number_of_aligned_positions = count_aligned_positions(alignIO_out_gapped)
-        for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
-            gp_mapping[i] = i
+
     if comm_args.phylo_split:
         tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
         deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)
@@ -509,41 +506,47 @@ def main(commandline_arguments):
     if len(gapped_sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
-    alngroup_to_sequence_weight = dict()
-    for alngroup in gapped_sliced_alns:
-        if comm_args.weigh_sequences:
-            alngroup_to_sequence_weight[alngroup] = Sequence_Weight_from_Tree.calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
-        else:
-            alngroup_to_sequence_weight[alngroup] = []
+    if comm_args.gap_threshold is None:
+        seq_records = list()
+        for aln in gapped_sliced_alns:
+            seq_records.append(gapped_sliced_alns[aln].__len__())
+        comm_args.gap_threshold = round(min([seq_records[0]/(seq_records[0]+seq_records[1]),seq_records[1]/(seq_records[0]+seq_records[1])])-0.05,2)
+    
+    number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
+    if comm_args.cut_gaps:
+        tempaln = alignIO_out_gapped[:,:]
+        alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
+        gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
+    else:
+        for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
+            gp_mapping[i] = i
 
-    for rand_index in range(0,10):
-        """Every calculation and gap filling of alignment is performed 10 times.
-        This is done to dampen the errors in heavily gapped regions"""
-        if comm_args.nucleotide:
-            for sequence in alignIO_out_gapped:
-                if re.search('T', sequence.seq):
-                    sequence.seq = sequence.seq.transcribe()
-            randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,['A','U','C','G'], alngroup_to_sequence_weight)
+    
+    alngroup_to_sequence_weight = dict()
+    if comm_args.weigh_sequences:
+        if comm_args.reflected_shannon or comm_args.shannon_entropy:
+            alngroup_to_sequence_weight['shannon'] = Sequence_Weight_from_Tree.calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
         else:
-            randindex_norm[rand_index] = decision_maker(comm_args,alignIO_out_gapped,deepestanc_to_child,uniq_resi_list(alignIO_out_gapped), alngroup_to_sequence_weight)
-    #Calculating mean and stdev per alignment position
-    position_defined_scores=defaultdict(dict)
-    for x in randindex_norm.keys():
-        for pos in randindex_norm[x]:
-            if pos not in position_defined_scores:
-                position_defined_scores[pos]=[]
-            position_defined_scores[pos].append(randindex_norm[x][pos])
+            for alngroup in gapped_sliced_alns:
+                alngroup_to_sequence_weight[alngroup] = Sequence_Weight_from_Tree.calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
+
+    uniq_resis = uniq_resi_list(alignIO_out_gapped)
+    if comm_args.nucleotide:
+        for sequence in alignIO_out_gapped:
+            if re.search('T', sequence.seq):
+                sequence.seq = sequence.seq.transcribe()
+        uniq_resis = ['A','U','C','G']
+    position_defined_scores = decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, uniq_resis, alngroup_to_sequence_weight)
 
     output_dict = dict()
     output_dict_pml = dict()
     for x in position_defined_scores.keys():                #If standard deviation is too big, set the result as 0
-        #print(x, position_defined_scores[x], abs(np.average(position_defined_scores[x])), np.std(position_defined_scores[x]))
-        if 2*np.std(position_defined_scores[x]) > abs(np.average(position_defined_scores[x]))/1.5:
-            output_dict[x] = (0, np.std(position_defined_scores[x]))
-            output_dict_pml[x] = ('NA', np.std(position_defined_scores[x]))
-        else:
-            output_dict[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
-            output_dict_pml[x] = (np.average(position_defined_scores[x]), np.std(position_defined_scores[x]))
+        if extremely_gapped[gp_mapping[x]] == 'True':
+            output_dict[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
+            output_dict_pml[gp_mapping[x]] = ('NA', extremely_gapped[gp_mapping[x]])
+            continue
+        output_dict[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
+        output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
     
     if comm_args.plotit:                                    #for plotting
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()),comm_args)
@@ -554,10 +557,9 @@ def main(commandline_arguments):
     elif comm_args.return_csv:
         with open(comm_args.output_path+".csv", mode='w') as output_csv:
             csv_writer = csv.writer(output_csv, delimiter=',')
-            csv_writer.writerow(["Alignment index", "Score", "STDEV"])
+            csv_writer.writerow(["Alignment index", "Score", f"More than {comm_args.gap_threshold*100}% gaps"])
             for x in sorted(output_dict.keys(), key=abs):
-                csv_writer.writerow([gp_mapping[x],output_dict[int(x)][0],output_dict[int(x)][1]])
-                #print(str(x)+','+str(output_dict[int(x)][0])+','+str(output_dict[int(x)][1]))
+                csv_writer.writerow([x, output_dict[int(x)][0], output_dict[int(x)][1]])
     elif comm_args.jalview_output:
         jalview_output(output_dict, comm_args)
 
