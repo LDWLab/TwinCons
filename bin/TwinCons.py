@@ -34,7 +34,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
-    entropy_group = parser.add_mutually_exclusive_group(required=True)
+    entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation.', choices=MatrixInfo.available_matrices)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
@@ -464,7 +464,7 @@ def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, 
                 raise IOError("When a structure is defined, one of the matrix options are required!")
         alnindex_col_distr = AlignmentGroup.column_distribution_calculation(alngroup_name_object,
                                                                             aa_list,
-                                                                            len(alignIO_out.get_alignment_length()), 
+                                                                            alignIO_out.get_alignment_length(), 
                                                                             alngroup_to_sequence_weight[alngroup_name])
         for aln_index in alnindex_col_distr:
             aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
@@ -523,11 +523,13 @@ def main(commandline_arguments):
 
     
     alngroup_to_sequence_weight = dict()
-    if comm_args.weigh_sequences:
-        if comm_args.reflected_shannon or comm_args.shannon_entropy:
-            alngroup_to_sequence_weight['shannon'] = Sequence_Weight_from_Tree.calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
-        else:
-            for alngroup in gapped_sliced_alns:
+    for alngroup in gapped_sliced_alns:
+        alngroup_to_sequence_weight[alngroup] = list()
+        alngroup_to_sequence_weight['shannon'] = list()
+        if comm_args.weigh_sequences:
+            if comm_args.reflected_shannon or comm_args.shannon_entropy:
+                alngroup_to_sequence_weight['shannon'] = Sequence_Weight_from_Tree.calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
+            else:
                 alngroup_to_sequence_weight[alngroup] = Sequence_Weight_from_Tree.calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
 
     uniq_resis = uniq_resi_list(alignIO_out_gapped)
