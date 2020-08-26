@@ -55,9 +55,9 @@ Tries to guess the type of comparison and color code the included datasets. For 
 
 Can pass all options for calculation already present in TwinCons with the option -co. <span style="color:red">However, as of now it does not support structure mapping of scores or using structure defined matrices</span>. 
 
-It does support the options: **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed as separate arguments after the flag -co without the dashes and underscore for flags with parameters. -co should be the last argument passed to CalculateSegments.py since any argument following -co will be passed to TwinCons.py. For example:
+It does support the options: **-gt**, **-cg**, **-phy**, [**-lg**, **-bl**, **-e**, **-c**]. Should be passed as separate arguments after the flag -co without the dashes and underscore for flags with parameters. -co should be the last argument passed to CalculateSegments.py since any argument following -co will be passed to TwinCons.py. For example:
 
-	./bin/CalculateSegments.py ./folder_with_alignments/ ./output_file -c -t 1 -co cg_0.9 phy bl
+	./bin/CalculateSegments.py ./folder_with_alignments/ ./output_file -c -t 1 -co cg gt_0.9 phy bl
 
 
 Sample output:
