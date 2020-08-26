@@ -302,7 +302,8 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
         else:
             #We have to recalculate the structure to alignment mapping
             alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
-            struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+            AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
+            struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             #Open the structure file
             pml_output.write("load "+current_path[0]+", "+alngroup_name+"\n")
             #For each alignment position, color the appropriate residue with the hex transformed color from the gradient
@@ -451,8 +452,8 @@ def decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, aa_list, 
             if len(current_path) == 0:
                 raise IOError(f"When using structure-defined matrices the provided structure files must contain the name of the alignment group.\n\
                     The alignment group {alngroup_name} was not found in the structure file names {' '.join(comm_args.structure_paths)}")
-            AlignmentGroup.add_struc_file(alngroup_name_object, current_path[0])
-            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping(alngroup_name_object)
+            AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
+            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             if comm_args.secondary_structure:
                 struc_annotation[alngroup_name] = AlignmentGroup.ss_map_creator(alngroup_name_object,struc_to_aln_index_mapping)
             elif comm_args.burried_exposed:
