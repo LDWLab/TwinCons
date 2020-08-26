@@ -23,15 +23,15 @@
             #mkdir $twc_dir/IND
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg $gap_cut $mx_param $w_param -csv -o $twc_dir/BBS/${f##*/}
+            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/BBS/${f##*/}
             #     done
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/rProt_Good_Bad_noS14/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg $gap_cut $mx_param $w_param -csv -o $twc_dir/rProt/${f##*/}
+            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/rProt/${f##*/}
             #     done
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/INDELI/Final/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg $gap_cut $mx_param $w_param -csv -o $twc_dir/IND/${f##*/}
+            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/IND/${f##*/}
             #     done
             #echo "Done TWC params "$twc_param
             for it in $(seq 1 1 2)
