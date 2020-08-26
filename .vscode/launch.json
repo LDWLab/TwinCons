@@ -25,8 +25,7 @@
 				"-ssbe",
 				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
-				"-o",
-				"~/Desktop/alntest"
+				"-o", "~/Desktop/alntest"
 		]
 		},{
 			"name": "QuerySet cg09 lt3 it1",
@@ -39,7 +38,7 @@
 				"./data/CSV/QS_cg09_it1_lt3",
 				"-c",
 				"-l", "-p",
-				"-co", "cg_0.9", "mx_blosum62"
+				"-co", "gt_0.9", "cg", "mx_blosum62"
 			]
 		},{
 			"name": "BBS cg09 lt3 it1",
@@ -52,7 +51,7 @@
 				"./data/CSV/BBS_cg09_it1_lt3",
 				"-c",
 				"-p",
-				"-co", "cg_0.9", "mx_blosum62"
+				"-co", "gt_0.9", "cg", "mx_blosum62"
 			]
 		},{
 			"name": "SVM train BBS",
