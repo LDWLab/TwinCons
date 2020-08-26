@@ -192,7 +192,10 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
     stdevdata=[]
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
-        stdevdata.append(out_dict[x][1])
+        if out_dict[x][1] == 'True':
+            stdevdata.append(0.5)
+        else:
+            stdevdata.append(0)
     bar = ax.bar(range(1,len(data)+1),data, yerr=stdevdata,error_kw=dict(ecolor='gray', lw=0.25))
 
     def gradientbars(bars,positivegradient,negativegradient):
@@ -211,20 +214,16 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args):
                 ax.imshow(grad, extent=[x,x+w,y,y+h], cmap=plt.get_cmap(negativegradient), aspect="auto", norm=matplotlib.colors.NoNorm(vmin=0,vmax=1))
         #ax.set_facecolor('Gray')
         ax.axis(lim)
-    if comm_args.leegascuel or comm_args.substitution_matrix:
-        pamlarray = np.array(subs_matrix(comm_args.substitution_matrix))
-        #plt.yticks(np.arange(int(np.min(pamlarray)),int(np.max(pamlarray)+2), step=1))
-        plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)                #Horizontal line
-        #gradientbars(bar,'Blues','Reds')
-        gradientbars(bar,'Greens','Purples')
+
     #In case of no negative values BUG!
-    elif comm_args.reflected_shannon or comm_args.shannon_entropy:
+    if comm_args.reflected_shannon or comm_args.shannon_entropy:
         plt.yticks(np.arange(0,4.2, step=0.5))
         gradientbars(bar,'viridis','binary')
+    else:
+        plt.plot((0, len(data)+1), (1, 1), 'k-', linewidth=0.5)       #Horizontal line
+        gradientbars(bar,'Greens','Purples')
     dpi_scaling = 3*len(out_dict)
     plt.savefig(comm_args.output_path+'.svg',format = 'svg',dpi=dpi_scaling)
-    #plt.savefig('./outputs/'+'-'.join(sorted(group_names))+'.svg',format = 'svg',dpi=dpi_scaling)
-    #plt.savefig(comm_args.output_path,format = 'png',dpi=dpi_scaling)
     return True
 
 def data_to_diverging_gradients(datapoint, maxdata, mindata, positivegradient, negativegradient):
