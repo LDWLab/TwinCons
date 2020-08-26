@@ -1,5 +1,6 @@
-import re, random
+import re, random, ntpath
 from numpy.random import choice
+from Bio import SeqIO
 from Bio.Seq import MutableSeq
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
@@ -14,49 +15,74 @@ class AlignmentGroup:
     structure object or secondary structure string
     '''
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
-    def __init__(self,aln_obj, struc_file=None, sstruc_str=None):
+    def __init__(self,aln_obj, struc_path=None, sstruc_str=None):
         self.aln_obj = aln_obj
         
-        self.struc_file = struc_file if struc_file is not None else None
+        self.struc_path = struc_path if struc_path is not None else None
         self.sstruc_str = sstruc_str if sstruc_str is not None else None
 
-    def add_struc_file(self, struc_file):
-        self.struc_file = struc_file
-
-    def create_aln_struc_mapping(self):
-        '''
-        Make a dictionary complementing the locations in 
-        the alignment fasta file and the structure pdb file
+    def add_struc_path(self, struc_path):
+        from Bio.SeqRecord import SeqRecord
+        self.struc_path = struc_path
         
-        Check and think what to do when no mapping is possible 
-        since we are passing the wrong struc (nonexistent in this group).
-        '''
-        alignDict = {}
-        struc_name = re.findall(r'(.*\/)(.*)(_.*.pdb)',self.struc_file)[0][1]
-        for alignment in self.aln_obj:                             # Iterating through each sequence
-            alignDict[alignment.id] = alignment.seq                # Making a dictionary of the sequences
-        dictseq={}                                                 # gives the complement between the location in alns (key) and the location in pdb (value)
-        i=0
-        a=1
-        for alignment in self.aln_obj:
-            if re.search(struc_name, alignment.id) is not None: # else error as wrong structure was passed
-                anchor_seq=alignment                            # anchor_seq will hold the sequence data from the name of the pdb file
-                for x in anchor_seq:
-                    dictseq[a] = []
-                    if (x=="-"):
-                        dictseq[a].append(0)
-                    else:
-                        i+=1
-                        dictseq[a].append(i)
-                    a+=1
-        dictList={}                             # gives the complement between the location in pdb (key) and the location in alns (value) after removing gaps
-        for k,v in dictseq.items():
-            if v[0]==0:
-                next
-            else:
-                dictList[k]=v[0]
-        return dictList
-    
+        if ntpath.splitext(self.struc_path)[1] == ".pdb":
+            file_type = "pdb-atom"
+        elif ntpath.splitext(self.struc_path)[1] == ".cif":
+            file_type = "cif-atom"
+        chain_sequences = list()
+        for record in SeqIO.parse(self.struc_path, file_type):
+            chain_sequences.append(record)
+        if len(chain_sequences) != 1:
+            raise IOError(f"When using structure files, they need to have a single chain!")
+        
+        self.shift_mapping_by = 0
+        if chain_sequences[0].annotations["start"] > 1:
+            self.shift_mapping_by = chain_sequences[0].annotations["start"]-1
+        self.file_type = file_type
+        self.struc_seq = SeqRecord(chain_sequences[0].seq)
+
+    def create_aln_struc_mapping_with_mafft(self):
+        from subprocess import Popen, PIPE
+        from Bio import AlignIO
+        from os import remove, path
+        from warnings import warn
+
+        aln_group_path = "TWCtempAln.txt"
+        pdb_seq_path = "TWCtempStrucSeq.txt"
+        mappingFileName = pdb_seq_path + ".map"
+        tempfiles = [aln_group_path, pdb_seq_path, mappingFileName]
+        for tempf in tempfiles:
+            if path.isfile(tempf):
+                warn(f"When using mafft to make structural mapping the working directory must be free of file {tempf}. Trying to delete the file.")
+                remove(tempf)
+                if path.isfile(tempf):
+                    raise IOError(f"Couldn't delete the file {tempf} please remove it manually!")
+
+        aln_group_fh = open(aln_group_path, "w")
+        AlignIO.write(self.aln_obj, aln_group_fh, "fasta")
+        aln_group_fh.close()
+
+        pdb_seq_fh = open(pdb_seq_path, "w")
+        SeqIO.write(self.struc_seq, pdb_seq_fh, "fasta")
+        pdb_seq_fh.close()
+
+        pipe = Popen(f"mafft --quiet --addfull {pdb_seq_path} --mapout {aln_group_path}; cat {mappingFileName}", stdout=PIPE, shell=True)
+        output = pipe.communicate()[0]
+        mapping_file = output.decode("ascii").split('\n#')[1]
+        firstLine = True
+        mapping = dict()
+        for line in mapping_file.split('\n'):
+            if firstLine:
+                firstLine = False
+                continue
+            row = line.split(', ')
+            if len(row) < 3:
+                continue
+            mapping[int(row[2])] = int(row[1]) + self.shift_mapping_by
+        for tempf in tempfiles:
+            remove(tempf)
+        return mapping
+
     def _freq_iterator(self, column, aa_list, weight_aa_distr):
         '''Calculates gap adjusted frequency of each AA in the column.'''
         #Still doesn't handle ambiguous letters well
@@ -90,28 +116,6 @@ class AlignmentGroup:
             frequency_list.append(P_i)
         return frequency_list
 
-    def randomize_gaps(self, aa_list):
-        '''
-        Substitutes gaps in the alignment with a random choice from the present AAs.
-        Should be an option to either use absolute random or random sampled from the 
-        distribution of the sequence.
-        '''
-        for aln in self.aln_obj:
-            i = 0
-            newaln=MutableSeq(str(aln.seq))
-            aln_no_dash = str(aln.seq).replace('-', '')
-            distribution = Counter(aln_no_dash)
-            choice_distr = []
-            for aa in aa_list:
-                choice_distr.append(distribution[aa]/len(aln_no_dash))
-            for resi in aln.seq:
-                if resi == '-' or resi == 'X':
-                    #newaln[i] = choice(aa_list, p=choice_distr)
-                    newaln[i] = random.choice(aa_list)
-                i+=1
-            aln.seq=newaln
-        return True
-    
     def column_distribution_calculation(self, aa_list, alignment_length, seq_weights):
         '''Calculates AA distribution for the current alignment column'''
         column_distr = dict()
@@ -135,7 +139,7 @@ class AlignmentGroup:
     def structure_loader(self,struc_to_aln_index_mapping):
         inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
         parser = PDBParser()
-        structure = parser.get_structure('current_structure',self.struc_file)
+        structure = parser.get_structure('current_structure',self.struc_path)
         model = structure[0]
         return inv_map, model
 
@@ -147,7 +151,7 @@ class AlignmentGroup:
         ss_aln_index_map={}
         res_depth_aln_index_map={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
-        dssp = DSSP(model, self.struc_file)
+        dssp = DSSP(model, self.struc_path)
         for a_key in list(dssp.keys()):
             ss_aln_index_map[inv_map[a_key[1][1]]] = self.DSSP_code_mycode[dssp[a_key][2]]
         return ss_aln_index_map
@@ -157,7 +161,7 @@ class AlignmentGroup:
 
         res_depth_aln_index_map={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
-        dssp = DSSP(model, self.struc_file)
+        dssp = DSSP(model, self.struc_path)
         #rd = ResidueDepth(model)
         for a_key in list(dssp.keys()):
             if dssp[a_key][3] > 0.2:
@@ -170,7 +174,7 @@ class AlignmentGroup:
         '''Connects the alignment mapping index and the residue depth'''
         sda={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
-        dssp = DSSP(model, self.struc_file)
+        dssp = DSSP(model, self.struc_path)
         for a_key in list(dssp.keys()):
             if dssp[a_key][3] > 0.2:
                 sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
