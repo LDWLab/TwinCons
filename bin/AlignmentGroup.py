@@ -35,9 +35,7 @@ class AlignmentGroup:
         if len(chain_sequences) != 1:
             raise IOError(f"When using structure files, they need to have a single chain!")
         
-        self.shift_mapping_by = 0
-        if chain_sequences[0].annotations["start"] > 1:
-            self.shift_mapping_by = chain_sequences[0].annotations["start"]-1
+        self.shift_mapping_by = chain_sequences[0].annotations["start"]-1
         self.file_type = file_type
         self.struc_seq = SeqRecord(chain_sequences[0].seq)
 
@@ -78,6 +76,10 @@ class AlignmentGroup:
             row = line.split(', ')
             if len(row) < 3:
                 continue
+            if row[2] == '-':
+                continue
+            if row[1] == '-':
+                raise ValueError("Mapping did not work properly.")
             mapping[int(row[2])] = int(row[1]) + self.shift_mapping_by
         for tempf in tempfiles:
             remove(tempf)

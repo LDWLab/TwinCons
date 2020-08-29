@@ -28,6 +28,21 @@
 				"-o", "~/Desktop/alntest"
 		]
 		},{
+			"name": "TWC EFTU",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/TwinCons.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-a",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/HH_mft_bEFTU-aIF5.fas",
+				"-pml",
+				"-mx", "blosum62",
+				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/ECOLI_EFTU.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/AERPE_aIF5.pdb",
+				"-o", "~/Desktop/EFTUtest"
+		]
+		},{
 			"name": "QuerySet cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
