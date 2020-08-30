@@ -204,8 +204,6 @@ def main(commandline_args):
                 pos_score = alnindex_score[x][0]
             if comm_args.twincons_path:
                 pos_score = alnindex_score[x]
-            if len(gap_mapping) > 0:
-                position = gap_mapping[x]
             score_list.append((position, pos_score))
             out_dict[position] = pos_score
         unfiltered_segment_list = split_by_thresholds(score_list, 
