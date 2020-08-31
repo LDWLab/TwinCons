@@ -295,10 +295,9 @@ def pymol_script_writer(out_dict,gapped_sliced_alns,comm_args):
         #Match groupnames with structure files
         current_path = [s for s in comm_args.structure_pymol if alngroup_name in s]
         
-        if len(current_path) < 1:
-            pass        #Gotta fix this
-            #raise ValueError("Cannot write PyMOL coloring script without at least single matching structure \
-            #    and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
+        if len(current_path) == 0:
+            raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
+               and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
         else:
             #We have to recalculate the structure to alignment mapping
             alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
@@ -535,7 +534,7 @@ def main(commandline_arguments):
     uniq_resis = uniq_resi_list(alignIO_out_gapped)
     if comm_args.nucleotide:
         for sequence in alignIO_out_gapped:
-            if re.search('T', sequence.seq):
+            if re.search('T', str(sequence.seq)):
                 sequence.seq = sequence.seq.transcribe()
         uniq_resis = ['A','U','C','G']
     position_defined_scores = decision_maker(comm_args, alignIO_out_gapped, deepestanc_to_child, uniq_resis, alngroup_to_sequence_weight)

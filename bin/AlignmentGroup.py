@@ -23,21 +23,38 @@ class AlignmentGroup:
 
     def add_struc_path(self, struc_path):
         from Bio.SeqRecord import SeqRecord
+        from Bio.Seq import Seq
+        from Bio.PDB import PDBParser, MMCIFParser
+        from Bio.SeqUtils import seq1
+
         self.struc_path = struc_path
-        
         if ntpath.splitext(self.struc_path)[1] == ".pdb":
-            file_type = "pdb-atom"
+            parser = PDBParser()
         elif ntpath.splitext(self.struc_path)[1] == ".cif":
-            file_type = "cif-atom"
-        chain_sequences = list()
-        for record in SeqIO.parse(self.struc_path, file_type):
-            chain_sequences.append(record)
-        if len(chain_sequences) != 1:
-            raise IOError(f"When using structure files, they need to have a single chain!")
+            parser = MMCIFParser()
         
-        self.shift_mapping_by = chain_sequences[0].annotations["start"]-1
-        self.file_type = file_type
-        self.struc_seq = SeqRecord(chain_sequences[0].seq)
+        structure = parser.get_structure("none", self.struc_path)
+        chains = list()
+        for chain in structure.get_chains():
+            chains.append(chain)
+        if len(chains) != 1:
+            raise IOError(f"When using structure files, they need to have a single chain!")
+        sequence = str()
+        seq_ix_mapping = dict()
+        untrue_seq_ix = 1
+        residues = list(chains[0].get_residues())
+        for resi in residues:
+            resi_id = resi.get_id()
+            if re.match(r'^H_', resi_id[0]):
+                continue
+            sequence += resi.get_resname()
+            seq_ix_mapping[untrue_seq_ix] = int(resi.get_id()[1])
+            untrue_seq_ix += 1
+
+        if len(seq1(residues[seq_ix_mapping[1]].get_resname())) != 0:
+            sequence = seq1(sequence)
+        self.seq_ix_mapping = seq_ix_mapping
+        self.struc_seq = SeqRecord(Seq(sequence))
 
     def create_aln_struc_mapping_with_mafft(self):
         from subprocess import Popen, PIPE
@@ -80,7 +97,7 @@ class AlignmentGroup:
                 continue
             if row[1] == '-':
                 raise ValueError("Mapping did not work properly.")
-            mapping[int(row[2])] = int(row[1]) + self.shift_mapping_by
+            mapping[int(row[2])] = self.seq_ix_mapping[int(row[1])]
         for tempf in tempfiles:
             remove(tempf)
         return mapping
