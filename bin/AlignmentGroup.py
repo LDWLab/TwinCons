@@ -45,8 +45,8 @@ class AlignmentGroup:
         from os import remove, path
         from warnings import warn
 
-        aln_group_path = "TWCtempAln.txt"
-        pdb_seq_path = "TWCtempStrucSeq.txt"
+        aln_group_path = f"{path.dirname(path.realpath(__file__))}/TWCtempAln.txt"
+        pdb_seq_path = f"{path.dirname(path.realpath(__file__))}/TWCtempStrucSeq.txt"
         mappingFileName = pdb_seq_path + ".map"
         tempfiles = [aln_group_path, pdb_seq_path, mappingFileName]
         for tempf in tempfiles:
