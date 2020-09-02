@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Calculates segments for multiple or single alignments"""
-import TwinCons
 import re, os, sys, csv, getopt, argparse
 import matplotlib
 matplotlib.use('Agg')
@@ -8,8 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-#from labellines import labelLine, labelLines
 from operator import itemgetter
+
+from TwinCons import TwinCons
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

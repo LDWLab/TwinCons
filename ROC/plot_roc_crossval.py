@@ -39,7 +39,7 @@ from sklearn.metrics import auc
 from sklearn.metrics import plot_roc_curve
 from sklearn.model_selection import StratifiedKFold
 
-from SVM_train import load_csv_data, csv_iterator, recalculate_data_by_averaging_segments
+from TwinCons.SVM_train import load_csv_data, csv_iterator, recalculate_data_by_averaging_segments
 # #############################################################################
 # Data IO and generation
 
