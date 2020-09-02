@@ -14,7 +14,7 @@
 			"name": "TWC",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/TwinCons.py",
+			"program": "./TwinCons/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
@@ -31,7 +31,7 @@
 			"name": "TWC bS1",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/TwinCons.py",
+			"program": "./TwinCons/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
@@ -46,7 +46,7 @@
 			"name": "TWC rRNA",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/TwinCons.py",
+			"program": "./TwinCons/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
@@ -61,7 +61,7 @@
 			"name": "QuerySet cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/CalculateSegments.py",
+			"program": "./TwinCons/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/query_set/",
@@ -74,7 +74,7 @@
 			"name": "BBS cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/CalculateSegments.py",
+			"program": "./TwinCons/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
@@ -87,7 +87,7 @@
 			"name": "SVM train BBS",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/SVM_train.py",
+			"program": "./TwinCons/SVM_train.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
@@ -100,7 +100,7 @@
 			"name": "SVM test query",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/SVM_test.py",
+			"program": "./TwinCons/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/QS_cg09_it1_lt3.csv",
@@ -116,7 +116,7 @@
 			"name": "SVM test BBS",
 			"type": "python",
 			"request": "launch",
-			"program": "./bin/SVM_test.py",
+			"program": "./TwinCons/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",

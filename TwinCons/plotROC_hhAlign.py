@@ -18,7 +18,7 @@ def read_csv(csv_location):
     return output_list
 
 def calculate_tpr_fpr(csv_data, eval_thr):
-    from SVM_test import bypass_zero_division
+    from TwinCons.SVM_test import bypass_zero_division
     tp, tn, fp, fn = 0, 0, 0, 0
     for aln in csv_data:
         if re.match('^A_|^B_', aln[0]) is not None:
