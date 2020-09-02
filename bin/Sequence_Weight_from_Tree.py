@@ -12,8 +12,8 @@ from itertools import combinations, product
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
-from TwinCons import TwinCons
-from TwinCons.AlignmentGroup import AlignmentGroup
+import bin.TwinCons
+from bin.AlignmentGroup import AlignmentGroup
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)

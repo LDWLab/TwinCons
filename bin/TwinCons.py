@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, os, csv, sys, random, Bio.Align, argparse, random, math, matplotlib
+import re, os, csv, sys, random, Bio.Align, argparse, random, math, matplotlib, ntpath
+sys.path.append(os.path.dirname(os.path.abspath(__name__)))
 matplotlib.use('Agg')
 import numpy as np
 from datetime import date
@@ -10,14 +11,14 @@ from textwrap import wrap
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
-from TwinCons.AlignmentGroup import AlignmentGroup
-from TwinCons import Sequence_Weight_from_Tree
-from TwinCons.MatrixLoad import PAMLmatrix
+from bin.AlignmentGroup import AlignmentGroup
+import bin.Sequence_Weight_from_Tree as Sequence_Weight_from_Tree
+from bin.MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-o','--output_path', help='Output path ')
+    parser.add_argument('-o','--output_path', help='Output path', required=True)
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
@@ -309,9 +310,9 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             #Open the structure file
             if comm_args.write_pml_script == 'unix':
-                pml_path = PurePosixPath(current_path[0])
+                pml_path = PurePosixPath(current_path[0].replace(ntpath.dirname(comm_args.output_path), '')[1:])
             if comm_args.write_pml_script == 'windows':
-                pml_path = PureWindowsPath(current_path[0])
+                pml_path = PureWindowsPath(current_path[0].replace(ntpath.dirname(comm_args.output_path), '')[1:])
             pml_output.write(f"load {pml_path}, {alngroup_name}\n")
             #For each alignment position, color the appropriate residue with the hex transformed color from the gradient
             for aln_index in alnindex_to_hexcolors.keys():
@@ -448,7 +449,6 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
     for alngroup_name in sliced_alns:
         alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
         if comm_args.structure_paths:
-            import ntpath
             current_path = [s for s in comm_args.structure_paths if alngroup_name in ntpath.basename(s)]
             if len(current_path) == 0:
                 raise IOError(f"When using structure-defined matrices the provided structure files must contain the name of the alignment group.\n\

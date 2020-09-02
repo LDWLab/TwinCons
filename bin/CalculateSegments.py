@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Calculates segments for multiple or single alignments"""
-import re, os, sys, csv, getopt, argparse
-import matplotlib
+import re, os, sys, csv, getopt, argparse, matplotlib
+sys.path.append(os.path.dirname(os.path.abspath(__name__)))
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import stats
 from operator import itemgetter
 
-from TwinCons import TwinCons
+import bin.TwinCons
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

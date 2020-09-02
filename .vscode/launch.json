@@ -14,12 +14,12 @@
 			"name": "TWC",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/TwinCons.py",
+			"program": "./bin/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas",
-				"-pml",
+				"-pml", "windows",
 				"-s", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
 				"-ssbe",
@@ -31,7 +31,7 @@
 			"name": "TWC bS1",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/TwinCons.py",
+			"program": "./bin/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
@@ -46,22 +46,22 @@
 			"name": "TWC rRNA",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/TwinCons.py",
+			"program": "./bin/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
-				"-pml",
+				"-pml", "windows",
 				"-nc", "blastn",
 				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PYRFU_LSUa.cif",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/ECOLI_LSUb.cif",
-				"-o", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/TWC_blastn_AB_LSU"
+				"-o", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/TWC_blastn_AB_LSU2"
 		]
 		},{
 			"name": "QuerySet cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/CalculateSegments.py",
+			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/query_set/",
@@ -74,7 +74,7 @@
 			"name": "BBS cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/CalculateSegments.py",
+			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
@@ -87,7 +87,7 @@
 			"name": "SVM train BBS",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/SVM_train.py",
+			"program": "./bin/SVM_train.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
@@ -100,7 +100,7 @@
 			"name": "SVM test query",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/SVM_test.py",
+			"program": "./bin/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/QS_cg09_it1_lt3.csv",
@@ -116,7 +116,7 @@
 			"name": "SVM test BBS",
 			"type": "python",
 			"request": "launch",
-			"program": "./TwinCons/SVM_test.py",
+			"program": "./bin/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
