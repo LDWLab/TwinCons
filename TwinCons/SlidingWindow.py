@@ -5,7 +5,7 @@ import numpy as np
 from Bio import AlignIO
 import pandas as pd
 
-import TwinCons
+from TwinCons import TwinCons
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Slide two groups of an alignment and calculate a score for each sliding position')
