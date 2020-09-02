@@ -103,7 +103,7 @@
 			"program": "./bin/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/Queryset_for_plotting.csv",
+				"./data/CSV/QS_cg09_it1_lt3.csv",
 				"./data/outputs/SVM/BBS-QS.csv",
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
