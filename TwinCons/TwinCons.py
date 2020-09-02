@@ -10,9 +10,9 @@ from textwrap import wrap
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
-from AlignmentGroup import AlignmentGroup
-import Sequence_Weight_from_Tree
-from MatrixLoad import PAMLmatrix
+from TwinCons.AlignmentGroup import AlignmentGroup
+from TwinCons import Sequence_Weight_from_Tree
+from TwinCons.MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):

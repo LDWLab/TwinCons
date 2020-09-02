@@ -11,7 +11,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 import _pickle as cPickle
-from SVM_test import load_csv_data, trim_data_by_top_segments, csv_to_segments_annotated_by_aln, recalculate_data_by_averaging_segments, average
+from TwinCons.SVM_test import load_csv_data, trim_data_by_top_segments, csv_to_segments_annotated_by_aln, recalculate_data_by_averaging_segments, average
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
