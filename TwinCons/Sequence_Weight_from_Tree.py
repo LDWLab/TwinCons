@@ -226,7 +226,7 @@ def main(commandline_arguments):
             output_split_alignments(sliced_dict, comm_args.save_split_alignments, comm_args.alignment_file)
             sys.exit()
     else:
-        sliced_dict = slice_by_name(alignIO_out)
+        sliced_dict = TwinCons.slice_by_name(alignIO_out)
 
     if comm_args.dhat:
         # #D hat here figure out why it always ranges between 0.4-0.7
