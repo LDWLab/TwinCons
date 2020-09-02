@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re, os, csv, sys, pprint
+sys.path.append(os.path.dirname(os.path.abspath(__name__)))
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import auc
@@ -18,7 +19,7 @@ def read_csv(csv_location):
     return output_list
 
 def calculate_tpr_fpr(csv_data, eval_thr):
-    from TwinCons.SVM_test import bypass_zero_division
+    from bin.SVM_test import bypass_zero_division
     tp, tn, fp, fn = 0, 0, 0, 0
     for aln in csv_data:
         if re.match('^A_|^B_', aln[0]) is not None:
