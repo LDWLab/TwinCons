@@ -17,6 +17,8 @@ from bin.MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
+    subtitution_mx = MatrixInfo.available_matrices
+    subtitution_mx.extend(['blastn', 'identity', 'trans'])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-o','--output_path', help='Output path', required=True)
     input_file = parser.add_mutually_exclusive_group(required=True)
@@ -27,7 +29,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
-    parser.add_argument('-nc','--nucleotide', help='Use nucleotide matrix for score calculation', choices=['blastn', 'identity', 'trans'])
+    parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
     parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
     output_type_group = parser.add_mutually_exclusive_group(required=True)
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
@@ -36,7 +38,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
-    entropy_group.add_argument('-mx','--substitution_matrix', help='Choose protein substitution matrix for score calculation.', choices=MatrixInfo.available_matrices)
+    entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -185,12 +187,18 @@ def slice_by_name(unsliced_aln_obj):
     return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
 def determine_subs_matrix(comm_args):
-    if comm_args.nucleotide:
-        mx = nucl_matrix(comm_args.nucleotide)
-    if comm_args.leegascuel or comm_args.structure_paths:
+    if comm_args.nucleotide and comm_args.substitution_matrix:
+        mx = nucl_matrix(comm_args.substitution_matrix)
+    elif comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
+        mx = np.array([2, 0])
+    elif not comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
+        mx = np.array([4.322, 0])
+    elif comm_args.leegascuel or comm_args.structure_paths:
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-    if comm_args.substitution_matrix:
+    elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
+    else:
+        raise IOError("Impossible combination of arguments!")
     return mx, mx.min(), mx.max()
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
@@ -272,10 +280,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
     
-    if comm_args.leegascuel or comm_args.nucleotide or comm_args.substitution_matrix:
-        #alnindex_to_hexcolors = gradientbars(data,'Blues','Reds')
-        alnindex_to_hexcolors = gradients(data,'Greens','Purples', mx_maxval, mx_minval)
-    elif comm_args.reflected_shannon or comm_args.shannon_entropy:
+    if comm_args.reflected_shannon or comm_args.shannon_entropy:
         alnindex_to_hexcolors = gradients(data,'viridis','binary', mx_maxval, mx_minval)
     else:
         alnindex_to_hexcolors = gradients(data,'Greens','Purples', mx_maxval, mx_minval)
@@ -283,7 +288,6 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
     group_names = list(gapped_sliced_alns.keys())
     #Open .pml file for structure coloring
     pml_output = open(comm_args.output_path+".pml","w")
-    #pml_output = open("./"+'-'.join(sorted(group_names))+'.pml',"w")
     pml_output.write("set hash_max, 500\n\
         set cartoon_loop_radius,0.4\n\
         set cartoon_tube_radius,1\n\
@@ -484,6 +488,13 @@ def main(commandline_arguments):
     if comm_args.cut_gaps and (comm_args.structure_pymol or comm_args.structure_paths):
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nCombining gap removal (-cg) and structural mapping (-sy) or structure based matrices (-s) produces inconsistent alignment mapping!")
+    if comm_args.nucleotide and not ((comm_args.substitution_matrix in ['blastn', 'identity', 'trans']) or comm_args.reflected_shannon or comm_args.shannon_entropy):
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nCombining nucleotide (-nc) requires either -rs or -e or -mx blastn or -mx identity or -mx trans arguments!")
+    if comm_args.nucleotide and comm_args.structure_paths:
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nDefining structures for calculating substitution matrices only works with proteins!")
+
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
     elif len(comm_args.alignment_paths) == 1:
