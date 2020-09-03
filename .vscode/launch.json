@@ -52,7 +52,7 @@
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
 				"-pml", "windows",
-				"-nc", "blastn",
+				"-nc", "-mx", "identity",
 				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PYRFU_LSUa.cif",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/ECOLI_LSUb.cif",
 				"-o", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/TWC_blastn_AB_LSU2"
