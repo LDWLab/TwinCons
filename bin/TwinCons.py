@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, os, csv, sys, random, Bio.Align, argparse, random, math, matplotlib, ntpath
-sys.path.append(os.path.dirname(os.path.abspath(__name__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 matplotlib.use('Agg')
 import numpy as np
 from datetime import date
@@ -64,10 +65,10 @@ def required_length(nmin,nmax):
 def read_align(aln_path):
     '''Reads the fasta file and gets the sequences.
     '''
-    alignments = AlignIO.read(open(aln_path), "fasta")
-    for record in alignments:
+    alignment = AlignIO.read(open(aln_path), "fasta")
+    for record in alignment:
         record.seq = record.seq.upper()
-    return alignments
+    return alignment
 
 def deletefile(file_loc):
     '''Tries to delete provided file path.

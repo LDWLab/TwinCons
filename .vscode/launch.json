@@ -58,6 +58,17 @@
 				"-o", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/TWC_blastn_AB_LSU2"
 		]
 		},{
+			"name": "Prosite parse",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/PROSITE_parse.py",
+			"console": "integratedTerminal",
+			"args": [
+				"../Score-test_data/PROSITE/merges",
+				"-p", "../Score-test_data/PROSITE",
+				"-prst_choice", "good"
+			]
+		},{
 			"name": "QuerySet cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
