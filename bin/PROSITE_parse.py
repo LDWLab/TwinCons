@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Crete mafft combination commands from directory with alignments."""
 import os, re, sys, argparse, itertools, glob, random
+sys.path.append(os.path.dirname(os.path.abspath(__name__)))
 import numpy as np
 from Bio import AlignIO
 
@@ -9,6 +10,7 @@ def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Merge alignments from a given directory')
 	parser.add_argument('output_directory', help='Path for outputting mergers.')
 	parser.add_argument('-p','--prosite_path', help='Path to PROSITE folder.')
+	parser.add_argument('-prst_choice','--prosite_choice', help='Good, bad, or both merges.', choices=['good', 'bad', 'both'])
 	parser.add_argument('-i','--indeli_path', help='Path to INDELI folder.')
 	parser.add_argument('-e','--ecod_path', help='Path to ECOD families folder.')
 	parser.add_argument('-el','--ecod_level', help='Architecture level to merge', type=int, default=4)
@@ -132,25 +134,32 @@ def merger_commands(sequence_groups,output_path):
 				os.system("rm "+alns_for_merging)
 	return True
 
-def prosite_good_merge(pdc_to_ps):
-	for pdc, ps_list in pdc_to_ps.items():
-		if len(ps_list) > 1:
-			print(pdc)
-			for fam_comb in itertools.combinations(ps_list, 2):
-				alns_for_merging = "concat_"+fam_comb[0]+"_"+fam_comb[1]+".fas"
-				os.system("cat ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > "+alns_for_merging)
-				os.system("ruby /usr/local/bin/makemergetable.rb "+"../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > subMSAtable")
-				os.system("mafft --merge subMSAtable "+alns_for_merging+" > "+"../../Score-test_data/PROSITE/merges/GOOD/"+fam_comb[0]+"_"+fam_comb[1]+".fas")
-				os.system("rm "+alns_for_merging)
-	return True
+def prosite_cleanup(list_with_ids, prst_loc):
+	from bin.TwinCons import read_align
+	from os import listdir
+	from os.path import isfile, join
+	prst_aln_dir = f"{prst_loc}/prosite_alignments_handle/"
+	prst_alns = [f.replace(".msa", '') for f in listdir(prst_aln_dir) if isfile(join(prst_aln_dir, f))]
+	present_alns = list(set(prst_alns).intersection(set(list_with_ids)))
+	filtered_ids = list()
+	for prst_id in present_alns:
+		aln = read_align(f"{prst_loc}/prosite_alignments_handle/{prst_id}.msa")
+		if (20 < len(aln) < 100) and (50 < aln.get_alignment_length() < 500):
+			filtered_ids.append(prst_id)
+	return filtered_ids
 
-def prosite_bad_merge(list_with_bad):
-	for fam_comb in itertools.combinations(list_with_bad, 2):
-		alns_for_merging = "concat_"+fam_comb[0]+"_"+fam_comb[1]+".fas"
-		os.system("cat ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > "+alns_for_merging)
-		os.system("ruby /usr/local/bin/makemergetable.rb "+"../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[0]+".msa ../../Score-test_data/PROSITE/prosite_alignments_handle/"+fam_comb[1]+".msa > subMSAtable")
-		os.system("mafft --merge subMSAtable "+alns_for_merging+" > "+"../../Score-test_data/PROSITE/merges/BAD/"+fam_comb[0]+"_"+fam_comb[1]+".fas")
-		os.system("rm "+alns_for_merging)
+def prosite_merge(list_with_bad, prst_aln_loc, out_dir):
+	'''Specify whether its good or bad in the out_dir variable.'''
+	family_combinations = list(set(list(itertools.combinations(list_with_bad, 2))))
+	for fam_comb in family_combinations:
+		alns_for_merging = f"concat_{fam_comb[0]}_{fam_comb[1]}.fas"
+		file1 = f"{prst_aln_loc}/{fam_comb[0]}.msa"
+		file2 = f"{prst_aln_loc}/{fam_comb[1]}.msa"
+		os.system(f"cat {file1} {file2} > {out_dir}/{alns_for_merging}")
+		os.system(f"ruby /usr/local/bin/makemergetable.rb {file1} {file2} > subMSAtable")
+		os.system(f"mafft --quiet --merge subMSAtable {out_dir}/{alns_for_merging} > {out_dir}/{fam_comb[0]}_{fam_comb[1]}.fas")
+		os.system(f"rm {out_dir}/{alns_for_merging}")
+	os.system("rm subMSAtable")
 	return True
 
 def main(commandline_arguments):
@@ -158,17 +167,35 @@ def main(commandline_arguments):
 	comm_args = create_and_parse_argument_options(commandline_arguments)
 	
 	if comm_args.prosite_path:
+		if not comm_args.prosite_choice:
+			raise IOError("Choose what type of merge to do with -prst_choice")
 		pdc_to_ps = read_parse_doc_file(comm_args)
-		#prosite_good_merge(pdc_to_ps)
-		prosite_bad_list = []
+		prosite_bad_list = list()
+		prosite_good_list = list()
 		for pdc, ps_list in pdc_to_ps.items():
 			if len(ps_list) == 1:
 				prosite_bad_list.append(ps_list[0])
-		no_elements_to_delete = 1237
-		no_elements_to_keep = len(prosite_bad_list) - no_elements_to_delete
-		truncated_bad_list = set(random.sample(prosite_bad_list, no_elements_to_keep))
-		#print(truncated_bad_list)
-		prosite_bad_merge(truncated_bad_list)
+			elif len(ps_list) > 1:
+				prosite_good_list.append(ps_list)
+		
+		if comm_args.prosite_choice == 'bad' or comm_args.prosite_choice == 'both':
+			bad_filtered_ids = prosite_cleanup(prosite_bad_list, comm_args.prosite_path)
+			prosite_merge(bad_filtered_ids, 
+						f"{comm_args.prosite_path}/prosite_alignments_handle", 
+						f"{comm_args.output_directory}/BAD")
+		
+		if comm_args.prosite_choice == 'good' or comm_args.prosite_choice == 'both':
+			good_filtered_ids = list()
+			for unfiltered_good in prosite_good_list:
+				temp_filtered = list()
+				temp_filtered = prosite_cleanup(unfiltered_good, comm_args.prosite_path)
+				if len(temp_filtered) > 1:
+					good_filtered_ids.append(temp_filtered)
+
+			for filtered_good in good_filtered_ids:
+				prosite_merge(filtered_good, 
+							f"{comm_args.prosite_path}/prosite_alignments_handle", 
+							f"{comm_args.output_directory}/GOOD")
 	
 	elif comm_args.rprot_path and comm_args.indeli_path:
 		pdc_to_ps = parse_rprot_folder(comm_args)
