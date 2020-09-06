@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Calculates segments for multiple or single alignments"""
 import re, os, sys, csv, getopt, argparse, matplotlib
-sys.path.append(os.path.dirname(os.path.abspath(__name__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +10,7 @@ import pandas as pd
 from scipy import stats
 from operator import itemgetter
 
-import bin.TwinCons
+import bin.TwinCons as TwinCons
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -73,6 +74,10 @@ def scatter_plot(alns_to_segment_stats, legend=False, average_weight=False):
         segment_lengths = [n[0] for n in alns_to_segment_stats[file]]
         abs_length = [n**2 for n in segment_lengths]
         plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',s=abs_length,color=color)
+        if len(segment_lengths) == 0:
+            segment_lengths.append(0)
+        if len(segment_weights) == 0:
+            segment_weights.append(0)
         label_order_tups.append((file_number,max(segment_weights)+max(segment_lengths)))
         file_number += 1
     
