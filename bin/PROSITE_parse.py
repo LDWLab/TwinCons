@@ -18,11 +18,11 @@ def create_and_parse_argument_options(argument_list):
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
-def read_parse_doc_file(comm_args):
+def read_parse_doc_file(prosite_path):
 	'''
 	Reads the doc file from PROSITE and creates a dictionary of keys PDCs and values a list of associated PS families.
 	'''
-	docfile = comm_args.prosite_path+"/prosite.doc"
+	docfile = prosite_path+"/prosite.doc"
 	pdc_to_ps={}
 	with open (docfile, 'r', encoding="latin-1") as in_file:
 		data = in_file.read().replace('\n', ' ')
@@ -36,6 +36,29 @@ def read_parse_doc_file(comm_args):
 		for index, element in enumerate(elements_in_fam):
 			elements_in_fam[index] = re.sub(r';.*', '', elements_in_fam[index])
 		pdc_to_ps[elements_in_fam.pop(0)] = elements_in_fam
+	return pdc_to_ps
+
+def read_parse_prst_dat(prosite_path):
+	dat_file = f"{prosite_path}/prosite.dat"
+	with open (dat_file, 'r') as in_file:
+		data = in_file.read()
+	indexes = re.split('//',data)
+	pdc_to_ps = dict()
+	test = list()
+	for entry in indexes[3:-1]:
+		ac, do = '', ''
+		if re.search('/SKIP-FLAG=TRUE;', entry):
+			continue
+		temp = dict()
+		for line in entry.split('\n'):
+			if len(line) == 0:
+				continue
+			if not re.match('AC|DO',line.split('   ')[0]):
+				continue
+			temp[line.split('   ')[0].replace(';','')]=line.split('   ')[1].replace(';','')
+		if temp['DO'] not in pdc_to_ps.keys():
+			pdc_to_ps[temp['DO']] = list()
+		pdc_to_ps[temp['DO']].append(temp['AC'])
 	return pdc_to_ps
 
 def parse_indeli_folder(comm_args):
@@ -169,7 +192,7 @@ def main(commandline_arguments):
 	if comm_args.prosite_path:
 		if not comm_args.prosite_choice:
 			raise IOError("Choose what type of merge to do with -prst_choice")
-		pdc_to_ps = read_parse_doc_file(comm_args)
+		pdc_to_ps = read_parse_prst_dat(comm_args.prosite_path)
 		prosite_bad_list = list()
 		prosite_good_list = list()
 		for pdc, ps_list in pdc_to_ps.items():
