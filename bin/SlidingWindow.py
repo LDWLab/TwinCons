@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Calculates conservation score for sliding window of one alignment"""
 import re, sys, argparse, os
-sys.path.append(os.path.dirname(os.path.abspath(__name__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from Bio import AlignIO
 import pandas as pd
 
-import bin.TwinCons
+import bin.TwinCons as TwinCons
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Slide two groups of an alignment and calculate a score for each sliding position')

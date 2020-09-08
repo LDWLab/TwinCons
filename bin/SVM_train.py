@@ -4,27 +4,33 @@ Generate SVM from alignment segments.
 Computes a decision function from csv generated with MultiPhyMeas
 """
 #print(__doc__)
-import re, sys, csv, math, argparse, json
+import re, os, sys, csv, math, argparse, json
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 import _pickle as cPickle
-from TwinCons.SVM_test import load_csv_data, trim_data_by_top_segments, csv_to_segments_annotated_by_aln, recalculate_data_by_averaging_segments, average
+from bin.SVM_test import load_csv_data, trim_data_by_top_segments, csv_to_segments_annotated_by_aln, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('output_path', help='Output path', type=str)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
-    parser.add_argument('-tp','--penalty', help='Penalty for training algorithm', type=float, default=1)
+    parser.add_argument('-tp','--penalty', help='Penalty for training algorithm. (Default = 1)', type=float, default=1)
     parser.add_argument('-k','--kernel', help='Kernel for the training algorithm', type=str, 
                                             choices=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], default='rbf')
     parser.add_argument('-g','--gamma', help='Gamma function for training algorithm', \
                                             choices=['auto', 'scale'], default='auto')
+    parser.add_argument('-l','--length_type_calculation', help='Choose what type of segment calculation should be used.\
+        \n\t absolute:   absolute length of the segments.\
+        \n\t normalized: length of segments is normalized with the total alignment length.\
+        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='absolute')
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
-        \n this percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
+        \nthis percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
         \nfrom all segments per alignment. Uses total segment length instead of normalized.', action="store_true")
     commandline_args = parser.parse_args(argument_list)
@@ -57,16 +63,13 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
     ###   Draws the decision function as a red line   ###
     axis.contour(xx, yy, Z, levels=[0],colors='r', linestyles=['-'], linewidths=0.5)
 
-    abs_length = [float(n)**5 for n in sample_weight]
+    abs_length = [float(n)**2 for n in sample_weight]
 
     ###   Plot scatter of segments   ###
     scatter = axis.scatter( X[:, 0],
                             X[:, 1],
                             c=y,
-                            alpha=0.5,
-                            cmap=plt.cm.bone,
-                            edgecolors='black',
-                            s=abs_length)
+                            cmap=plt.cm.viridis)
     
     #Data point labels needs work
     # for i, txt in enumerate(aln_names):
@@ -101,12 +104,15 @@ def main(commandline_arguments):
     ###   Load alignment segment data   ###
     csv_list = csv_iterator(comm_args.csv_path)
     csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
-    if comm_args.center_mass_segments:
+    if comm_args.length_type_calculation == 'cms':
         csv_list = recalculate_data_by_averaging_segments(csv_list)
-
+    if comm_args.length_type_calculation == 'absolute':
+        csv_list = use_absolute_length_of_segments(csv_list)
+    
     ###   Train the classifier  ###
     X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(csv_list)
-    sample_weight = [math.log(x) for x in sample_weight]
+    if comm_args.length_type_calculation != 'absolute':
+        sample_weight = [math.log(x) for x in sample_weight]
     decision_function = train_classifier(X, y, comm_args.penalty, comm_args.gamma, comm_args.kernel, sample_weight=sample_weight)
 
     ###   Save the classifier   ###

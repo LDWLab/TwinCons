@@ -1,0 +1,14 @@
+[
+    {
+        "maxX": 36.0,
+        "maxY": 78.27431486880467
+    },
+    [
+        "./data/CSV/BBS_cg09_it1_lt3.csv",
+        "./data/PKL/BBS_cg09_it1_lt3_absl.pkl",
+        "-pd",
+        "./data/outputs/SVM/BBS_absl.png",
+        "-ts",
+        "1"
+    ]
+]
