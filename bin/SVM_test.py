@@ -30,6 +30,10 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
                                     \n this percentage of the total normalized length and weight. (Default = 0.5)', 
                                                                                             type=float, default=0.5)
+    parser.add_argument('-l','--length_type_calculation', help='Choose what type of segment calculation should be used.\
+        \n\t absolute:   absolute length of the segments.\
+        \n\t normalized: length of segments is normalized with the total alignment length.\
+        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='absolute')
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
                                     \nfrom all segments per alignment.', action="store_true")
     calculate_positive = parser.add_mutually_exclusive_group(required=True)
@@ -94,16 +98,17 @@ def recalculate_data_by_averaging_segments(csv_list):
         output_list.append([aln_id, averaged_results[2], averaged_results[0], averaged_results[1], 'NA'])
     return output_list
 
-def load_csv_data(csv_list, max_features=''):
+def use_absolute_length_of_segments(csv_list):
+    '''Moves absolute segment length to accurate position.
+    Assigns weights of 1 to all segments.'''
+    return [[x[0], x[2], x[1], x[3], x[4]] for x in csv_list]
+
+def load_and_assign_data(csv_list):
+    '''Reads a csv outputted from CalculateSegments.py, 
+    entries starting with A_ and B_ are considered as +
+    data and entries starting with C_ and D_ as - data.
     '''
-    Reads a csv outputted from MultiPhyMeas.py, entries starting with A_ and B_ are considered as + data
-    and entries starting with C_ and D_ as - data. Normalizes all the data for x and y in the range 0,1
-    using the max(x) and max(y).
-    '''
-    data_xy = []
-    data_identity = []
-    data_weights = []
-    aln_names = []
+    data_xy, data_identity, data_weights, aln_names = list(), list(), list(), list()
     i = 0
     curr_name = ''
     for row in csv_list:
@@ -120,6 +125,14 @@ def load_csv_data(csv_list, max_features=''):
             if curr_name != row[0]:
                 curr_name = row[0]
                 i+=1
+    return data_xy, data_identity, data_weights, aln_names
+
+def load_csv_data(csv_list, max_features=''):
+    '''
+    Normalizes all the data for x and y in the range 0,1
+    using the max(x) and max(y).
+    '''
+    data_xy, data_identity, data_weights, aln_names = load_and_assign_data(csv_list)
     data_xy_normx = []
     if max_features == '':
         maxX = max(np.asarray(data_xy)[:,0])
@@ -196,7 +209,7 @@ def calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn, eval=False):
     #print(tp, tn, fp, fn)
     return tp, tn, fp, fn
 
-def mass_test(segment_pred_dist, grouped_data, min_threshold=0,max_threshold=2, step=0.1, eval=False):
+def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eval=False):
     '''For evaluating the decision function with 
     great number of alignments in separate groups.
     '''
@@ -271,7 +284,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
-        scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, s=abs_length, 
+        scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
             palette="tab20", edgecolor='black')
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
@@ -325,8 +338,10 @@ def main(commandline_arguments):
     csv_list = csv_iterator(comm_args.csv_path)
     if comm_args.top_segments:
         csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
-    if comm_args.center_mass_segments:
+    if comm_args.length_type_calculation == 'cms':
         csv_list = recalculate_data_by_averaging_segments(csv_list)
+    if comm_args.length_type_calculation == 'absolute':
+        csv_list = use_absolute_length_of_segments(csv_list)
 
     if comm_args.evalue_threshold and (comm_args.range_distance_thresholds[0] == -20 or comm_args.range_distance_thresholds[1] == 20):
         comm_args.range_distance_thresholds[0] = 0
@@ -339,8 +354,7 @@ def main(commandline_arguments):
     segment_pred_dist = test_function(csv_list, classifier, max_features)
 
     if comm_args.test_classifier_precision:
-        grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist, by_group=True)
-        dist_to_se_sp_pr = mass_test(segment_pred_dist, grouped_data,
+        dist_to_se_sp_pr = mass_test(segment_pred_dist,
             min_threshold=float(comm_args.range_distance_thresholds[0]), 
             max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
             step=float(comm_args.range_distance_thresholds[2]), eval=comm_args.evalue_threshold)
@@ -359,7 +373,7 @@ def main(commandline_arguments):
         alnid_with_evalue = list()
         alnid_to_eval = dict()
         i = 0
-        if comm_args.center_mass_segments:
+        if comm_args.length_type_calculation == 'cms':
             grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
             for aln in sorted(grouped_data.keys()):
                 eval = math.exp(grouped_data[aln][0][0]*-1)

@@ -9,7 +9,8 @@
 			"type": "python",
 			"request": "launch",
 			"program": "${file}",
-			"console": "integratedTerminal"
+			"console": "integratedTerminal",
+			"justMyCode": false
 		},{
 			"name": "TWC",
 			"type": "python",
@@ -82,6 +83,18 @@
 				"-co", "gt_0.9", "cg", "mx_blosum62"
 			]
 		},{
+			"name": "PROSITE",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/CalculateSegments.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-twc", "../Score-test_data/PROSITE/TWC_results/GOOD/",
+				"./data/CSV/PRST-gd_cg09_it1_lt3",
+				"-c",
+				"-p",
+			]
+		},{
 			"name": "BBS cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
@@ -102,10 +115,23 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/PKL/BBS_cg09_it1_lt3.pkl",
+				"./data/PKL/BBS_cg09_it1_lt3_absl.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS.png",
+				"./data/outputs/SVM/BBS_absl.png",
 				"-ts", "1",
+			]
+		},{
+			"name": "SVM train PRST",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/SVM_train.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/PRST_cg09_it1_lt3.csv",
+				"./data/PKL/PRST_cg09_it1_lt3_absl_nweights_ts0p5.pkl",
+				"-pd",
+				"./data/outputs/SVM/PRST_absl_nweights_ts0p5.png",
+				"-ts", "0.5", "-tp", "1"
 			]
 		},{
 			"name": "SVM test query",
@@ -115,10 +141,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/QS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBS-QS.csv",
-				"./data/PKL/BBS_cg09_it1_lt3.pkl",
+				"./data/outputs/SVM/BBS-QS_absl.csv",
+				"./data/PKL/BBS_cg09_it1_lt3_absl.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_QS.png",
+				"./data/outputs/SVM/BBSabsl_vs_QS.png",
 				"-ts", "1",
 				"-tqa",
 				"-dt", "-0.7", "0.7", "0.1"
@@ -138,6 +164,22 @@
 				"-ts", "1",
 				"-tcp",
 				"-dt", "-1", "1", "0.1"
+			]
+		},{
+			"name": "SVM test PRST",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/SVM_test.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/PRST_cg09_it1_lt3.csv",
+				"./data/outputs/SVM/PRST-PRST.csv",
+				"./data/PKL/PRST_cg09_it1_lt3_absl_nweights_ts0p5.pkl",
+				"-pd",
+				"./data/outputs/SVM/PRST_v_PRST.png",
+				"-ts", "0.5",
+				"-tcp",
+				"-dt", "-1.4", "0", "0.1"
 			]
 		}
 	]
