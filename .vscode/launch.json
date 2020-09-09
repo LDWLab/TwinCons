@@ -37,7 +37,7 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
-				"-pml",
+				"-pml", "windows",
 				"-mx", "blosum62",
 				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
