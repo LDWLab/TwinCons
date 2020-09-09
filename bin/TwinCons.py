@@ -314,10 +314,13 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             #Open the structure file
+            output_parent_dir = ntpath.dirname(comm_args.output_path)
+            if output_parent_dir == '.':
+                output_parent_dir = str(Path(__file__).parent.absolute())
             if comm_args.write_pml_script == 'unix':
-                pml_path = PurePosixPath(current_path[0].replace(ntpath.dirname(comm_args.output_path), '')[1:])
+                pml_path = PurePosixPath(current_path[0])
             if comm_args.write_pml_script == 'windows':
-                pml_path = PureWindowsPath(current_path[0].replace(ntpath.dirname(comm_args.output_path), '')[1:])
+                pml_path = PureWindowsPath(current_path[0])
             pml_output.write(f"load {pml_path}, {alngroup_name}\n")
             #For each alignment position, color the appropriate residue with the hex transformed color from the gradient
             for aln_index in alnindex_to_hexcolors.keys():
