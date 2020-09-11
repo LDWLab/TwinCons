@@ -33,7 +33,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-l','--length_type_calculation', help='Choose what type of segment calculation should be used.\
         \n\t absolute:   absolute length of the segments.\
         \n\t normalized: length of segments is normalized with the total alignment length.\
-        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='absolute')
+        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='normalized')
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
                                     \nfrom all segments per alignment.', action="store_true")
     calculate_positive = parser.add_mutually_exclusive_group(required=True)
@@ -285,7 +285,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
         scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
-            palette="tab20", edgecolor='black')
+            palette="tab20", edgecolor='black', s=abs_length)
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
 

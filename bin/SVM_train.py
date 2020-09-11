@@ -28,7 +28,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-l','--length_type_calculation', help='Choose what type of segment calculation should be used.\
         \n\t absolute:   absolute length of the segments.\
         \n\t normalized: length of segments is normalized with the total alignment length.\
-        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='absolute')
+        \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='normalized')
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
         \nthis percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
     parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \

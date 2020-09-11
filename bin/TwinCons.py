@@ -21,7 +21,7 @@ def create_and_parse_argument_options(argument_list):
     subtitution_mx = MatrixInfo.available_matrices
     subtitution_mx.extend(['blastn', 'identity', 'trans'])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-o','--output_path', help='Output path', required=True)
+    parser.add_argument('-o','--output_path', help='Output path')
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
