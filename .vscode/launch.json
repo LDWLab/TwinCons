@@ -76,7 +76,7 @@
 			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/query_set/",
+				"-a", "../Score-test_data/query_set/",
 				"./data/CSV/QS_cg09_it1_lt3",
 				"-c",
 				"-l", "-p",
@@ -128,9 +128,9 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/PRST_cg09_it1_lt3.csv",
-				"./data/PKL/PRST_cg09_it1_lt3_absl_nweights_ts0p5.pkl",
+				"./data/PKL/PRST_cg09_it1_lt3_nweights_ts0p5.pkl",
 				"-pd",
-				"./data/outputs/SVM/PRST_absl_nweights_ts0p5.png",
+				"./data/outputs/SVM/PRST_nweights_ts0p5.png",
 				"-ts", "0.5", "-tp", "1"
 			]
 		},{
@@ -141,10 +141,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/QS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBS-QS_absl.csv",
-				"./data/PKL/BBS_cg09_it1_lt3_absl.pkl",
+				"./data/outputs/SVM/BBS-QS.csv",
+				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBSabsl_vs_QS.png",
+				"./data/outputs/SVM/BBS_vs_QS.png",
 				"-ts", "1",
 				"-tqa",
 				"-dt", "-0.7", "0.7", "0.1"
