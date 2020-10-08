@@ -135,11 +135,11 @@ def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, gr
         aln_names.append(aln)
         aligned_positions, extremely_gapped = count_aligned_positions(aln_obj_groups[aln], gap_threshold)
         group_gapped[aln] = extremely_gapped
-    for pos in group_gapped['uL02b']:
+    for pos in group_gapped[aln_names[0]]:
         output_group_gapped[pos] = 'Ungapped'
-        if group_gapped['uL02b'][pos] == group_gapped['uL02c'][pos] == 'True':
+        if group_gapped[aln_names[0]][pos] == group_gapped[aln_names[1]][pos] == 'True':
             output_group_gapped[pos] = 'AllGap'
-        if group_gapped['uL02b'][pos] != group_gapped['uL02c'][pos]:
+        if group_gapped[aln_names[0]][pos] != group_gapped[aln_names[1]][pos]:
             output_group_gapped[pos] = 'GroupGap'
     return output_group_gapped
 
