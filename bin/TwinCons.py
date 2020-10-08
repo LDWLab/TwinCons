@@ -126,6 +126,23 @@ def count_aligned_positions(aln_obj, gap_threshold):
         raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
     return aligned_positions, extremely_gapped
 
+def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, group_lengths):
+    '''Detects alignment positions that are heavily gapped in one group only.
+    Uses the gap_threshold to determine whether either group has less residues in the alignment columns.
+    '''
+    aln_names, group_gapped, output_group_gapped = list(), dict(), dict()
+    for aln in aln_obj_groups:
+        aln_names.append(aln)
+        aligned_positions, extremely_gapped = count_aligned_positions(aln_obj_groups[aln], gap_threshold)
+        group_gapped[aln] = extremely_gapped
+    for pos in group_gapped['uL02b']:
+        output_group_gapped[pos] = 'Ungapped'
+        if group_gapped['uL02b'][pos] == group_gapped['uL02c'][pos] == 'True':
+            output_group_gapped[pos] = 'AllGap'
+        if group_gapped['uL02b'][pos] != group_gapped['uL02c'][pos]:
+            output_group_gapped[pos] = 'GroupGap'
+    return output_group_gapped
+
 def remove_extremely_gapped_regions(align, gap_perc, gap_mapping):
     '''Removes columns of alignment with more than gap_perc gaps.
     '''
@@ -227,7 +244,7 @@ def upsidedown_horizontal_gradient_bar(out_dict,group_names,comm_args, mx_min, m
     stdevdata=[]
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
-        if out_dict[x][1] == 'True':
+        if out_dict[x][1] == 'GroupGap' or out_dict[x][1] == 'AllGap':
             stdevdata.append(0.5)
         else:
             stdevdata.append(0)
@@ -521,13 +538,15 @@ def main(commandline_arguments):
     if len(gapped_sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
+    num_seqs_per_group, num_seqs_per_group_dict  = list(), dict()
+    for aln in gapped_sliced_alns:
+        num_seqs_per_group.append(gapped_sliced_alns[aln].__len__())
+        num_seqs_per_group_dict[aln] = gapped_sliced_alns[aln].__len__()
     if comm_args.gap_threshold is None:
-        seq_records = list()
-        for aln in gapped_sliced_alns:
-            seq_records.append(gapped_sliced_alns[aln].__len__())
-        comm_args.gap_threshold = round(min([seq_records[0]/(seq_records[0]+seq_records[1]),seq_records[1]/(seq_records[0]+seq_records[1])])-0.05,2)
+        comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
     number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
+    group_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
         alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
@@ -572,12 +591,11 @@ def main(commandline_arguments):
     output_dict = dict()
     output_dict_pml = dict()
     for x in position_defined_scores.keys():                #If standard deviation is too big, set the result as 0
-        if extremely_gapped[gp_mapping[x]] == 'True':
-            output_dict[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
-            output_dict_pml[gp_mapping[x]] = ('NA', extremely_gapped[gp_mapping[x]])
+        output_dict[gp_mapping[x]] = (position_defined_scores[x], group_gapped[gp_mapping[x]])
+        if group_gapped[gp_mapping[x]] == 'GroupGap' or group_gapped[gp_mapping[x]] == 'AllGap':
+            output_dict_pml[gp_mapping[x]] = ('NA', group_gapped[gp_mapping[x]])
             continue
-        output_dict[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
-        output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
+        output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], group_gapped[gp_mapping[x]])
     
     if comm_args.plotit:                                    #for plotting
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()), comm_args, mx_minval, mx_maxval)
