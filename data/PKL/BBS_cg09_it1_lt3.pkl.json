@@ -9,6 +9,13 @@
         "-pd",
         "./data/outputs/SVM/BBS.png",
         "-ts",
-        "1"
+        "1",
+        "-twca",
+        "gt_0.9",
+        "cg",
+        "mx_blosum62",
+        "-csa",
+        "lt_3",
+        "it_1"
     ]
 ]

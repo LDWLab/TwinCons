@@ -68,6 +68,13 @@ Sample output:
 
 ## Training a classifier
 
+Must include parameters used in TwinCons and CalculateSegments. Use the same format as -co from Calculate segments. For example:
+
+	./bin/SVM_Train.py output.csv output.pkl -pd "output.png -ts 1 -tp 1 -twca mx_blosum62 gt_0.9 cg -csa lt_3 it_2
+
+No need to specify if defaults where used.
+
+Example output of BaliBASE decision boundary:
 <img src="./data/outputs/SVM/BBS.png">
 
 ## Testing a classifier

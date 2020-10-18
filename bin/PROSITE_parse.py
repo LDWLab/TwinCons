@@ -96,7 +96,7 @@ def parse_rprot_folder(comm_args):
 	return pdc_to_ps
 
 def hash_constructor(data, aln):
-	if len(data) == 0:	#trivial case, we have no element therefore we return empty list
+	if len(data) == 0:	#we have no element therefore we return empty list
 		return aln 
 	else: 				#if we have elements
 		first_value = data[0] #we take the first value

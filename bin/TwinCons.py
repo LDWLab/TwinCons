@@ -26,6 +26,7 @@ def create_and_parse_argument_options(argument_list):
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
+    parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
     parser.add_argument('-gt','--gap_threshold', help='Specify %% gaps per alignment position. (Default = the smaller between ((sequences of group1)/(all sequences) and (sequences of group2)/(all sequences)) minus 0.05)', type=float)
     parser.add_argument('-s','--structure_paths', nargs='+', help='Paths to structure files, for score calculation. Does not work with --nucleotide!')
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
@@ -105,7 +106,10 @@ def run_mafft(aln_paths):
         seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
         mergertable.write(" "+seq_nums)
     mergertable.close()
-    os.system("mafft --quiet --merge ./tempsubMSAtable ./tempconcatfasta.fas > ./tempmergedfasta.fas")
+    try:
+        os.system("mafft --quiet --merge ./tempsubMSAtable ./tempconcatfasta.fas > ./tempmergedfasta.fas")
+    except OSError as e:
+        raise OSError("Mafft failed with the following error:\n"+e)
     merged_tagged_aln = read_align("./tempmergedfasta.fas")
     for tempfile in tempfiles:
         deletefile(tempfile)
@@ -215,6 +219,8 @@ def determine_subs_matrix(comm_args):
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
+    elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
+        raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
     return mx, mx.min(), mx.max()
@@ -546,7 +552,8 @@ def main(commandline_arguments):
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
     number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
-    group_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
+    if comm_args.calculate_group_gaps:
+        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
         alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
@@ -591,11 +598,13 @@ def main(commandline_arguments):
     output_dict = dict()
     output_dict_pml = dict()
     for x in position_defined_scores.keys():                #If standard deviation is too big, set the result as 0
-        output_dict[gp_mapping[x]] = (position_defined_scores[x], group_gapped[gp_mapping[x]])
-        if group_gapped[gp_mapping[x]] == 'GroupGap' or group_gapped[gp_mapping[x]] == 'AllGap':
-            output_dict_pml[gp_mapping[x]] = ('NA', group_gapped[gp_mapping[x]])
+        output_dict[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
+        if extremely_gapped[gp_mapping[x]] == 'GroupGap' \
+            or extremely_gapped[gp_mapping[x]] == 'AllGap'\
+            or extremely_gapped[gp_mapping[x]] == 'True':
+            output_dict_pml[gp_mapping[x]] = ('NA', extremely_gapped[gp_mapping[x]])
             continue
-        output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], group_gapped[gp_mapping[x]])
+        output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
     
     if comm_args.plotit:                                    #for plotting
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()), comm_args, mx_minval, mx_maxval)
