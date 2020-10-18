@@ -11,7 +11,8 @@
 			"program": "${file}",
 			"console": "integratedTerminal",
 			"justMyCode": false
-		},{
+		},
+		{
 			"name": "TWC",
 			"type": "python",
 			"request": "launch",
@@ -20,15 +21,20 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas",
-				"-pml", "windows",
-				"-s", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
+				"-pml",
+				"windows",
+				"-s",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
 				"-ssbe",
-				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
+				"-sy",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
-				"-o", "~/Desktop/alntest"
-		]
-		},{
+				"-o",
+				"~/Desktop/alntest"
+			]
+		},
+		{
 			"name": "TWC bS1",
 			"type": "python",
 			"request": "launch",
@@ -37,13 +43,18 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
-				"-pml", "windows",
-				"-mx", "blosum62",
-				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"-pml",
+				"windows",
+				"-mx",
+				"blosum62",
+				"-sy",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
-				"-o", "~/Desktop/bS1test"
-		]
-		},{
+				"-o",
+				"~/Desktop/bS1test"
+			]
+		},
+		{
 			"name": "TWC rRNA",
 			"type": "python",
 			"request": "launch",
@@ -52,13 +63,19 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
-				"-pml", "windows",
-				"-nc", "-mx", "identity",
-				"-sy", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PYRFU_LSUa.cif",
+				"-pml",
+				"windows",
+				"-nc",
+				"-mx",
+				"blastn",
+				"-sy",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PYRFU_LSUa.cif",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/ECOLI_LSUb.cif",
-				"-o", "~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/TWC_blastn_AB_LSU2"
-		]
-		},{
+				"-o",
+				"~/Desktop/TWC_blastn_AB_LSU2"
+			]
+		},
+		{
 			"name": "Prosite parse",
 			"type": "python",
 			"request": "launch",
@@ -66,48 +83,64 @@
 			"console": "integratedTerminal",
 			"args": [
 				"../Score-test_data/PROSITE/merges",
-				"-p", "../Score-test_data/PROSITE",
-				"-prst_choice", "good"
+				"-p",
+				"../Score-test_data/PROSITE",
+				"-prst_choice",
+				"good"
 			]
-		},{
+		},
+		{
 			"name": "QuerySet cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
 			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-a", "../Score-test_data/query_set/",
+				"-a",
+				"../Score-test_data/query_set/",
 				"./data/CSV/QS_cg09_it1_lt3",
 				"-c",
-				"-l", "-p",
-				"-co", "gt_0.9", "cg", "mx_blosum62"
+				"-l",
+				"-p",
+				"-co",
+				"gt_0.9",
+				"cg",
+				"mx_blosum62"
 			]
-		},{
+		},
+		{
 			"name": "PROSITE",
 			"type": "python",
 			"request": "launch",
 			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-twc", "../Score-test_data/PROSITE/TWC_results/GOOD/",
+				"-twc",
+				"../Score-test_data/PROSITE/TWC_results/GOOD/",
 				"./data/CSV/PRST-gd_cg09_it1_lt3",
 				"-c",
 				"-p",
 			]
-		},{
+		},
+		{
 			"name": "BBS cg09 lt3 it1",
 			"type": "python",
 			"request": "launch",
 			"program": "./bin/CalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-a", "~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
+				"-a",
+				"~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/",
 				"./data/CSV/BBS_cg09_it1_lt3",
 				"-c",
 				"-p",
-				"-co", "gt_0.9", "cg", "mx_blosum62"
+				"-co",
+				"gt_0.9",
+				"cg",
+				"mx_blosum62"
 			]
-		},{
+		},
+		{
 			"name": "SVM train BBS",
 			"type": "python",
 			"request": "launch",
@@ -115,12 +148,21 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/PKL/BBS_cg09_it1_lt3_absl.pkl",
+				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_absl.png",
-				"-ts", "1",
+				"./data/outputs/SVM/BBS.png",
+				"-ts",
+				"1",
+				"-twca",
+				"gt_0.9",
+				"cg",
+				"mx_blosum62",
+				"-csa",
+				"lt_3",
+				"it_1"
 			]
-		},{
+		},
+		{
 			"name": "SVM train PRST",
 			"type": "python",
 			"request": "launch",
@@ -131,9 +173,13 @@
 				"./data/PKL/PRST_cg09_it1_lt3_nweights_ts0p5.pkl",
 				"-pd",
 				"./data/outputs/SVM/PRST_nweights_ts0p5.png",
-				"-ts", "0.5", "-tp", "1"
+				"-ts",
+				"0.5",
+				"-tp",
+				"1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test query",
 			"type": "python",
 			"request": "launch",
@@ -145,11 +191,16 @@
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
 				"./data/outputs/SVM/BBS_vs_QS.png",
-				"-ts", "1",
+				"-ts",
+				"1",
 				"-tqa",
-				"-dt", "-0.7", "0.7", "0.1"
+				"-dt",
+				"-0.7",
+				"0.7",
+				"0.1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test BBS",
 			"type": "python",
 			"request": "launch",
@@ -160,12 +211,17 @@
 				"./data/outputs/SVM/BBS-BBS.csv",
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_BBS.png",
-				"-ts", "1",
+				"./data/outputs/SVM/BBS_vs_BBS.svg",
+				"-ts",
+				"1",
 				"-tcp",
-				"-dt", "-1", "1", "0.1"
+				"-dt",
+				"-1",
+				"1",
+				"0.1"
 			]
-		},{
+		},
+		{
 			"name": "SVM test PRST",
 			"type": "python",
 			"request": "launch",
@@ -177,10 +233,25 @@
 				"./data/PKL/PRST_cg09_it1_lt3_absl_nweights_ts0p5.pkl",
 				"-pd",
 				"./data/outputs/SVM/PRST_v_PRST.png",
-				"-ts", "0.5",
+				"-ts",
+				"0.5",
 				"-tcp",
-				"-dt", "-1.4", "0", "0.1"
+				"-dt",
+				"-1.4",
+				"0",
+				"0.1"
 			]
-		}
+		},
+		{
+			"name": "wrapper",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/wrapper.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-db", "BaliBase-BL62",
+				"-a", "~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas"
+			]
+		},
 	]
 }

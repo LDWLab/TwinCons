@@ -193,7 +193,10 @@ class AlignmentGroup:
         '''Connects the alignment mapping index and the residue depth'''
         sda={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
-        dssp = DSSP(model, self.struc_path)
+        try:
+            dssp = DSSP(model, self.struc_path)
+        except OSError as e:
+            raise OSError("DSSP failed with the following error:\n"+e)
         for a_key in list(dssp.keys()):
             if dssp[a_key][3] > 0.2:
                 sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]

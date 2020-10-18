@@ -155,15 +155,19 @@ def calculate_segment_stats(unfiltered_segment_list, thr, aln_length, treat_high
         segment_stats.append((len(segment), len(segment)/aln_length, weight, (segment[0][0],segment[len(segment)-1][0])))
     return segment_stats
 
-def run_twincons(file_dir, calculation_options):
-    ###   Constructing arguments for TwinCons   ###
-    list_for_twincons = ['-a',file_dir, '-r']
+def parse_arguments_for_twc(calculation_options, list_for_twincons):
     for opt in calculation_options:
         if re.search(r'_', opt):
             list_for_twincons.append('-'+opt.split('_')[0])
             list_for_twincons.append(opt.split('_')[1])
         else:
             list_for_twincons.append('-'+opt)
+    return list_for_twincons
+
+def run_twincons(file_dir, calculation_options):
+    ###   Constructing arguments for TwinCons   ###
+    list_for_twincons = ['-a',file_dir, '-r']
+    list_for_twincons = parse_arguments_for_twc(calculation_options, list_for_twincons)
     print(list_for_twincons)
     
     ###   Executing TwinCons   ###
@@ -181,6 +185,28 @@ def load_twincons_csv(file_dir):
             alnindex_score[row[0]] = float(row[1])
     return alnindex_score, len(alnindex_score), dict()
 
+def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, highly_neg_as_pos=False, path_type='aln_path'):
+    '''Calculating segment stats'''
+    out_dict = dict()
+    score_list = list()
+    for x in alnindex_score.keys():
+        position = x
+        if path_type == 'aln_path':
+            pos_score = alnindex_score[x][0]
+        if path_type == 'twc_path':
+            pos_score = alnindex_score[x]
+        score_list.append((position, pos_score))
+        out_dict[position] = pos_score
+    unfiltered_segment_list = split_by_thresholds(score_list, 
+                                                  int_thr, 
+                                                  length_thr, 
+                                                  treat_highly_negative_as_conserved=highly_neg_as_pos)
+    segment_stats = calculate_segment_stats(unfiltered_segment_list, 
+                                            int_thr, 
+                                            num_alned_pos, 
+                                            treat_highly_negative_as_conserved=highly_neg_as_pos)
+    return segment_stats
+
 def main(commandline_args):
     comm_args = create_and_parse_argument_options(commandline_args)
     alns_to_segment_stats = dict()
@@ -197,28 +223,17 @@ def main(commandline_args):
         if not re.findall(regex, file_dir+file):
             continue
         if comm_args.alignment_path:
+            path_type = 'aln_path'
             alnindex_score, sliced_alns, number_of_aligned_positions, gap_mapping = run_twincons(file_dir+file, comm_args.calculation_options)
         if comm_args.twincons_path:
+            path_type = 'twc_path'
             alnindex_score, number_of_aligned_positions, gap_mapping = load_twincons_csv(file_dir+file)
-        ###   Calculating segment stats  ###
-        out_dict = dict()
-        score_list = list()
-        for x in alnindex_score.keys():
-            position = x
-            if comm_args.alignment_path:
-                pos_score = alnindex_score[x][0]
-            if comm_args.twincons_path:
-                pos_score = alnindex_score[x]
-            score_list.append((position, pos_score))
-            out_dict[position] = pos_score
-        unfiltered_segment_list = split_by_thresholds(score_list, 
-                                                      comm_args.intensity_threshold, 
-                                                      comm_args.length_threshold, 
-                                                      treat_highly_negative_as_conserved=comm_args.treat_highly_negative_as_conserved)
-        segment_stats = calculate_segment_stats(unfiltered_segment_list, 
-                                                comm_args.intensity_threshold, 
-                                                number_of_aligned_positions, 
-                                                treat_highly_negative_as_conserved=comm_args.treat_highly_negative_as_conserved)
+        segment_stats = calc_segments_for_aln(alnindex_score, 
+                                            number_of_aligned_positions, 
+                                            comm_args.intensity_threshold,
+                                            comm_args.length_threshold,
+                                            highly_neg_as_pos=comm_args.treat_highly_negative_as_conserved,
+                                            path_type=path_type)
         alns_to_segment_stats[file.split('.')[0]] = segment_stats
     if comm_args.plot:
         fig, ax, plt = scatter_plot(alns_to_segment_stats, legend=comm_args.legend, average_weight=comm_args.average_weight)

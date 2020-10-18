@@ -19,6 +19,8 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('output_path', help='Output path', type=str)
+    parser.add_argument('-twca','--twincons_args', help='Arguments used with TwinCons.', nargs='+', type=str)
+    parser.add_argument('-csa','--calcsegm_args', help='Arguments used with CalculateSegments.', nargs='+', type=str)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
     parser.add_argument('-tp','--penalty', help='Penalty for training algorithm. (Default = 1)', type=float, default=1)
     parser.add_argument('-k','--kernel', help='Kernel for the training algorithm', type=str, 
