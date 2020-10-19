@@ -148,18 +148,12 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/PKL/BBS_cg09_it1_lt3.pkl",
-				"-pd",
-				"./data/outputs/SVM/BBS.png",
-				"-ts",
-				"1",
-				"-twca",
-				"gt_0.9",
-				"cg",
-				"mx_blosum62",
-				"-csa",
-				"lt_3",
-				"it_1"
+				"./data/PKL/BBSp10_cg09_it1_lt3.pkl",
+				"-pd", "./data/outputs/SVM/BBS_10.svg",
+				"-tp", "10",
+				"-ts", "1",
+				"-twca", "gt_0.9", "cg", "mx_blosum62",
+				"-csa", "lt_3", "it_1"
 			]
 		},
 		{

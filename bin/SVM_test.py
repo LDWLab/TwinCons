@@ -42,7 +42,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-dt', '--range_distance_thresholds', nargs=3, metavar=('Start', 'End', 'Step'), 
                                     help='Range of distances from the decision boundary to evaluate. Also works with --evalue_threshold\
                                     \nDefault for non evalue (-20, 20, 0.05).\
-                                    \nDefault for evalue distance (0, 1, 0.0001)', default=[-20, 20, 0.05])
+                                    \nDefault for evalue distance (0, 1, 0.0001)', default=[-20, 20, 0.05], type = float)
     commandline_args = parser.parse_args(argument_list)
     return commandline_args, parser
 

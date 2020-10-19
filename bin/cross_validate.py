@@ -1,15 +1,30 @@
+#!/usr/bin/env python3
+'''Cross validate penalty selection for a given file.
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import auc, plot_roc_curve
 from sklearn import svm
-import os, sys, random
+import os, sys, random, csv, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bin.SVM_test import load_and_assign_data, trim_data_by_top_segments, csv_iterator, use_absolute_length_of_segments, mass_test
 from bin.SVM_train import train_classifier
 
-#######################
+def create_and_parse_argument_options(argument_list):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
+    parser.add_argument('-o', '--output_path', help='Path and name for output files. (Default = csv_path_crossval)', type=str, default=None)
+    parser.add_argument('-nf', '--number_folds', help='Number of folds to split the training dataset into. (Default = 3)', type=int, default=3)
+    parser.add_argument('-p', '--penalties', nargs='+', help='List of penalty options to evaluate. (Default = 0.05, 0.1, 1, 2, 5, 10, 20, 50, 100',
+                                    default=[0.05, 0.1, 1, 2, 5, 10, 20, 50, 100])
+    parser.add_argument('-dt', '--range_distances', nargs=3, metavar=('Start', 'Stop', 'Step'), 
+                                    help='Range of distances from the decision boundary to evaluate.\
+                                    \nDefault (-20, 20, 0.05).', default=[-20, 20, 0.05], type = float)
+    commandline_args = parser.parse_args(argument_list)
+    return commandline_args
+
 def chunks(seq, num):
     avg = len(seq) / float(num)
     out = []
@@ -79,17 +94,18 @@ def load_data(csv_location, top_segments=1, abs_length=False):
 def set_SVM_train_params(penalty=1, gamma='auto', kernel='rbf'):
     return penalty, gamma, kernel
 
-def calc_stats_by_folds(aln_names, number_folds, X, y, penalty, gamma, kernel):
+def calc_stats_by_folds(aln_names, number_folds, X, y, sample_weight, penalty, gamma, kernel, start, stop, step):
     tprs, fprs, aucs = list(), list(), list()
     for i, (train_ind, test_ind) in enumerate(cv_by_alns(aln_names, number_folds)):
         tprs.append(list())
         fprs.append(list())
         segment_pred_dist = dict()
         X_test, y_test, X_train, y_train, = X[test_ind], y[test_ind], X[train_ind], y[train_ind]
+        sample_weight_train = list(np.asarray(sample_weight)[train_ind])
         maxX, maxY = max(X_train[:, 0]), max(X_train[:, 1])
         X_train_norm = normalize_train_set(X_train[:,0], X_train[:,1], maxX, maxY)
 
-        classifier = train_classifier(X_train_norm, y_train, penalty, gamma, kernel)
+        classifier = train_classifier(X_train_norm, y_train, penalty, gamma, kernel, sample_weight=sample_weight_train)
 
         for segment, aln_ind in zip(X_test, test_ind):
             test_segment = np.array([float(segment[0])/float(maxX),float(segment[1])/float(maxY)])
@@ -97,7 +113,7 @@ def calc_stats_by_folds(aln_names, number_folds, X, y, penalty, gamma, kernel):
             if aln_names[aln_ind] not in segment_pred_dist.keys():
                 segment_pred_dist[aln_names[aln_ind]] = list()
             segment_pred_dist[aln_names[aln_ind]].append(['',(segment_pred, segment_dist,'')])
-        dist_to_stats = mass_test(segment_pred_dist, min_threshold=-2, max_threshold=2, step=0.01)
+        dist_to_stats = mass_test(segment_pred_dist, min_threshold=start, max_threshold=stop, step=step)
         for dist, stats in dist_to_stats.items():
             tprs[i].append(stats[0])
             fprs[i].append(1-stats[1])
@@ -127,20 +143,49 @@ def plot_roc_curve(axis, mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr, label='
     tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
     axis.fill_between(mean_fpr, tprs_lower, tprs_upper, color=color_std, alpha=.1)
 
+def write_stats_csv(penalty_to_stats, range_of_dists, csv_loc):
+    keys = sorted(penalty_to_stats.keys())
+    penalty_row = list(np.repeat(keys,3))
+    distance_row = ['TPR','FPR','STD-tpr']*len(keys)
+    penalty_row.insert(0, 'Penalty')
+    distance_row.insert(0, 'Distance')
+    with open(csv_loc, mode='w') as output_csv:
+        csv_writer = csv.writer(output_csv, delimiter=',')
+        csv_writer.writerow(penalty_row)
+        csv_writer.writerow(distance_row)
+        for i, dist in enumerate(range_of_dists):
+            temprow = [dist]
+            for penalty in keys:
+                temprow.extend([penalty_to_stats[penalty][0][i], penalty_to_stats[penalty][1][i], penalty_to_stats[penalty][4][i]])
+            csv_writer.writerow(temprow)
+
 def main(commandline_arguments):
-    X, y, sample_weight, aln_names = load_data("./data/CSV/PRST_cg09_it1_lt3.csv", top_segments=0.5, abs_length=False)
-    number_folds = 3
+    comm_args = create_and_parse_argument_options(commandline_arguments)
+    if comm_args.output_path == None:
+        comm_args.output_path = comm_args.csv_path.replace('.csv', '')+'_crossval'
+    X, y, sample_weight, aln_names = load_data(comm_args.csv_path, top_segments=1, abs_length=False)
+    number_folds = comm_args.number_folds
+    penalties = comm_args.penalties
+    start_dist, stop_dist, step_dist = comm_args.range_distances[0], comm_args.range_distances[1], comm_args.range_distances[2],
+    
+    #print(start_dist, stop_dist, step_dist)
+    #X, y, sample_weight, aln_names = load_data("./data/CSV/PRST_cg09_it1_lt3.csv", top_segments=1, abs_length=False)
+    #X, y, sample_weight, aln_names = load_data("./data/CSV/BBS_cg09_it1_lt3.csv", top_segments=1, abs_length=False)
+    #number_folds = 3
     #penalties = [0.1, 1, 2, 5, 10, 20, 50, 100]
-    penalties = [0.1, 1, 2]
+    #penalties = [0.1, 1, 2]
 
     penalty_to_stats = dict()
     for var_penalty in penalties:
         penalty, gamma, kernel = set_SVM_train_params(var_penalty, 'auto', 'rbf')
         mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr = calc_stats_by_folds(aln_names, 
                                                                             number_folds, 
-                                                                            X, y, 
-                                                                            penalty, gamma, kernel)
+                                                                            X, y, sample_weight,
+                                                                            penalty, gamma, kernel,
+                                                                            start_dist, stop_dist, step_dist)
         penalty_to_stats[var_penalty] = (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr)
+
+    write_stats_csv(penalty_to_stats, np.arange(start_dist, stop_dist, step_dist), comm_args.output_path+'.csv')
     
     fig, ax = plt.subplots()
     color_indexes = np.linspace(0, 1, len(penalties))
@@ -154,7 +199,7 @@ def main(commandline_arguments):
     ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
            title="Receiver operating characteristic")
     ax.legend(loc=4)
-    plt.savefig("./PRST_ROC_3folds.png", dpi=600)
+    plt.savefig(comm_args.output_path+'.svg', dpi=600)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
