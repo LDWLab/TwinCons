@@ -5,15 +5,12 @@ Requires a decision function and max features generated from SVM_train.
 Train and test only with the same parameters!
 Such parameters can be % cutting gaps, center mass segments, top segments.
 """
-#print(__doc__)
 import re, sys, csv, math, argparse, json
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from operator import itemgetter
-from sklearn import svm
-from statistics import mean 
 import _pickle as cPickle
 
 def create_and_parse_argument_options(argument_list):

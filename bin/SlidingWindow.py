@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Calculates conservation score for sliding window of one alignment"""
-import re, sys, argparse, os
+import sys, argparse, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import numpy as np
 from Bio import AlignIO
-import pandas as pd
 
 import bin.TwinCons as TwinCons
 
