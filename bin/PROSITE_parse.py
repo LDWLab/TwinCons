@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Crete mafft combination commands from directory with alignments."""
-import os, re, sys, argparse, itertools, glob, random
+import os, re, sys, argparse, itertools, glob
 sys.path.append(os.path.dirname(os.path.abspath(__name__)))
-import numpy as np
-from Bio import AlignIO
-
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Merge alignments from a given directory')
