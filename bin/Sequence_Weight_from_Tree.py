@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Calculate importance of sequences based on phylogenetic tree."""
 
-import os, re, sys, Bio.Align, argparse
+import os, sys, Bio.Align, argparse
 from Bio import Phylo
-from Bio import AlignIO
 from io import StringIO
 from numpy.random import choice
 from collections import Counter
@@ -12,8 +11,7 @@ from itertools import combinations, product
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
-import bin.TwinCons
-from bin.AlignmentGroup import AlignmentGroup
+import bin.TwinCons as TwinCons
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)

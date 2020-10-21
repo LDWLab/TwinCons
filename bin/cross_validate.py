@@ -3,9 +3,7 @@
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import auc, plot_roc_curve
-from sklearn import svm
 import os, sys, random, csv, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -167,13 +165,6 @@ def main(commandline_arguments):
     number_folds = comm_args.number_folds
     penalties = comm_args.penalties
     start_dist, stop_dist, step_dist = comm_args.range_distances[0], comm_args.range_distances[1], comm_args.range_distances[2],
-    
-    #print(start_dist, stop_dist, step_dist)
-    #X, y, sample_weight, aln_names = load_data("./data/CSV/PRST_cg09_it1_lt3.csv", top_segments=1, abs_length=False)
-    #X, y, sample_weight, aln_names = load_data("./data/CSV/BBS_cg09_it1_lt3.csv", top_segments=1, abs_length=False)
-    #number_folds = 3
-    #penalties = [0.1, 1, 2, 5, 10, 20, 50, 100]
-    #penalties = [0.1, 1, 2]
 
     penalty_to_stats = dict()
     for var_penalty in penalties:

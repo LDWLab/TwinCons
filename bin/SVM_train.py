@@ -4,7 +4,7 @@ Generate SVM from alignment segments.
 Computes a decision function from csv generated with MultiPhyMeas
 """
 #print(__doc__)
-import re, os, sys, csv, math, argparse, json
+import os, sys, csv, math, argparse, json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
@@ -13,7 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 import _pickle as cPickle
-from bin.SVM_test import load_csv_data, trim_data_by_top_segments, csv_to_segments_annotated_by_aln, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
+from bin.SVM_test import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -74,6 +74,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
                             cmap=plt.cm.viridis)
     
     #Data point labels needs work
+    #import re
     # for i, txt in enumerate(aln_names):
     #     if re.search('A_',txt):
     #         print(txt, X[:, 0][i], X[:, 1][i])
