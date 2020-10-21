@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """Calculates segments for multiple or single alignments"""
-import re, os, sys, csv, getopt, argparse, matplotlib
+import re, os, sys, csv, argparse, matplotlib
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from scipy import stats
 from operator import itemgetter
 
 import bin.TwinCons as TwinCons
@@ -193,8 +191,10 @@ def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, hi
         position = x
         if path_type == 'aln_path':
             pos_score = alnindex_score[x][0]
-        if path_type == 'twc_path':
+        elif path_type == 'twc_path':
             pos_score = alnindex_score[x]
+        else:
+            raise IOError("Missing input for TwinCons data!")
         score_list.append((position, pos_score))
         out_dict[position] = pos_score
     unfiltered_segment_list = split_by_thresholds(score_list, 
@@ -215,19 +215,26 @@ def main(commandline_args):
             raise IOError("Must specify twincons options when running on alignment files!")
         file_dir = comm_args.alignment_path
         regex = r'(.*\/)(.*)(\.fasta|\.fas|\.fa)'
-    if comm_args.twincons_path:
+    elif comm_args.twincons_path:
         file_dir = comm_args.twincons_path
         regex = r'(.*\/)(.*)(\.csv)'
+    else:
+        raise IOError("Missing input for TwinCons data!")
     
     for file in os.listdir(file_dir):
         if not re.findall(regex, file_dir+file):
             continue
         if comm_args.alignment_path:
             path_type = 'aln_path'
-            alnindex_score, sliced_alns, number_of_aligned_positions, gap_mapping = run_twincons(file_dir+file, comm_args.calculation_options)
-        if comm_args.twincons_path:
+            try:
+                alnindex_score, sliced_alns, number_of_aligned_positions, gap_mapping = run_twincons(file_dir+file, comm_args.calculation_options)
+            except Exception:
+                raise Exception("TwinCons failed to run!")
+        elif comm_args.twincons_path:
             path_type = 'twc_path'
             alnindex_score, number_of_aligned_positions, gap_mapping = load_twincons_csv(file_dir+file)
+        else:
+            raise IOError("Missing input for TwinCons data!")
         segment_stats = calc_segments_for_aln(alnindex_score, 
                                             number_of_aligned_positions, 
                                             comm_args.intensity_threshold,

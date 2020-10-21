@@ -312,7 +312,8 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
     group_names = list(gapped_sliced_alns.keys())
     #Open .pml file for structure coloring
     pml_output = open(comm_args.output_path+".pml","w")
-    pml_output.write("set hash_max, 500\n\
+    pml_output.write("\
+        set hash_max, 500\n\
         set cartoon_loop_radius,0.4\n\
         set cartoon_tube_radius,1\n\
         set cartoon_ladder_radius,0.6\n\
@@ -342,8 +343,10 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                 output_parent_dir = str(Path(__file__).parent.absolute())
             if comm_args.write_pml_script == 'unix':
                 pml_path = PurePosixPath(current_path[0])
-            if comm_args.write_pml_script == 'windows':
+            elif comm_args.write_pml_script == 'windows':
                 pml_path = PureWindowsPath(current_path[0])
+            else:
+                raise IOError("No parameter for type of pymol path!")
             pml_output.write(f"load {pml_path}, {alngroup_name}\n")
             #For each alignment position, color the appropriate residue with the hex transformed color from the gradient
             for aln_index in alnindex_to_hexcolors.keys():
@@ -413,6 +416,8 @@ def nucl_matrix(mx_def):
         nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
     elif mx_def == 'trans':
         nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
+    else:
+        raise IOError("Couldn't assign nucleotide matrix!")
 
     testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
     baseline = float(testvr@np.array(nuc_mx)@testvr.T)
@@ -528,9 +533,10 @@ def main(commandline_arguments):
         alignIO_out_gapped=read_align(comm_args.alignment_paths[0])
     elif len(comm_args.alignment_paths) == 2:
         alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
-    randindex_norm = defaultdict(dict)
-    gp_mapping = dict()
+    else:
+        raise IOError("Unhandled combination of arguments!")
 
+    gp_mapping = dict()
     subs_matrix, mx_minval, mx_maxval = determine_subs_matrix(comm_args)
 
     if comm_args.phylo_split:
@@ -552,7 +558,9 @@ def main(commandline_arguments):
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
     number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
-    if comm_args.calculate_group_gaps:
+    if comm_args.calculate_group_gaps:#Make sure its not above 1!
+        if 2*comm_args.gap_threshold >= 1:
+            raise IOError("When calculating group gaps, gap threshold must be assigned to values bellow 0.5!")
         extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
@@ -562,7 +570,6 @@ def main(commandline_arguments):
         for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
             gp_mapping[i] = i
 
-    
     alngroup_to_sequence_weight = dict()
     for alngroup in gapped_sliced_alns:
         alngroup_to_sequence_weight[alngroup] = list()
