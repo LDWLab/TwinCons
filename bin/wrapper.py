@@ -4,7 +4,6 @@ import re, os, sys, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from itertools import groupby
-from operator import add
 
 from bin import TwinCons, CalculateSegments, SVM_test
 

@@ -1,11 +1,8 @@
-import re, random, ntpath
-from numpy.random import choice
+import re, ntpath
 from Bio import SeqIO
-from Bio.Seq import MutableSeq
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
 from Bio.PDB import ResidueDepth
-from collections import Counter
 '''Contains class for alignment groups'''
 
 class AlignmentGroup:
@@ -32,6 +29,8 @@ class AlignmentGroup:
             parser = PDBParser()
         elif ntpath.splitext(self.struc_path)[1] == ".cif":
             parser = MMCIFParser()
+        else:
+            raise IOError("Unrecognized structure file type! Please use .pdb or .cif files!")
         
         structure = parser.get_structure("none", self.struc_path)
         chains = list()
