@@ -314,6 +314,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
     pml_output = open(comm_args.output_path+".pml","w")
     pml_output.write("\
         set hash_max, 500\n\
+        set valence, 0\n\
         set cartoon_loop_radius,0.4\n\
         set cartoon_tube_radius,1\n\
         set cartoon_ladder_radius,0.6\n\
