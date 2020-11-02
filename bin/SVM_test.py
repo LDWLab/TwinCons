@@ -255,7 +255,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
-    vir_cmap = plt.cm.get_cmap('viridis')
+
 
     ###   Draws each decision level (if present) with color from the viridis colormap   ###
     if decision_levels is not '':
@@ -266,11 +266,16 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     axis.contour(xx, yy, Z, levels=[0],colors='r', linestyles=['-'], linewidths=0.5)
 
     abs_length = [float(n)**2 for n in sample_weight]
+    if abs_length == sample_weight:
+        abs_length = [float(n)*20 for n in sample_weight]
+        edgecolor = None
+    else:
+        edgecolor = "black"
 
     ###   Plot scatter of segments   ###
     if decision_levels is not '':
         scatter = axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.5, 
-         cmap=plt.cm.bone, edgecolors='black')
+        s=abs_length, cmap=plt.cm.bone, edgecolor=edgecolor)
     else:
         import seaborn as sns
         from operator import itemgetter
@@ -279,12 +284,9 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
-        
-        if abs_length != sample_weight:
-            scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
-                palette="tab20", edgecolor='black', s=abs_length)
-        else:
-            scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, palette="tab20", edgecolor=None)
+        scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
+                palette="tab20", edgecolor=edgecolor, s=abs_length)
+
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
 
