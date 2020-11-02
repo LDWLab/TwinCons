@@ -67,8 +67,6 @@ def csv_to_segments_annotated_by_aln(csv_list):
 def trim_data_by_top_segments(csv_list, perc_top_segments):
     '''Returns trimmed down list by percentage coverage of the 
     total segment weights and total normalized segment lengths '''
-    from heapq import nlargest
-    from operator import itemgetter
     aln_id_to_data = csv_to_segments_annotated_by_aln(csv_list)
     output_list = list()
     for aln_id, data_items in aln_id_to_data.items():
@@ -98,7 +96,7 @@ def recalculate_data_by_averaging_segments(csv_list):
 def use_absolute_length_of_segments(csv_list):
     '''Moves absolute segment length to accurate position.
     Assigns weights of 1 to all segments.'''
-    return [[x[0], x[2], x[1], x[3], x[4]] for x in csv_list]
+    return [[x[0], 1, x[1], x[3], x[4]] for x in csv_list]
 
 def load_and_assign_data(csv_list):
     '''Reads a csv outputted from CalculateSegments.py, 
@@ -272,7 +270,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     ###   Plot scatter of segments   ###
     if decision_levels is not '':
         scatter = axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.5, 
-        s=abs_length, cmap=plt.cm.bone, edgecolors='black')
+         cmap=plt.cm.bone, edgecolors='black')
     else:
         import seaborn as sns
         from operator import itemgetter
@@ -281,8 +279,12 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
-        scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
-            palette="tab20", edgecolor='black', s=abs_length)
+        
+        if abs_length != sample_weight:
+            scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
+                palette="tab20", edgecolor='black', s=abs_length)
+        else:
+            scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, palette="tab20", edgecolor=None)
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
 
