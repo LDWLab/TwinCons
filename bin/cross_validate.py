@@ -14,6 +14,8 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('-o', '--output_path', help='Path and name for output files. (Default = csv_path_crossval)', type=str, default=None)
+    parser.add_argument('-abs', '--absolute_length', help='Use the segment absolute length as X coordinate. Does not weight segments.', 
+                                    action="store_true", default=False)
     parser.add_argument('-nf', '--number_folds', help='Number of folds to split the training dataset into. (Default = 3)', type=int, default=3)
     parser.add_argument('-p', '--penalties', nargs='+', help='List of penalty options to evaluate. (Default = 0.05, 0.1, 1, 2, 5, 10, 20, 50, 100',
                                     default=[0.05, 0.1, 1, 2, 5, 10, 20, 50, 100])
@@ -161,7 +163,7 @@ def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
     if comm_args.output_path == None:
         comm_args.output_path = comm_args.csv_path.replace('.csv', '')+'_crossval'
-    X, y, sample_weight, aln_names = load_data(comm_args.csv_path, top_segments=1, abs_length=False)
+    X, y, sample_weight, aln_names = load_data(comm_args.csv_path, top_segments=1, abs_length=comm_args.absolute_length)
     number_folds = comm_args.number_folds
     penalties = comm_args.penalties
     start_dist, stop_dist, step_dist = comm_args.range_distances[0], comm_args.range_distances[1], comm_args.range_distances[2],
