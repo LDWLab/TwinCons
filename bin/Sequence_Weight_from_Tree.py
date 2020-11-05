@@ -58,7 +58,7 @@ def generate_sequence_sampled_from_alignment(aln_obj):
         i+=1
     return outseq
 
-def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='ident', repeat=1000, nucl=False):
+def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=1000, nucl=False):
     alg_types = ['voronoi', 'pairwise']
     if algorithm not in alg_types:
         raise ValueError("Invalid algorithm type. Expected one of: %s" % alg_types)
