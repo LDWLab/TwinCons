@@ -38,6 +38,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.', choices=['unix', 'windows'])
     output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
     output_type_group.add_argument('-csv', '--return_csv', help='Saves a csv with alignment position -> score.', action="store_true")
+    output_type_group.add_argument('-rv', '--ribovision', help='Saves a csv formatted for RiboVision. Requires at least one structure defined with the -sy argument.', action="store_true")
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
@@ -374,6 +375,35 @@ def jalview_output(output_dict, comm_args):
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
+def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval):
+    data = []
+    for x in sorted(out_dict.keys()):
+        data.append(out_dict[x][0])
+    
+    if comm_args.reflected_shannon or comm_args.shannon_entropy:
+        alnindex_to_hexcolors = gradients(data,'viridis','binary', mx_maxval, mx_minval)
+    else:
+        alnindex_to_hexcolors = gradients(data,'Greens','Purples', mx_maxval, mx_minval)
+    
+    group_names = list(gapped_sliced_alns.keys())
+    for alngroup_name in group_names:
+        #Match groupnames with structure files
+        current_path = [s for s in comm_args.structure_pymol if alngroup_name in s]
+        if len(current_path) == 0:
+            raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
+               and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
+        else:
+            rv_output = open(f"{comm_args.output_path}_{alngroup_name}.csv","w")
+            rv_output.write("resNum,DataCol,ColorCol\n")
+            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+            AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
+            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
+            for aln_index in alnindex_to_hexcolors.keys():
+                if aln_index in struc_to_aln_index_mapping:
+                    rv_output.write(f"{alngroup_name}:{str(struc_to_aln_index_mapping[aln_index])},{data[aln_index]},{alnindex_to_hexcolors[aln_index]},\n")
+
+
+
 def shannon_entropy(alnObject, aa_list, commandline_args, alngroup_to_sequence_weight):
     '''
     Function to calcuate the reflected Shannon entropy per alignment column.
@@ -527,6 +557,9 @@ def main(commandline_arguments):
     if comm_args.nucleotide and comm_args.structure_paths:
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nDefining structures for calculating substitution matrices only works with proteins!")
+    if comm_args.ribovision and not comm_args.structure_pymol:
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nRiboVision output requires at least one structure defined with -sy.")
 
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
@@ -626,6 +659,8 @@ def main(commandline_arguments):
             csv_writer.writerow(["Alignment index", "Score", f"More than {comm_args.gap_threshold*100}% gaps"])
             for x in sorted(output_dict.keys(), key=abs):
                 csv_writer.writerow([x, output_dict[int(x)][0], output_dict[int(x)][1]])
+    elif comm_args.ribovision:
+        ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval)
     elif comm_args.jalview_output:
         jalview_output(output_dict, comm_args)
 
