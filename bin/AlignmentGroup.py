@@ -83,8 +83,9 @@ class AlignmentGroup:
         pipe = Popen(f"mafft --quiet --addfull {pdb_seq_path} --mapout {aln_group_path}; cat {mappingFileName}", stdout=PIPE, shell=True)
         output = pipe.communicate()[0]
         mapping_file = output.decode("ascii").split('\n#')[1]
+        groupName = output.decode('ascii').split('>')[1].split('_')[0]
         firstLine = True
-        mapping = dict()
+        mapping, bad_map_positions, fail_map = dict(), 0, False
         for line in mapping_file.split('\n'):
             if firstLine:
                 firstLine = False
@@ -93,12 +94,17 @@ class AlignmentGroup:
             if len(row) < 3:
                 continue
             if row[2] == '-':
+                bad_map_positions += 1
                 continue
             if row[1] == '-':
-                raise ValueError("Mapping did not work properly.")
+                fail_map = True
             mapping[int(row[2])] = self.seq_ix_mapping[int(row[1])]
         for tempf in tempfiles:
             remove(tempf)
+        if fail_map:
+            raise ValueError(f"Mapping between structure file {self.struc_path} and group {groupName} did not work properly!")
+        if bad_map_positions > 0:
+            warn(f"Mapping between structure file {self.struc_path} and group {groupName} is poor!\n Continue with caution!")
         return mapping
 
     def _freq_iterator(self, column, aa_list, weight_aa_distr):
