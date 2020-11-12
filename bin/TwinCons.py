@@ -349,7 +349,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                 pml_path = PureWindowsPath(current_path[0])
             else:
                 raise IOError("No parameter for type of pymol path!")
-            pml_output.write(f"load {pml_path}, {alngroup_name}\n")
+            pml_output.write(f"load {pml_path}, {alngroup_name}\ncolor 0x808080, {alngroup_name}\n")
             #For each alignment position, color the appropriate residue with the hex transformed color from the gradient
             for aln_index in alnindex_to_hexcolors.keys():
                 if aln_index in struc_to_aln_index_mapping:
@@ -400,7 +400,8 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
             struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             for aln_index in alnindex_to_hexcolors.keys():
                 if aln_index in struc_to_aln_index_mapping:
-                    rv_output.write(f"{alngroup_name}:{str(struc_to_aln_index_mapping[aln_index])},{data[aln_index]},{alnindex_to_hexcolors[aln_index]},\n")
+                    rv_output.write(f"{alngroup_name}:{str(struc_to_aln_index_mapping[aln_index])},{data[aln_index-1]},{alnindex_to_hexcolors[aln_index]},\n")
+    return True
 
 
 
