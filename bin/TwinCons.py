@@ -637,6 +637,11 @@ def main(commandline_arguments):
                                             uniq_resis, 
                                             alngroup_to_sequence_weight, 
                                             subs_matrix)
+    
+    if (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both):
+        mx_maxval = max(position_defined_scores.values())
+        mx_minval = min(position_defined_scores.values())
+    
     output_dict = dict()
     output_dict_pml = dict()
     for x in position_defined_scores.keys():                #If standard deviation is too big, set the result as 0
