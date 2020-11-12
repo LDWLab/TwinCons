@@ -13,7 +13,7 @@ with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
     required = f.read().splitlines()
 
 setup(
-	name='TwinCons',
+	name='TwinCons-pkg-ppenev',
 	version='0.2dev',
 	description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
 	long_description = readme,
