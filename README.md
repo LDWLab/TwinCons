@@ -16,7 +16,25 @@ Generates data for subsequent scripts or can be used independently. Calculates T
 
 1. Input files
 - One fasta alignment file with two defined groups **(Required)**. If no groups are defined a phylogenetic tree can be built from the alignment, the groups are defined by the deepest branching point in the tree. Alternatively two alignment files can be provided, each defining a single group - mafft-merge will be used to merge them in a single alignment.
-- One or two structure files for each group to map data (Optional)
+- One or two structure files for each group to map data. The name of the file must include the sequence group name as defined in the alignment. (Optional)
+
+Example sequence group definitions in fasta format:
+```
+>GROUP1_TAXID1_SEQNAME1
+MTKF-EVPKEISDKVLQTLELAKNTG
+>GROUP1_TAXID2_SEQNAME2
+MTKF-EVPKEISDKVLQTLELAKNTG
+>GROUP2_TAXID3_SEQNAME3
+MTKF-EVPKEISDKVLQTLELAKNTG
+>GROUP2_TAXID4_SEQNAME4
+MTKF-EVPKEISDKVLQTLELAKNTG
+```
+
+Example structure file naming:
+```
+SEQNAME1_GROUP1.pdb
+SEQNAME3_GROUP2.pdb
+```
 
 Typical usage:
 ```
@@ -25,8 +43,8 @@ TwinCons.py -a ./data/ALNS/test_aln.fa -ssbe -s ./data/PDB/seq1_group1.pdb ./dat
 ```
 
 2. Output files
-	- **.pml file** for all structures with residue colors defined by the score
-	- **.svg** with score trace for alignment position
+	- **pml file** for all structures with residue colors defined by the score
+	- **svg** with score trace for alignment position
 	- **csv** output for [**RiboVision**](http://apollo.chemistry.gatech.edu/RiboVision2/) when provided with structure file
 	- **csv** output with scores per alignment position
 	- **optional data** if ran as a module within other python scripts **for multiple alignment analysis**
