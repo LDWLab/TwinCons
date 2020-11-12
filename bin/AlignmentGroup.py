@@ -2,7 +2,7 @@ import re, ntpath
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
-from Bio.PDB import ResidueDepth
+#from Bio.PDB import ResidueDepth
 '''Contains class for alignment groups'''
 
 class AlignmentGroup:
@@ -44,6 +44,8 @@ class AlignmentGroup:
         residues = list(chains[0].get_residues())
         for resi in residues:
             resi_id = resi.get_id()
+            if not re.match(r' ', resi_id[2]):
+                continue
             if re.match(r'^H_', resi_id[0]):
                 continue
             sequence += resi.get_resname()
@@ -105,6 +107,7 @@ class AlignmentGroup:
             raise ValueError(f"Mapping between structure file {self.struc_path} and group {groupName} did not work properly!")
         if bad_map_positions > 0:
             warn(f"Mapping between structure file {self.struc_path} and group {groupName} is poor!\n Continue with caution!")
+        self.mapping = mapping
         return mapping
 
     def _freq_iterator(self, column, aa_list, weight_aa_distr):
@@ -149,7 +152,7 @@ class AlignmentGroup:
             weighted_distr = dict()
             if len(seq_weights) > 0:
                 col_aalist = list()
-                default_aa_ix, row_ix = 0, 0
+                row_ix = 0
                 for col_aa in self.aln_obj[:, col_ix]:
                     if col_aa not in weighted_distr.keys():
                         weighted_distr[col_aa] = float()
@@ -173,7 +176,6 @@ class AlignmentGroup:
         assignments from DSSP.
         '''
         ss_aln_index_map={}
-        res_depth_aln_index_map={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
         dssp = DSSP(model, self.struc_path)
         for a_key in list(dssp.keys()):
@@ -203,10 +205,11 @@ class AlignmentGroup:
         except OSError as e:
             raise OSError("DSSP failed with the following error:\n"+e)
         for a_key in list(dssp.keys()):
-            if dssp[a_key][3] > 0.2:
-                sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
-            else:
-                sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
+            if a_key[1][1] in inv_map.keys():
+                if dssp[a_key][3] > 0.2:
+                    sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
+                else:
+                    sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
         return sda
 
     def _return_alignment_obj(self):
