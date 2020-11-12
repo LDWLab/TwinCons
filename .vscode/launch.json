@@ -20,18 +20,17 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas",
-				"-pml",
-				"windows",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"-pml","unix",
 				"-s",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-ssbe",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/ECOLI_uL02b.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/consurf/PYRFU_uL02c.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-o",
-				"~/Desktop/alntest"
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/twc_ssbe_HS-CASP9_SC-MCASP"
 			]
 		},
 		{
@@ -63,14 +62,13 @@
 			"args": [
 				"-a",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
-				"-pml",
-				"windows",
+				"-rv",
 				"-nc",
 				"-mx",
 				"blastn",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PYRFU_LSUa.cif",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/ECOLI_LSUb.cif",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/PYRFU_LSUa.cif",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/ECOLI_LSUb.cif",
 				"-o",
 				"~/Desktop/TWC_blastn_AB_LSU2"
 			]
@@ -97,8 +95,8 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"../Score-test_data/query_set/",
-				"./data/CSV/QS_cg09_it1_lt3",
+				"../Score-test_data/QS_clean/",
+				"./data/CSV/QScl_cg09_it1_lt3.csv",
 				"-c",
 				"-l",
 				"-p",
@@ -164,13 +162,12 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/PRST_cg09_it1_lt3.csv",
-				"./data/PKL/PRST_cg09_it1_lt3_nweights_ts0p5.pkl",
+				"./data/PKL/PRST_cg09_it1_lt3_abs_p5.pkl",
 				"-pd",
-				"./data/outputs/SVM/PRST_nweights_ts0p5.png",
-				"-ts",
-				"0.5",
-				"-tp",
-				"1"
+				"./data/outputs/SVM/PRST_cg09_it1_lt3_abs_p5.png",
+				"-ts", "1",
+				"-tp", "5", 
+				"-l", "absolute"
 			]
 		},
 		{
@@ -180,18 +177,14 @@
 			"program": "./bin/SVM_test.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/QS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBS-QS.csv",
-				"./data/PKL/BBS_cg09_it1_lt3.pkl",
+				"./data/CSV/QScl_cg09_it1_lt3.csv",
+				"./data/outputs/SVM/PRST-QScl_abs.csv",
+				"./data/PKL/PRST_cg09_it1_lt3_abs_p5.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_QS.png",
-				"-ts",
-				"1",
+				"./data/outputs/SVM/PRSTvsQScl_abs.svg",
+				"-ts", "1",
 				"-tqa",
-				"-dt",
-				"-0.7",
-				"0.7",
-				"0.1"
+				"-dt", "-2", "-1", "0.1", "-l", "absolute"
 			]
 		},
 		{
@@ -245,6 +238,19 @@
 			"args": [
 				"-db", "BaliBase-BL62",
 				"-a", "~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas"
+			]
+		},{
+			"name": "cross_val",
+			"type": "python",
+			"request": "launch",
+			"program": "./bin/cross_validate.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBS_cg09_it1_lt3.csv",
+				"-o", "./ROC/crossval_out/BBS_ROC_abs_5folds_crossval",
+				"-dt", "-1.5", "25", "0.01",
+				"-nf", "5",
+				"-abs"
 			]
 		},
 	]
