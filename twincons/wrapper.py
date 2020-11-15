@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from itertools import groupby
 
-from bin import TwinCons, CalculateSegments, SVM_test
+from twincons import TwinCons, CalculateSegments, SVM_test
 
 decision_boundaries = {
     'BaliBase-BL62':"data/PKL/BBS_cg09_it1_lt3.pkl"

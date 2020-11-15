@@ -7,8 +7,8 @@ from sklearn.metrics import auc, plot_roc_curve
 import os, sys, random, csv, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bin.SVM_test import load_and_assign_data, trim_data_by_top_segments, csv_iterator, use_absolute_length_of_segments, mass_test
-from bin.SVM_train import train_classifier
+from twincons.SVM_test import load_and_assign_data, trim_data_by_top_segments, csv_iterator, use_absolute_length_of_segments, mass_test
+from twincons.SVM_train import train_classifier
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

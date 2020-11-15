@@ -1,15 +1,15 @@
-import setuptools
+from setuptools import setup
 from setuptools import find_packages
 from os import path
 this_directory = path.abspath(path.dirname(__file__))
 
-with open("README.md", "r") as fh:
+with open(path.join(this_directory, "README.md"), encoding='utf-8') as fh:
     long_description = fh.read()
 
 with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
     required = f.read().splitlines()
 
-setuptools.setup(
+setup(
     name='TwinCons',
     version='0.4.6dev',
     description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
@@ -38,7 +38,15 @@ setuptools.setup(
         './twincons/matrices/WAG.dat'
         ])
     ],
-    scripts=['./twincons/TwinCons.py'],
+    scripts=[
+        './twincons/TwinCons.py',
+        './twincons/twcCalculateSegments.py',
+        './twincons/twcCrossValidate.py',
+        './twincons/twcParseAlnDatabase.py',
+        './twincons/twcSVMtrain.py',
+        './twincons/twcSVMtest.py',
+        './twincons/twcWrapper.py',
+        ],
         classifiers =( 
             "Programming Language :: Python :: 3", 
             "License :: OSI Approved :: MIT License", 
