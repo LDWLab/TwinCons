@@ -5,10 +5,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from itertools import groupby
 
-from twincons import TwinCons, CalculateSegments, SVM_test
+from twincons import TwinCons, twcCalculateSegments, twcSVMtest
 
 decision_boundaries = {
-    'BaliBase-BL62':"data/PKL/BBS_cg09_it1_lt3.pkl"
+    'BaliBase-BL62':"twcPKL/BBS_cg09_it1_lt3.pkl"
     }
 
 def create_and_parse_argument_options(argument_list):
@@ -32,15 +32,15 @@ def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
 
     if comm_args.decision_boundary:
-        decision_boundary_path = f"./{decision_boundaries[comm_args.decision_boundary]}"
+        decision_boundary_path = f"{str(os.path.dirname(__file__))}/../{decision_boundaries[comm_args.decision_boundary]}"
     else:
-        decision_boundary_path = f"./{decision_boundaries[comm_args.custom_decision_boundary]}"
+        decision_boundary_path = comm_args.custom_decision_boundary
         if not os.path.isfile(decision_boundary_path):
             raise IOError(f"Could not find the custom decision boundary pickle file at {comm_args.custom_decision_boundary}")
         if not os.path.isfile(decision_boundary_path+".json"):
             raise IOError(f"Could not find the custom decision boundary json file at {comm_args.custom_decision_boundary}.json")
 
-    calc_args, max_features = SVM_test.read_features(decision_boundary_path+".json")
+    calc_args, max_features = twcSVMtest.read_features(decision_boundary_path+".json")
 
     g_list=[list(g) for k,g in groupby(calc_args , lambda i : '-twca' in i or '-csa' in i)]
     for i, args in enumerate(g_list[1:]):
@@ -68,12 +68,14 @@ def main(commandline_arguments):
     else:
         twincons_alns.append("-as", comm_args.alignment_string)
     
-    twc_args_list = CalculateSegments.parse_arguments_for_twc(twincons_args, twincons_alns)
+    twc_args_list = twcCalculateSegments.parse_arguments_for_twc(twincons_args, twincons_alns)
     alnindex_score, sliced_alns, num_alned_pos, gap_mapping = TwinCons.main(twc_args_list)
-    segment_stats = CalculateSegments.calc_segments_for_aln(alnindex_score, num_alned_pos, 
+    segment_stats = twcCalculateSegments.calc_segments_for_aln(alnindex_score, num_alned_pos, 
                                                             int_thr=int_thr, 
                                                             length_thr=length_thr, 
                                                             highly_neg_as_pos=positive_as_negative)
+    print(segment_stats)
+    print("Success!")
     pass
 
 

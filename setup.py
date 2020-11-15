@@ -11,7 +11,7 @@ with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
 
 setup(
     name='TwinCons',
-    version='0.4.6dev',
+    version='0.5.0.dev0',
     description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
     long_description = long_description,
     long_description_content_type='text/markdown',
@@ -21,37 +21,42 @@ setup(
     packages=find_packages(exclude=('tests', 'ROC', 'data', '.vscode')),
     python_requires='>=3.5',
     install_requires=required,
-    data_files=[('matrices', [
-        './twincons/matrices/B.dat',
-        './twincons/matrices/BEHOS.dat',
-        './twincons/matrices/BH.dat',
-        './twincons/matrices/BO.dat',
-        './twincons/matrices/BS.dat',
-        './twincons/matrices/E.dat',
-        './twincons/matrices/EH.dat',
-        './twincons/matrices/EO.dat',
-        './twincons/matrices/ES.dat',
-        './twincons/matrices/H.dat',
-        './twincons/matrices/LG.dat',
-        './twincons/matrices/O.dat',
-        './twincons/matrices/S.dat',
-        './twincons/matrices/WAG.dat'
-        ])
+    data_files=[
+        ('matrices', [
+            './matrices/B.dat',
+            './matrices/BEHOS.dat',
+            './matrices/BH.dat',
+            './matrices/BO.dat',
+            './matrices/BS.dat',
+            './matrices/E.dat',
+            './matrices/EH.dat',
+            './matrices/EO.dat',
+            './matrices/ES.dat',
+            './matrices/H.dat',
+            './matrices/LG.dat',
+            './matrices/O.dat',
+            './matrices/S.dat',
+            './matrices/WAG.dat',
+        ]),
+        ('twcPKL', [
+            './data/PKL/BBS_cg09_it1_lt3.pkl',
+            './data/PKL/BBS_cg09_it1_lt3.pkl.json',
+        ]),
     ],
-    scripts=[
+    scripts = [
         './twincons/TwinCons.py',
         './twincons/twcCalculateSegments.py',
         './twincons/twcCrossValidate.py',
         './twincons/twcParseAlnDatabase.py',
-        './twincons/twcSVMtrain.py',
         './twincons/twcSVMtest.py',
+        './twincons/twcSVMtrain.py',
         './twincons/twcWrapper.py',
-        ],
-        classifiers =( 
-            "Programming Language :: Python :: 3", 
-            "License :: OSI Approved :: MIT License", 
-            "Operating System :: OS Independent", 
-        ),
+    ],
+    classifiers = [
+        "Programming Language :: Python :: 3", 
+        "License :: OSI Approved :: MIT License", 
+        "Operating System :: OS Independent", 
+    ],
 )
 
 #python3 setup.py sdist bdist_wheel
