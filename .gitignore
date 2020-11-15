@@ -4,3 +4,6 @@ data/ALNS/cdd/*
 *z_arx*
 data/test_twc_parameters*
 env/*
+*egg-info
+dist/*
+build/*
