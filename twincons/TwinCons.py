@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
-import re, os, csv, sys, random, Bio.Align, argparse, random, math, matplotlib, ntpath
+import re, os, csv, sys, Bio.Align, argparse, math, matplotlib, ntpath
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 matplotlib.use('Agg')
@@ -8,12 +8,11 @@ import numpy as np
 from datetime import date
 from Bio import AlignIO
 from io import StringIO
-from textwrap import wrap
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
-import twincons.Sequence_Weight_from_Tree as Sequence_Weight_from_Tree
+import twincons.SequenceWeightFromTree as Sequence_Weight_from_Tree
 from twincons.MatrixLoad import PAMLmatrix
 from Bio.SubsMat import MatrixInfo
 

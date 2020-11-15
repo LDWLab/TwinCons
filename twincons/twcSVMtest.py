@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Evaluates alignment entries in csv generated from MultiPhyMeas.
+Evaluates alignment entries in csv generated from twcCalculateSegments.
 Requires a decision function and max features generated from SVM_train.
 Train and test only with the same parameters!
 Such parameters can be % cutting gaps, center mass segments, top segments.
@@ -99,7 +99,7 @@ def use_absolute_length_of_segments(csv_list):
     return [[x[0], 1, x[1], x[3], x[4]] for x in csv_list]
 
 def load_and_assign_data(csv_list):
-    '''Reads a csv outputted from CalculateSegments.py, 
+    '''Reads a csv outputted from twcCalculateSegments.py, 
     entries starting with A_ and B_ are considered as +
     data and entries starting with C_ and D_ as - data.
     '''
