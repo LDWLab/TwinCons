@@ -48,11 +48,11 @@ class AlignmentGroup:
                 continue
             if re.match(r'^H_', resi_id[0]):
                 continue
-            sequence += resi.get_resname()
+            sequence += resi.get_resname().replace(' ','')
             seq_ix_mapping[untrue_seq_ix] = int(resi.get_id()[1])
             untrue_seq_ix += 1
 
-        if len(seq1(residues[seq_ix_mapping[1]].get_resname())) != 0:
+        if len(seq1(residues[seq_ix_mapping[1]].get_resname().replace(' ',''))) != 0:
             sequence = seq1(sequence)
         self.seq_ix_mapping = seq_ix_mapping
         self.struc_seq = SeqRecord(Seq(sequence))
