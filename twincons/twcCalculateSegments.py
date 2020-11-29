@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 
-import bin.TwinCons as TwinCons
+import twincons.TwinCons as TwinCons
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

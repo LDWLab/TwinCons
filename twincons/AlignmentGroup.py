@@ -2,7 +2,7 @@ import re, ntpath
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
-from Bio.PDB import ResidueDepth
+#from Bio.PDB import ResidueDepth
 '''Contains class for alignment groups'''
 
 class AlignmentGroup:
@@ -44,13 +44,15 @@ class AlignmentGroup:
         residues = list(chains[0].get_residues())
         for resi in residues:
             resi_id = resi.get_id()
+            if not re.match(r' ', resi_id[2]):
+                continue
             if re.match(r'^H_', resi_id[0]):
                 continue
-            sequence += resi.get_resname()
+            sequence += resi.get_resname().replace(' ','')
             seq_ix_mapping[untrue_seq_ix] = int(resi.get_id()[1])
             untrue_seq_ix += 1
 
-        if len(seq1(residues[seq_ix_mapping[1]].get_resname())) != 0:
+        if len(seq1(residues[seq_ix_mapping[1]].get_resname().replace(' ',''))) != 0:
             sequence = seq1(sequence)
         self.seq_ix_mapping = seq_ix_mapping
         self.struc_seq = SeqRecord(Seq(sequence))
@@ -83,8 +85,9 @@ class AlignmentGroup:
         pipe = Popen(f"mafft --quiet --addfull {pdb_seq_path} --mapout {aln_group_path}; cat {mappingFileName}", stdout=PIPE, shell=True)
         output = pipe.communicate()[0]
         mapping_file = output.decode("ascii").split('\n#')[1]
+        groupName = output.decode('ascii').split('>')[1].split('_')[0]
         firstLine = True
-        mapping = dict()
+        mapping, bad_map_positions, fail_map = dict(), 0, False
         for line in mapping_file.split('\n'):
             if firstLine:
                 firstLine = False
@@ -93,12 +96,18 @@ class AlignmentGroup:
             if len(row) < 3:
                 continue
             if row[2] == '-':
+                bad_map_positions += 1
                 continue
             if row[1] == '-':
-                raise ValueError("Mapping did not work properly.")
+                fail_map = True
             mapping[int(row[2])] = self.seq_ix_mapping[int(row[1])]
         for tempf in tempfiles:
             remove(tempf)
+        if fail_map:
+            raise ValueError(f"Mapping between structure file {self.struc_path} and group {groupName} did not work properly!")
+        if bad_map_positions > 0:
+            warn(f"Mapping between structure file {self.struc_path} and group {groupName} is poor!\n Continue with caution!")
+        self.mapping = mapping
         return mapping
 
     def _freq_iterator(self, column, aa_list, weight_aa_distr):
@@ -143,7 +152,7 @@ class AlignmentGroup:
             weighted_distr = dict()
             if len(seq_weights) > 0:
                 col_aalist = list()
-                default_aa_ix, row_ix = 0, 0
+                row_ix = 0
                 for col_aa in self.aln_obj[:, col_ix]:
                     if col_aa not in weighted_distr.keys():
                         weighted_distr[col_aa] = float()
@@ -167,7 +176,6 @@ class AlignmentGroup:
         assignments from DSSP.
         '''
         ss_aln_index_map={}
-        res_depth_aln_index_map={}
         inv_map, model = self.structure_loader(struc_to_aln_index_mapping)
         dssp = DSSP(model, self.struc_path)
         for a_key in list(dssp.keys()):
@@ -197,10 +205,11 @@ class AlignmentGroup:
         except OSError as e:
             raise OSError("DSSP failed with the following error:\n"+e)
         for a_key in list(dssp.keys()):
-            if dssp[a_key][3] > 0.2:
-                sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
-            else:
-                sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
+            if a_key[1][1] in inv_map.keys():
+                if dssp[a_key][3] > 0.2:
+                    sda[inv_map[a_key[1][1]]]='E'+self.DSSP_code_mycode[dssp[a_key][2]]
+                else:
+                    sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
         return sda
 
     def _return_alignment_obj(self):

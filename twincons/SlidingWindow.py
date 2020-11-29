@@ -5,14 +5,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Bio import AlignIO
 
-import bin.TwinCons as TwinCons
+import twincons.TwinCons as TwinCons
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Slide two groups of an alignment and calculate a score for each sliding position')
 	parser.add_argument('alignment_path', help='Path to folder with alignment files.')
 	parser.add_argument('-w','--window', help='Window for sliding the two groups', type=int, default=1)
 	parser.add_argument('-bt','--bad_score_threshold', help='Threshold for number of allowed bad scores when calculating length of positive sections.', type=int, default=0, required=False)
-	parser.add_argument('-st','--score_threshold', help='Absolute value of threshold for a position to be considered positive or negative', type=int, default=0.5, required=False)
+	parser.add_argument('-st','--score_threshold', help='Absolute value of threshold for a position to be considered positive or negative', type=int, default=1, required=False)
 	commandline_args = parser.parse_args(argument_list)
 	return commandline_args
 
@@ -74,7 +74,6 @@ def uninterrupted_stretches(alnindex, alnindex_score,comm_args):
 def main(commandline_args):
 	comm_args = create_and_parse_argument_options(commandline_args)
 	alignment_file = TwinCons.read_align(comm_args.alignment_path)
-	uniq_aa = TwinCons.uniq_AA_list(alignment_file)
 	sliced_alignments = TwinCons.slice_by_name(alignment_file)
 	first_aln = sorted(list(sliced_alignments.keys()))[0]
 	slided_scores={}				#Sliding increment -> (scores,alignment objects)
@@ -87,7 +86,7 @@ def main(commandline_args):
 		reordered_aln=sliced_alignments[first_aln][:,-(sliced_alignments[first_aln].get_alignment_length()-i):]+sliced_alignments[first_aln][:,:i]
 		for record in reordered_aln:
 			second_aln.append(record)
-		alnindex_score,sliced_alns,number_of_aligned_positions=TwinCons.main(['-as',second_aln.format("fasta"), '-r', '-bl'])
+		alnindex_score, gapped_sliced_alns, number_of_aligned_positions, gp_mapping=TwinCons.main(['-as',format(second_aln, "fasta"), '-r', '-mx', 'blosum62'])
 		
 
 		out_dict={}

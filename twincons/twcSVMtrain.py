@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate SVM from alignment segments.
-Computes a decision function from csv generated with MultiPhyMeas
+Computes a decision function from csv generated with twcCalculateSegments
 """
 #print(__doc__)
 import os, sys, csv, math, argparse, json
@@ -13,14 +13,14 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 import _pickle as cPickle
-from bin.SVM_test import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
+from twincons.twcSVMtest import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('output_path', help='Output path', type=str)
     parser.add_argument('-twca','--twincons_args', help='Arguments used with TwinCons.', nargs='+', type=str)
-    parser.add_argument('-csa','--calcsegm_args', help='Arguments used with CalculateSegments.', nargs='+', type=str)
+    parser.add_argument('-csa','--calcsegm_args', help='Arguments used with twcCalculateSegments.', nargs='+', type=str)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
     parser.add_argument('-tp','--penalty', help='Penalty for training algorithm. (Default = 1)', type=float, default=1)
     parser.add_argument('-k','--kernel', help='Kernel for the training algorithm', type=str, 

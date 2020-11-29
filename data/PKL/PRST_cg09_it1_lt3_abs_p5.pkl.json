@@ -1,0 +1,18 @@
+[
+    {
+        "maxX": 105.0,
+        "maxY": 300.012439862543
+    },
+    [
+        "./data/CSV/PRST_cg09_it1_lt3.csv",
+        "./data/PKL/PRST_cg09_it1_lt3_abs_p5.pkl",
+        "-pd",
+        "./data/outputs/SVM/PRST_cg09_it1_lt3_abs_p5.png",
+        "-ts",
+        "1",
+        "-tp",
+        "5",
+        "-l",
+        "absolute"
+    ]
+]
