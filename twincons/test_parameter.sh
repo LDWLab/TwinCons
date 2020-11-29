@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/twincons/env bash
 
 for gap_cut in $(seq 0.7 0.1 0.9) 
 do 
@@ -30,21 +30,21 @@ do
             #mkdir $twc_dir/PRST
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/BAliBASE3.0/manual_annotation/merges_long+good/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/BBS/${f##*/}
+            #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/BBS/${f##*/}
             #     done
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/rProt_Good_Bad_noS14/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/rProt/${f##*/}
+            #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/rProt/${f##*/}
             #     done
             # for f in ~/Dropbox-Gatech/Programs/Score-test_data/INDELI/Final/*.fas
             #     do 
-            #         echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/IND/${f##*/}
+            #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/IND/${f##*/}
             #     done
             for f in ~/twc_test_alns/PRST/*.fas 
             do 
                 g=${f%%.fas}
-                 #echo ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
-                 #python3 -W ignore ./bin/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
+                 #echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
+                 #python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
             done
             #echo "Done TWC params "$twc_param
             for it in $(seq 1 1 2) 
@@ -63,11 +63,11 @@ do
                         
                         echo "$twc_param $segment_param"
                         segm_outdir="./data/test_twc_parameters/SegmentCSV/BBS/${twc_param}__${segment_param}"
-                        # echo ./bin/CalculateSegments.py -twc $twc_dir/BBS/ $segm_outdir -p -it $it -t $lt $pos_param
-                        # echo ./vin/CalculateSegments.py -twc $twc_dir/rProt/ ${segm_outdir/BBS/rProt} -p -it $it -t $lt $pos_param
-                        # echo ./bin/CalculateSegments.py -twc $twc_dir/IND/ ${segm_outdir/BBS/IND} -p -it $it -t $lt $pos_param
-                         echo ./bin/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
-                         python3 -W ignore ./bin/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
+                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/BBS/ $segm_outdir -p -it $it -t $lt $pos_param
+                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/rProt/ ${segm_outdir/BBS/rProt} -p -it $it -t $lt $pos_param
+                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/IND/ ${segm_outdir/BBS/IND} -p -it $it -t $lt $pos_param
+                         echo ./twincons/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
+                         python3 -W ignore ./twincons/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
                          echo "Done segment params "$segment_param
 
                         #segment_dir=$segm_outdir.csv
@@ -83,11 +83,11 @@ do
                         #    #    train_dir="./data/test_twc_parameters/PKL/BBS/${twc_param}__${segment_param}__${train_param}.pkl"
                         #    #    allparam=${twc_param}__${segment_param}__${train_param}
                         #    #    echo $twc_param $segment_param $train_param
-                        #    #    #./TwinCons/SVM_train.py $segment_dir $train_dir -ts $ts $avew_param
+                        #    #    #./twincons/SVM_train.py $segment_dir $train_dir -ts $ts $avew_param
                         #    #    outstat_dir="./data/test_twc_parameters/out_stats/eval/"
-                        #    #    ./TwinCons/SVM_test.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
-                        #    #    ./TwinCons/SVM_test.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
-                        #    #    ./TwinCons/SVM_test.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
+                        #    #    ./twincons/SVM_test.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
+                        #    #    ./twincons/SVM_test.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
+                        #    #    ./twincons/SVM_test.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
                         #    #done
                         #done
                     done
@@ -97,7 +97,7 @@ do
     done
 done
 
-#nohup ./bin/test_parameter.sh &> ./param-test-prms_nohup.out &
+#nohup ./twincons/test_parameter.sh &> ./param-test-prms_nohup.out &
 # for gap_cut in $(seq 0.1 0.1 0.9)
 #     do for it in $(seq 1 0.5 3)
 #         do for thr in $(seq 1 1 2)
