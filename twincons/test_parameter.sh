@@ -1,4 +1,4 @@
-#!/usr/twincons/env bash
+#!/usr/bin/env bash
 
 for gap_cut in $(seq 0.7 0.1 0.9) 
 do 
@@ -40,12 +40,12 @@ do
             #     do 
             #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/IND/${f##*/}
             #     done
-            for f in ~/twc_test_alns/PRST/*.fas 
-            do 
-                g=${f%%.fas}
-                 #echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
-                 #python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
-            done
+            #for f in ~/twc_test_alns/PRST/*.fas 
+            #do 
+            #    g=${f%%.fas}
+            #     #echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
+            #     #python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $w_param -csv -o $twc_dir/PRST/${g##*/}
+            #done
             #echo "Done TWC params "$twc_param
             for it in $(seq 1 1 2) 
             do 
@@ -61,35 +61,32 @@ do
                         fi
                         segment_param=it${it}_lt${lt}_${pos}
                         
-                        echo "$twc_param $segment_param"
+                        #echo "$twc_param $segment_param"
                         segm_outdir="./data/test_twc_parameters/SegmentCSV/BBS/${twc_param}__${segment_param}"
-                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/BBS/ $segm_outdir -p -it $it -t $lt $pos_param
-                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/rProt/ ${segm_outdir/BBS/rProt} -p -it $it -t $lt $pos_param
-                        # echo ./twincons/CalculateSegments.py -twc $twc_dir/IND/ ${segm_outdir/BBS/IND} -p -it $it -t $lt $pos_param
-                         echo ./twincons/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
-                         python3 -W ignore ./twincons/CalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
-                         echo "Done segment params "$segment_param
+                        # echo ./twincons/twcCalculateSegments.py -twc $twc_dir/BBS/ $segm_outdir -p -it $it -t $lt $pos_param
+                        # echo ./twincons/twcCalculateSegments.py -twc $twc_dir/rProt/ ${segm_outdir/BBS/rProt} -p -it $it -t $lt $pos_param
+                        # echo ./twincons/twcCalculateSegments.py -twc $twc_dir/IND/ ${segm_outdir/BBS/IND} -p -it $it -t $lt $pos_param
+                        # echo ./twincons/twcCalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
+                        # python3 -W ignore ./twincons/twcCalculateSegments.py -c -twc $twc_dir/PRST/ ${segm_outdir/BBS/PRST} -it $it -t $lt $pos_param
+                        # echo "Done segment params "$segment_param
 
-                        #segment_dir=$segm_outdir.csv
-                        #for ts in $(seq 0.5 0.5 1) do 
-                        #    #for avew in cms as do 
-                        #    #    if [[ $avew = "as" ]]
-                        #    #    then
-                        #    #        avew_param=""
-                        #    #    else
-                        #    #        avew_param="-cms"
-                        #    #    fi
-                        #    #    train_param=ts${ts/\./p}_${avew}
-                        #    #    train_dir="./data/test_twc_parameters/PKL/BBS/${twc_param}__${segment_param}__${train_param}.pkl"
-                        #    #    allparam=${twc_param}__${segment_param}__${train_param}
-                        #    #    echo $twc_param $segment_param $train_param
-                        #    #    #./twincons/SVM_train.py $segment_dir $train_dir -ts $ts $avew_param
-                        #    #    outstat_dir="./data/test_twc_parameters/out_stats/eval/"
-                        #    #    ./twincons/SVM_test.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
-                        #    #    ./twincons/SVM_test.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
-                        #    #    ./twincons/SVM_test.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts $avew_param -et
-                        #    #done
-                        #done
+                        segment_dir=$segm_outdir.csv
+                        for ts in $(seq 0.5 0.5 1)
+                        do 
+                            for avew in cms absolute normalized
+                            do 
+                                train_param=ts${ts/\./p}_${avew}
+                                train_dir="./data/test_twc_parameters/PKL/BBS/${twc_param}__${segment_param}__${train_param}.pkl"
+                                allparam=${twc_param}__${segment_param}__${train_param}
+                                echo $twc_param ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST}
+                                ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
+                                #outstat_dir="./data/test_twc_parameters/out_stats/"
+                                #./twincons/twcSVMtest.py $segment_dir ${outstat_dir}BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts -l ${avew}
+                                #./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts -l $avew
+                                #./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts -l $avew
+                                #./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST_${allparam}.csv $train_dir -tcp -ts $ts -l $avew
+                            done
+                        done
                     done
                 done
             done

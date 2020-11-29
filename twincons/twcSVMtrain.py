@@ -33,8 +33,6 @@ def create_and_parse_argument_options(argument_list):
         \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='normalized')
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
         \nthis percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
-    parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
-        \nfrom all segments per alignment. Uses total segment length instead of normalized.', action="store_true")
     commandline_args = parser.parse_args(argument_list)
     return commandline_args, parser
 

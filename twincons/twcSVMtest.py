@@ -31,8 +31,6 @@ def create_and_parse_argument_options(argument_list):
         \n\t absolute:   absolute length of the segments.\
         \n\t normalized: length of segments is normalized with the total alignment length.\
         \n\t cms:        average position (center of mass) from all segments per alignment.', choices=['absolute', 'normalized', 'cms'], default='normalized')
-    parser.add_argument('-cms','--center_mass_segments', help='Use the average position (Center of mass) \
-                                    \nfrom all segments per alignment.', action="store_true")
     calculate_positive = parser.add_mutually_exclusive_group(required=True)
     calculate_positive.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier.', action="store_true")
     calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier.', action="store_true")
@@ -337,9 +335,11 @@ def main(commandline_arguments):
 
     ###   Load alignment segment data   ###
     csv_list = csv_iterator(comm_args.csv_path)
+    cms = False
     if comm_args.top_segments:
         csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
     if comm_args.length_type_calculation == 'cms':
+        cms = True
         csv_list = recalculate_data_by_averaging_segments(csv_list)
     if comm_args.length_type_calculation == 'absolute':
         csv_list = use_absolute_length_of_segments(csv_list)
@@ -400,17 +400,17 @@ def main(commandline_arguments):
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
                                 plot_title, aln_names, 
                                 decision_levels=dist_to_se_sp_pr, 
-                                cms_or_identity=comm_args.center_mass_segments)
+                                cms_or_identity=cms)
         elif comm_args.test_query_alignments:
             aln_names_eval = list()
             for alnid in aln_names:
-                if comm_args.center_mass_segments:
+                if cms:
                     aln_names_eval.append(("{:2.1e}".format(alnid_to_eval[alnid])+" "+alnid[:15]))
                 else:
                     aln_names_eval.append((str(alnid_to_eval[alnid])+" "+alnid[:15]))
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
                                 plot_title,aln_names_eval,label_order_tups=alnid_with_evalue,
-                                cms_or_identity=comm_args.center_mass_segments,
+                                cms_or_identity=cms,
                                 thresholds=comm_args.range_distance_thresholds)
         plt.tight_layout()
         plt.savefig(comm_args.plot_df, dpi=600, bbox_inches='tight')

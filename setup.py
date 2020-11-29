@@ -11,7 +11,7 @@ with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
 
 setup(
     name='TwinCons',
-    version='0.5.0.dev0',
+    version='0.5.1.dev0',
     description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
     long_description = long_description,
     long_description_content_type='text/markdown',
