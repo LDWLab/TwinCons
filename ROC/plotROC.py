@@ -54,7 +54,7 @@ TWC low position threshold: "+it.replace('p','.')[2:]
                 axs[row,col].set_ylabel("True positive rate")
     plt.savefig(file_name, dpi=600)
 
-directory = "./data/test_twc_parameters/out_stats/tcp_id_C2_ts1/"
+directory = "./data/test_twc_parameters/out_stats/BL_unw/SeparateSegments/tcp_id_C1_ts1/"
 bbs,rprot,indeli = dict(),dict(),dict()
 for file in os.listdir(directory):
     if not re.findall(r'(.*)(\.csv)',file):
