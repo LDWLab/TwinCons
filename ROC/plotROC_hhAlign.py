@@ -19,7 +19,7 @@ def read_csv(csv_location):
     return output_list
 
 def calculate_tpr_fpr(csv_data, eval_thr):
-    from bin.SVM_test import bypass_zero_division
+    from twincons.twcSVMtest import bypass_zero_division
     tp, tn, fp, fn = 0, 0, 0, 0
     for aln in csv_data:
         if re.match('^A_|^B_', aln[0]) is not None:
@@ -60,7 +60,7 @@ def plot_subplot(datastruc, axs, titlesubplot):
     return True
 
 directory = "/home/ppenev/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/hhalign/"
-bbs,rprot,indeli = dict(),dict(),dict()
+bbs,rprot,indeli, prst = dict(),dict(),dict(),dict()
 for file in os.listdir(directory):
     if not re.findall(r'(.*)(\.csv)',file):
         #print("Skipping non-csv file "+file)
@@ -75,13 +75,15 @@ for file in os.listdir(directory):
             rprot = construct_param_struc(split_label, rprot, tpr, fpr)
         if split_label[0] == "IND":
             indeli = construct_param_struc(split_label, indeli, tpr, fpr)
+        if split_label[0] == "PRST":
+            prst = construct_param_struc(split_label, prst, tpr, fpr)
 
-fig, axes = plt.subplots(1, 3,
-                            sharey=True, 
-                            figsize=(20, 12))
+fig, axes = plt.subplots(1, 4,
+                        sharey=True, 
+                        figsize=(20, 12))
 fig.suptitle("ROC HHalign", fontsize=16)
 
-for datastruc, axs, title in zip([bbs,rprot,indeli], axes, ["BALI","rProtein","INDELIBLE"]):
+for datastruc, axs, title in zip([bbs,rprot,indeli,prst], axes, ["BALI","rProtein","INDELIBLE","PROSITE"]):
     plot_subplot(datastruc, axs, title)
 
-plt.savefig("./data/outputs/PNG/param_test/ROC_HHalign.png", dpi=600)
+plt.savefig("./data/outputs/PNG/param_test/ROC_HHalign.svg", dpi=600)
