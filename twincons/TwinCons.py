@@ -14,7 +14,7 @@ from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 import twincons.SequenceWeightFromTree as Sequence_Weight_from_Tree
 from twincons.MatrixLoad import PAMLmatrix
-from Bio.SubsMat import MatrixInfo
+import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
     subtitution_mx = MatrixInfo.available_matrices
