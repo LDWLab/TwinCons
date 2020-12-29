@@ -15,7 +15,10 @@ def read_csv(csv_location):
             if first_line:
                 first_line = False
                 continue
-            output_list.append((row[0], min(float(row[4]),float(row[12]))))
+            if len(row) > 10:
+                output_list.append((row[0], min(float(row[4]),float(row[12]))))
+            else:
+                output_list.append((row[0], float(row[4])))
     return output_list
 
 def calculate_tpr_fpr(csv_data, eval_thr):
