@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-import re, os, csv, sys, pprint
+'''Takes in csv data for different parameters and outputs ROC graphs comparing all parameters'''
+import re, os, sys, csv, argparse
 import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.metrics import auc
+
+def create_and_parse_argument_options(argument_list):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('directory', help='Path to folder with csv files storing method comparisons', type=str)
+    parser.add_argument('output_path', help='Output path and file name.', type=str)
+    parser.add_argument('plot_title', help='Title to be used for the plot.', type=str)
+    commandline_args = parser.parse_args(argument_list)
+    return commandline_args
 
 def read_csv(csv_location):
     '''Put csv in list'''
@@ -68,25 +76,35 @@ Weighted: {it[0]}, Intensity thr: {it[1]}'
                 axs[row,col].set_ylabel("True positive rate")
     plt.savefig(file_name, dpi=600)
 
-directory = "./data/test_twc_parameters/out_stats/eval/"
-bbs,rprot,indeli = dict(),dict(),dict()
-for file in os.listdir(directory):
-    if not re.findall(r'(.*)(\.csv)',file):
-        #print("Skipping non-csv file "+file)
-        continue
-    csv_data = read_csv(directory+file)
-    tpr = [float(x[1]) for x in csv_data]
-    fpr = [1-float(x[2]) for x in csv_data]
-    split_label = file.replace('.csv','').split("_")
-    #print(split_label)
-    if split_label[0] == "BBSvBBS":
-        bbs = construct_param_struc(split_label, bbs, tpr, fpr)
-    if split_label[0] == "BBSvrProt":
-        rprot = construct_param_struc(split_label, rprot, tpr, fpr)
-    if split_label[0] == "BBSvIND":
-        indeli = construct_param_struc(split_label, indeli, tpr, fpr)
+def main (commandline_arguments):
+    comm_args = create_and_parse_argument_options(commandline_arguments)
+    directory = comm_args.directory
+    output_file = comm_args.output_path
+    plot_title = comm_args.plot_title
 
-plot_five_by_two(bbs, "./data/outputs/PNG/param_test/BBS-BBS_ev.png","BBS vs BBS")
-plot_five_by_two(rprot, "./data/outputs/PNG/param_test/BBS-rProt_ev.png","BBS vs rProt")
-plot_five_by_two(indeli, "./data/outputs/PNG/param_test/BBS-INDELI_ev.png","BBS vs INDELI")
+    dictForPlot = dict()
+    for file in os.listdir(directory):
+        if not re.findall(r'(.*)(\.csv)',file):
+            #print("Skipping non-csv file "+file)
+            continue
+        csv_data = read_csv(directory+file)
+        tpr = [float(x[1]) for x in csv_data]
+        fpr = [1-float(x[2]) for x in csv_data]
+        split_label = file.replace('.csv','').split("_")
+        dictForPlot = construct_param_struc(split_label, dictForPlot, tpr, fpr)
 
+    plot_five_by_two(dictForPlot, output_file, plot_title)
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
+
+'''For example:
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/PRSTvPRST/ ./data/outputs/SVG/PRST-PRST.svg "PRST vs PRST"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/PRSTvBBS/ ./data/outputs/SVG/PRST-BBS.svg "PRST vs BBS"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/PRSTvIND/ ./data/outputs/SVG/PRST-IND.svg "PRST vs IND"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/PRSTvrProt/ ./data/outputs/SVG/PRST-rProt.svg "PRST vs rProt"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/BBSvBBS/ ./data/outputs/SVG/BBS-BBS.svg "BBS vs BBS"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/BBSvPRST/ ./data/outputs/SVG/BBS-PRST.svg "BBS vs PRST"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/BBSvIND/ ./data/outputs/SVG/BBS-IND.svg "BBS vs IND"
+./ROC/plotROC_4by4.py ./data/test_twc_parameters/out_stats/BBSvrProt/ ./data/outputs/SVG/BBS-rProt.svg "BBS vs rProt"
+'''
