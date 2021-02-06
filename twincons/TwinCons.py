@@ -41,6 +41,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
+    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix.',)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -217,6 +218,8 @@ def determine_subs_matrix(comm_args):
         mx = np.array([4.322, 0])
     elif comm_args.leegascuel or comm_args.structure_paths:
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+    elif comm_args.custom_matrix:
+        mx = np.array(PAMLmatrix(str(comm_args.custom_matrix)).lodd)
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
     elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
@@ -542,7 +545,7 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
     if comm_args.leegascuel:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
-    if comm_args.substitution_matrix:
+    if comm_args.substitution_matrix or comm_args.custom_matrix:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
 
 def main(commandline_arguments):

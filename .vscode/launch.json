@@ -52,6 +52,25 @@
 				"-o",
 				"~/Desktop/bS1test"
 			]
+		},{
+			"name": "Custom TWC bS1",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/TwinCons.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-a",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
+				"-pml",
+				"windows",
+				"-cm",
+				"./matrices/LG.dat",
+				"-sy",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"-o",
+				"~/Desktop/bS1test"
+			]
 		},
 		{
 			"name": "TWC rRNA",
@@ -61,7 +80,7 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_23S_rRNA.fa",
 				"-rv",
 				"-nc",
 				"-mx",
