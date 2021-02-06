@@ -41,7 +41,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
-    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix.',)
+    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix. For example format see the matrices folder.',)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
