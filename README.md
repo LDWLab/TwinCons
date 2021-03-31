@@ -1,6 +1,6 @@
 # TwinCons: analysis toolkit for two sequence groups within an MSA
 
-<span style="color:red">DESCRIPTION HERE</span>
+Conservation score that highlights conserved, variable and diverging (signature) positions between two sequence groups within an alignment. The method mathematically determines a ‘cost’ of transforming one alignment group to the other. Includes automated parsing protocol for the detection of continuous stretches (segments) of high TwinCons scoring columns within protein alignments to query deep ancestry of short peptides.
 
 ## Dependencies
 Programs required to be present in the PATH:
