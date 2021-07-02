@@ -30,7 +30,27 @@
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
 				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-o",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/twc_ssbe_HS-CASP9_SC-MCASP"
+				"~/twc_ssbe_HS-CASP9_SC-MCASP"
+			]
+		},{
+			"name": "TWC caspases",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/TwinCons.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-a",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"-pml","unix",
+				"-s",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"-sy",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"-ssbe",
+				"-o",
+				"~/Desktop/twc_ssbe_HS-CASP9_SC-MCASPpml"
 			]
 		},
 		{
@@ -213,11 +233,11 @@
 			"program": "./twincons/twcSVMtest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBS-BBS.csv",
+				"./data/CSV/PRST_cg09_it1_lt3.csv",
+				"./data/outputs/SVM/BBS-PRST.csv",
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_BBS.svg",
+				"./data/outputs/SVM/BBS_vs_PRST.svg",
 				"-ts",
 				"1",
 				"-tcp",
