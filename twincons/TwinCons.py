@@ -458,6 +458,7 @@ def nucl_matrix(mx_def):
     revtestA=np.add(np.array(nuc_mx), abs(baseline))
     if int(testvr@revtestA@testvr.T) != 0:
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    #return np.add(np.array(nuc_mx),abs(baseline))
     return nuc_mx
 
 def subs_matrix(matrix):
@@ -479,6 +480,7 @@ def subs_matrix(matrix):
     revtestA=np.add(np.array(loddmx), abs(baseline))
     if int(testvr@revtestA@testvr.T) != 0:
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    #return np.add(np.array(loddmx),abs(baseline))
     return np.array(loddmx)
 
 def struc_anno_matrices (struc_anno):

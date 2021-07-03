@@ -75,3 +75,6 @@ class PAMLmatrix:
 				for j in range (len(self._lodd[i])):
 					self._dict_lodd[(self._aa_sequence[i],self._aa_sequence[j])] = self._lodd[i][j]
 		return self._dict_lodd
+
+
+
