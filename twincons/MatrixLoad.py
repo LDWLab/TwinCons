@@ -59,7 +59,7 @@ class PAMLmatrix:
 
 			#print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in np.log2(sym_mx)]))
 			
-			self._lodd = self._baseline_calc(np.log2(sym_mx))
+			self._lodd = np.log2(sym_mx)
 		return self._lodd
 
 	@property
