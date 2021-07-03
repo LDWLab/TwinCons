@@ -17,7 +17,7 @@ class PAMLmatrix:
 	def _baseline_calc(self, lodd):
 		'''
 		Function to calculate the baseline of a given substitution matrix
-		Returns the inputted matrix with added integer baselione value. 
+		Returns the inputted matrix with added integer baseline value. 
 		This ensures a random sequence will have score of 0.
 		'''
 		testvr = np.repeat(1/len(self._aa_sequence),len(self._aa_sequence))
@@ -75,6 +75,3 @@ class PAMLmatrix:
 				for j in range (len(self._lodd[i])):
 					self._dict_lodd[(self._aa_sequence[i],self._aa_sequence[j])] = self._lodd[i][j]
 		return self._dict_lodd
-
-
-
