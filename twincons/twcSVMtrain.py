@@ -111,7 +111,7 @@ def main(commandline_arguments):
         csv_list = use_absolute_length_of_segments(csv_list)
     
     ###   Train the classifier  ###
-    X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(csv_list)
+    X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list)
     if comm_args.length_type_calculation != 'absolute':
         sample_weight = [math.log(x) for x in sample_weight]
     decision_function = train_classifier(X, y, comm_args.penalty, comm_args.gamma, comm_args.kernel, sample_weight=sample_weight)
@@ -121,14 +121,11 @@ def main(commandline_arguments):
         cPickle.dump(decision_function, classifier_output)
 
     ###   Save associated max feature values   ###
-    max_features = {"maxX":maxX, "maxY": maxY}
-    data = [max_features, commandline_arguments]
+    min_max_features = {"maxX":maxX, "maxY": maxY, "minX":minX, "minY":minY}
+    data = [min_max_features, commandline_arguments]
     with open(str(comm_args.output_path)+".json", 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-    # with open(str(comm_args.output_path)+".maxvals", 'w') as max_features:
-    #     csv_writer = csv.writer(max_features, delimiter=',')
-    #     csv_writer.writerow([maxX, maxY])
-    print("Max on X axis:", maxX, "\nMax on Y axis:", maxY)
+    print("MinMax on X axis:", minX, maxX, "\nMinMax on Y axis:", minY,maxY)
 
     ###   Plot the classifier   ###
     if comm_args.plot_df:

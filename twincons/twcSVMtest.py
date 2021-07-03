@@ -120,31 +120,36 @@ def load_and_assign_data(csv_list):
                 i+=1
     return data_xy, data_identity, data_weights, aln_names
 
-def load_csv_data(csv_list, max_features=''):
+def load_csv_data(csv_list, min_max_features=''):
     '''
     Normalizes all the data for x and y in the range 0,1
-    using the max(x) and max(y).
+    using the min/max(x) and min/max(y).
     '''
     data_xy, data_identity, data_weights, aln_names = load_and_assign_data(csv_list)
     data_xy_normx = []
-    if max_features == '':
+    if min_max_features == '':
         maxX = max(np.asarray(data_xy)[:,0])
         maxY = max(np.asarray(data_xy)[:,1])
+        minX = min(np.asarray(data_xy)[:,0])
+        minY = min(np.asarray(data_xy)[:,1])
     else:
-        maxX = float(max_features[0])
-        maxY = float(max_features[1])
+        maxX = float(min_max_features[0])
+        maxY = float(min_max_features[1])
+        minX = float(min_max_features[2])
+        minY = float(min_max_features[3])
     for tups in data_xy:
-        data_xy_normx.append([float(tups[0])/maxX,float(tups[1])/maxY])
-    return np.asarray(data_xy_normx), np.asarray(data_identity), data_weights, maxX, maxY, aln_names
+        data_xy_normx.append([(float(tups[0])-minX)/(maxX-minX),(float(tups[1])-minY)/(maxY-minY)])
+    return np.asarray(data_xy_normx), np.asarray(data_identity), data_weights, maxX, maxY, minX, minY, aln_names
 
-def test_function(csv_list, classifier, max_features):
+def test_function(csv_list, classifier, min_max_features):
     '''
     Executes prediction and distance calculation on each
     segment from the input for a given decision function.
     '''
     segment_pred_dist = {}
+    maxX, maxY, minX, minY = float(min_max_features[0]), float(min_max_features[1]), float(min_max_features[2]), float(min_max_features[3])
     for entry in csv_list:
-        test_segment = np.array([float(entry[2])/float(max_features[0]),float(entry[3])/float(max_features[1])])
+        test_segment = np.array([(float(entry[2])-minX)/(maxX-minX),(float(entry[3])-minY)/(maxY-minY)])
         segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
         segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
         if str(entry[0]) not in segment_pred_dist.keys():
@@ -321,7 +326,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
 def read_features(features_path):
     with open(features_path) as f:
         data = json.load(f)
-    return data[1], [data[0]["maxX"],data[0]["maxY"]]
+    return data[1], [data[0]["maxX"],data[0]["maxY"],data[0]["minX"],data[0]["minY"]]
 
 def write_aln_rows(segments, csv_writer, aln):
     for segment in segments:
@@ -350,9 +355,9 @@ def main(commandline_arguments):
         comm_args.range_distance_thresholds[2] = 0.01
 
     ###   Test data   ###
-    train_args, max_features = read_features(comm_args.pickle+".json")
+    train_args, min_max_features = read_features(comm_args.pickle+".json")
     classifier = cPickle.load(open(comm_args.pickle, 'rb'))
-    segment_pred_dist = test_function(csv_list, classifier, max_features)
+    segment_pred_dist = test_function(csv_list, classifier, min_max_features)
 
     if comm_args.test_classifier_precision:
         dist_to_se_sp_pr = mass_test(segment_pred_dist,
@@ -394,7 +399,7 @@ def main(commandline_arguments):
     ###   Plot the classifier   ###
     if comm_args.plot_df:
         plot_title = re.sub('.csv','',str(re.sub(r'.*/','',comm_args.csv_path))).replace("_", " ")
-        X, y, sample_weight, maxX, maxY, aln_names = load_csv_data(csv_list, max_features=max_features)
+        X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list, min_max_features=min_max_features)
         fig, axes = plt.subplots(1, 1, )
         if comm_args.test_classifier_precision:
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
