@@ -12,9 +12,15 @@ class AlignmentGroup:
     structure object or secondary structure string
     '''
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
-    def __init__(self,aln_obj, struc_path=None, sstruc_str=None):
+    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None):
         self.aln_obj = aln_obj
-        
+        if struc_path is not None:
+            self.seq_distribution = seq_distribution 
+        else:
+            tempStorage = str()
+            for entry in aln_obj:
+                tempStorage += str(entry.seq).replace('-','').replace('\n','')
+            self.seq_distribution = {i : tempStorage.count(i)/len(tempStorage) for i in set(tempStorage)}
         self.struc_path = struc_path if struc_path is not None else None
         self.sstruc_str = sstruc_str if sstruc_str is not None else None
 
@@ -138,7 +144,11 @@ class AlignmentGroup:
             n_i = adjsuted_column_list.count(base) # Number of residues of type i
             if base in weight_aa_distr.keys():     # In case of weighted
                 n_i = weight_aa_distr[base]*M
-            n_i += gap_freq
+            #Gap adjustment
+            if base in self.seq_distribution.keys():
+                n_i += self.seq_distribution[base]*num_gaps
+            else:
+                n_i += gap_freq
             P_i = n_i/float(M) # n_i(Number of residues of type i) / M(Number of residues in column)
             frequency_list.append(P_i)
         return frequency_list
