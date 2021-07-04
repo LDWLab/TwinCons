@@ -209,6 +209,12 @@ def slice_by_name(unsliced_aln_obj):
         sliced_dict[prot]=what
     return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
+def normalizeMx(mx):
+    denom = mx.max()-mx.min()
+    zeroAfterNorm = (1-mx.min())/(mx.max()-mx.min())
+    normMX = np.divide(np.add(mx,-1*mx.min()),denom)
+    return np.add(normMX,-1*zeroAfterNorm)*10
+
 def determine_subs_matrix(comm_args):
     if comm_args.nucleotide and comm_args.substitution_matrix:
         mx = nucl_matrix(comm_args.substitution_matrix)
@@ -226,7 +232,7 @@ def determine_subs_matrix(comm_args):
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
-    return mx, mx.min(), mx.max()
+    return normalizeMx(mx), mx.min(), mx.max()
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
         ax = bars[0].axes

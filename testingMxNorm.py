@@ -11,7 +11,7 @@ def normalizeMx(mx):
     denom = mx.max()-mx.min()
     zeroAfterNorm = (1-mx.min())/(mx.max()-mx.min())
     normMX = np.divide(np.add(mx,-1*mx.min()),denom)
-    return np.add(normMX,-1*zeroAfterNorm)
+    return np.add(normMX,-1*zeroAfterNorm)*10
 
 subMatrices = MatrixInfo.available_matrices
 
