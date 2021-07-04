@@ -24,6 +24,7 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
+    parser.add_argument('-bn','--baseline_or_normalize', help='Whether to baseline the used matrix with the uniform vector or to min/max normalize it.\n\t(Default: normalize)', choices=['normalize', 'baseline'], default='normalize')
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
     parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
     parser.add_argument('-gt','--gap_threshold', help='Specify %% gaps per alignment position. (Default = the smaller between ((sequences of group1)/(all sequences) and (sequences of group2)/(all sequences)) minus 0.05)', type=float)
@@ -209,11 +210,54 @@ def slice_by_name(unsliced_aln_obj):
         sliced_dict[prot]=what
     return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
+def nucl_matrix(mx_def):
+    '''Return a substitution matrix for nucleotides.
+    '''
+    if mx_def == 'identity':
+        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
+    elif mx_def == 'blastn':
+        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
+    elif mx_def == 'trans':
+        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
+    else:
+        raise IOError("Couldn't assign nucleotide matrix!")
+    return nuc_mx
+
+def subs_matrix(matrix):
+    '''Baseline and return a numpy form of the substitution matrix.
+    '''
+    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+    loddmx = []
+    substitution_matrix = getattr(MatrixInfo,matrix)
+    for aa in aa_sequence:
+        linemx=[]
+        for aa2 in aa_sequence:
+            if (aa,aa2) in substitution_matrix:
+                linemx.append(substitution_matrix[(aa,aa2)])
+            else:
+                linemx.append(substitution_matrix[(aa2,aa)])
+        loddmx.append(linemx)
+    return np.array(loddmx)
+
+def struc_anno_matrices (struc_anno, baseline_or_normalize):
+    '''Returns a log odds matrix from a given name of a PAML type matrix'''
+    if baseline_or_normalize == 'baseline':
+        return baseline_matrix(np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd))
+    return normalizeMx(np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd))
+
 def normalizeMx(mx):
     denom = mx.max()-mx.min()
     zeroAfterNorm = (1-mx.min())/(mx.max()-mx.min())
     normMX = np.divide(np.add(mx,-1*mx.min()),denom)
     return np.add(normMX,-1*zeroAfterNorm)*10
+
+def baseline_matrix(mx):
+    testvr = np.repeat(1/len(mx),len(mx))
+    baseline = float(testvr@np.array(mx)@testvr.T)
+    revtestA=np.add(np.array(mx), abs(baseline))
+    if int(testvr@revtestA@testvr.T) != 0:
+        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    return np.add(np.array(mx),abs(baseline))
 
 def determine_subs_matrix(comm_args):
     if comm_args.nucleotide and comm_args.substitution_matrix:
@@ -232,7 +276,10 @@ def determine_subs_matrix(comm_args):
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
-    return normalizeMx(mx), mx.min(), mx.max()
+    outMx = normalizeMx(mx)
+    if comm_args.baseline_or_normalize == 'baseline':
+        outMx = baseline_matrix(mx)
+    return outMx, outMx.min(), outMx.max()
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
         ax = bars[0].axes
@@ -446,54 +493,7 @@ def shannon_entropy(alnObject, aa_list, commandline_args, alngroup_to_sequence_w
             entropyDict[column_ix]=sh_entropy
     return entropyDict
 
-def nucl_matrix(mx_def):
-    '''Return a substitution matrix for nucleotides.
-    '''
-    nucl_sequence = ['A','U','C','G']
-    if mx_def == 'identity':
-        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
-    elif mx_def == 'blastn':
-        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
-    elif mx_def == 'trans':
-        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
-    else:
-        raise IOError("Couldn't assign nucleotide matrix!")
-
-    testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
-    baseline = float(testvr@np.array(nuc_mx)@testvr.T)
-    revtestA=np.add(np.array(nuc_mx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    #return np.add(np.array(nuc_mx),abs(baseline))
-    return nuc_mx
-
-def subs_matrix(matrix):
-    '''Baseline and return a numpy form of the substitution matrix.
-    '''
-    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-    loddmx = []
-    substitution_matrix = getattr(MatrixInfo,matrix)
-    for aa in aa_sequence:
-        linemx=[]
-        for aa2 in aa_sequence:
-            if (aa,aa2) in substitution_matrix:
-                linemx.append(substitution_matrix[(aa,aa2)])
-            else:
-                linemx.append(substitution_matrix[(aa2,aa)])
-        loddmx.append(linemx)
-    testvr = np.repeat(1/len(aa_sequence),len(aa_sequence))
-    baseline = float(testvr@np.array(loddmx)@testvr.T)
-    revtestA=np.add(np.array(loddmx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    #return np.add(np.array(loddmx),abs(baseline))
-    return np.array(loddmx)
-
-def struc_anno_matrices (struc_anno):
-    '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
-
-def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None):
+def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, baseline_or_normalize=None):
     '''
     Computes transformation score between two groups, using substitution 
     matrices on the common structural elements between two groups.
@@ -510,7 +510,7 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None):
             if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
                 common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
                 if len(common_chars) > 0:
-                    mx = struc_anno_matrices(''.join(common_chars))
+                    mx = struc_anno_matrices(''.join(common_chars), baseline_or_normalize)
         alnindex_score[aln_index] = vr1@mx@vr2.T
     return alnindex_score
 
@@ -548,7 +548,7 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
         for aln_index in alnindex_col_distr:
             aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
     if comm_args.structure_paths:
-        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation)
+        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation, baseline_or_normalize=comm_args.baseline_or_normalize)
     if comm_args.nucleotide:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
     if comm_args.leegascuel:

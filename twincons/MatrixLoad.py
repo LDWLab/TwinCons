@@ -14,22 +14,6 @@ class PAMLmatrix:
 	def __init__(self,matrix_path):
 		self.matrix_path = matrix_path
 
-	def _baseline_calc(self, lodd):
-		'''
-		Function to calculate the baseline of a given substitution matrix
-		Returns the inputted matrix with added integer baseline value. 
-		This ensures a random sequence will have score of 0.
-		'''
-		testvr = np.repeat(1/len(self._aa_sequence),len(self._aa_sequence))
-		lodd = np.array(lodd)
-		baseline = float(testvr@lodd@testvr.T)
-		revtestA=np.add(lodd, abs(baseline))
-		if int(testvr@revtestA@testvr.T) != 0:
-			raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-		else:
-			#print(baseline)
-			return np.add(lodd,abs(baseline))
-
 	@property
 	def lodd(self):
 		'''
