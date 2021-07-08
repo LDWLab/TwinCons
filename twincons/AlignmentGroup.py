@@ -14,7 +14,7 @@ class AlignmentGroup:
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
     def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None):
         self.aln_obj = aln_obj
-        if struc_path is not None:
+        if seq_distribution is not None:
             self.seq_distribution = seq_distribution 
         else:
             tempStorage = str()
