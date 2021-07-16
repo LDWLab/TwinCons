@@ -59,7 +59,7 @@ def calculateSymmetricDivergence(qij, pipj):
     return sum(sum(symmetricDivergence))
 
 def main ():
-    print("Matrix name,Uniform baseline,pi baseline,Entropy,Relative entropy,Symmetric divergence,Half bit adjustment,Is KL equal to symmetric diverence")
+    print("Matrix name,Uniform baseline,pi baseline,Entropy,Relative entropy,Symmetric divergence,Is KL equal to symmetric diverence")
     for mxPath in os.listdir('./matrices/BLOSUM/'):
         if mxPath.endswith('.qij'):
             mxName = mxPath.split('.')[0]
@@ -74,9 +74,6 @@ def main ():
             mxBaseLine = halfBitBase[0][0]-halfBit[0][0]
             mxBaseLinePi = halfBitBasePi[0][0]-halfBit[0][0]
 
-            #Check the sij rounding after scaling by 2
-            isHalfBitCorrect = np.isclose(halfBit,(sij*2).round())
-
             #Calculate entropy and divergencies of original matrices
             mxentropy = calculateMXentropy(qij, np.outer(pi,pi.T))
             mxrelativeEntropy = calculateMXrelativeEntropy(qij, np.outer(pi,pi.T))
@@ -85,7 +82,7 @@ def main ():
             #Check if the sum of the two KL divergencies are equal to the symmetric divergence
             areKLequalToSymmDivergence = np.isclose([mxentropy + mxrelativeEntropy],[mxsymmetricDivergence])[0]
             outData = [str(round(x, 3)) for x in [mxBaseLine, mxBaseLinePi, mxentropy, mxrelativeEntropy, mxsymmetricDivergence]]
-            print(f'{mxName},'+','.join(outData)+f',{isHalfBitCorrect.all()},{areKLequalToSymmDivergence}')
+            print(f'{mxName},'+','.join(outData)+f',{areKLequalToSymmDivergence}')
             '''
             If q is not too far from the product of its marginals, then
             the two K-L divergences will be similar in magnitude and
