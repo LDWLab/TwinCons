@@ -251,11 +251,12 @@ def normalizeMx(mx):
     normMX = np.divide(np.add(mx,-1*mx.min()),denom)
     return np.add(normMX,-1*zeroAfterNorm)*10
 
-def baseline_matrix(mx):
-    testvr = np.repeat(1/len(mx),len(mx))
-    baseline = float(testvr@np.array(mx)@testvr.T)
+def baseline_matrix(mx, testFrequency=None):
+    if testFrequency is None:
+        testFrequency = np.repeat(1/len(mx),len(mx))
+    baseline = float(testFrequency@np.array(mx)@testFrequency.T)
     revtestA=np.subtract(np.array(mx), baseline)
-    if int(testvr@revtestA@testvr.T) != 0:
+    if int(testFrequency@revtestA@testFrequency.T) != 0:
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
     return np.subtract(np.array(mx),baseline)
 
