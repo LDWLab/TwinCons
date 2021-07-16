@@ -254,10 +254,10 @@ def normalizeMx(mx):
 def baseline_matrix(mx):
     testvr = np.repeat(1/len(mx),len(mx))
     baseline = float(testvr@np.array(mx)@testvr.T)
-    revtestA=np.add(np.array(mx), abs(baseline))
+    revtestA=np.subtract(np.array(mx), baseline)
     if int(testvr@revtestA@testvr.T) != 0:
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    return np.add(np.array(mx),abs(baseline))
+    return np.subtract(np.array(mx),baseline)
 
 def determine_subs_matrix(comm_args):
     if comm_args.nucleotide and comm_args.substitution_matrix:
