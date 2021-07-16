@@ -68,11 +68,11 @@ def main ():
             pi = parseBLOSUMoutFile(f'./matrices/BLOSUM/{mxName}.out')
             
             #Get original BL matrix and calculate its baseline from the uniform and from the pi
-            halfBit = subs_matrix(mxName)
-            halfBitBase = baseline_matrix(halfBit)
-            halfBitBasePi = baseline_matrix(halfBit, pi)
-            mxBaseLine = halfBitBase[0][0]-halfBit[0][0]
-            mxBaseLinePi = halfBitBasePi[0][0]-halfBit[0][0]
+            bitUnits = subs_matrix(mxName)
+            bitUnitsBase = baseline_matrix(bitUnits)
+            bitUnitsBasePi = baseline_matrix(bitUnits, pi)
+            mxBaseLine = bitUnitsBase[0][0]-bitUnits[0][0]
+            mxBaseLinePi = bitUnitsBasePi[0][0]-bitUnits[0][0]
 
             #Calculate entropy and divergencies of original matrices
             mxentropy = calculateMXentropy(qij, np.outer(pi,pi.T))
