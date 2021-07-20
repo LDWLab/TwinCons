@@ -24,7 +24,7 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
-    parser.add_argument('-bn','--baseline_or_normalize', help='Whether to baseline the used matrix with the uniform vector or to min/max normalize it.\n\t(Default: normalize)', choices=['normalize', 'baseline'], default='normalize')
+    parser.add_argument('-bn','--baseline', help='Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.\n\t(Default: bgfreq)', choices=['uniform', 'bgfreq'], default='bgfreq')
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
     parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
     parser.add_argument('-gt','--gap_threshold', help='Specify %% gaps per alignment position. (Default = the smaller between ((sequences of group1)/(all sequences) and (sequences of group2)/(all sequences)) minus 0.05)', type=float)
@@ -224,7 +224,7 @@ def nucl_matrix(mx_def):
     return nuc_mx
 
 def subs_matrix(matrix):
-    '''Baseline and return a numpy form of the substitution matrix.
+    '''Load and return a numpy form of the substitution matrix.
     '''
     aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
     loddmx = []
@@ -239,17 +239,24 @@ def subs_matrix(matrix):
         loddmx.append(linemx)
     return np.array(loddmx)
 
-def struc_anno_matrices (struc_anno, baseline_or_normalize):
-    '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    if baseline_or_normalize == 'baseline':
-        return baseline_matrix(np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd))
-    return normalizeMx(np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd))
+def subs_matrix_bgFreq(matrix):
+    if re.match(r'PAM.*',matrix):
+        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034, 
+           0.035, 0.085, 0.085, 0.012, 0.045, 0.041, 0.057, 0.062, 0.012, 0.030, 0.078])
+    elif re.match(r'blosum.*', matrix):
+        with open (str(os.path.dirname(__file__))+'/../matrices/BLOSUM/'+matrix+'.out') as f:
+            freqs = f.readlines()[37]
+        return np.array([float(x) for x in freqs.split()])
+    else:
+        raise IOError(f"Impossible combination of arguments!\
+             Can't use background frequencies with matrix {matrix}!")
 
-def normalizeMx(mx):
-    denom = mx.max()-mx.min()
-    zeroAfterNorm = (1-mx.min())/(mx.max()-mx.min())
-    normMX = np.divide(np.add(mx,-1*mx.min()),denom)
-    return np.add(normMX,-1*zeroAfterNorm)*10
+def struc_anno_matrices (struc_anno, baselineType):
+    '''Returns a log odds matrix from a given name of a PAML type matrix'''
+    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat')
+    if baselineType == 'uniform':
+        return baseline_matrix(np.array(mx.lodd))
+    return baseline_matrix(np.array(mx.lodd), mx.getPiFreqs)
 
 def baseline_matrix(mx, testFrequency=None):
     if testFrequency is None:
@@ -263,23 +270,30 @@ def baseline_matrix(mx, testFrequency=None):
 def determine_subs_matrix(comm_args):
     if comm_args.nucleotide and comm_args.substitution_matrix:
         mx = nucl_matrix(comm_args.substitution_matrix)
+        bgFreq = np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([2, 0])
+        return mx, mx.min(), mx.max()
     elif not comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([4.322, 0])
+        return mx, mx.min(), mx.max()
     elif comm_args.leegascuel or comm_args.structure_paths:
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+        bgFreq = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').getPiFreqs
     elif comm_args.custom_matrix:
         mx = np.array(PAMLmatrix(str(comm_args.custom_matrix)).lodd)
+        bgFreq = PAMLmatrix(str(comm_args.custom_matrix)).getPiFreqs
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
+        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix)
     elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
-    outMx = normalizeMx(mx)
-    if comm_args.baseline_or_normalize == 'baseline':
+    if comm_args.baseline == 'uniform':
         outMx = baseline_matrix(mx)
+    else:
+        outMx = baseline_matrix(mx, bgFreq)
     return outMx, outMx.min(), outMx.max()
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
@@ -494,7 +508,7 @@ def shannon_entropy(alnObject, aa_list, commandline_args, alngroup_to_sequence_w
             entropyDict[column_ix]=sh_entropy
     return entropyDict
 
-def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, baseline_or_normalize=None):
+def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, baseline=None):
     '''
     Computes transformation score between two groups, using substitution 
     matrices on the common structural elements between two groups.
@@ -511,7 +525,7 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, ba
             if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
                 common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
                 if len(common_chars) > 0:
-                    mx = struc_anno_matrices(''.join(common_chars), baseline_or_normalize)
+                    mx = struc_anno_matrices(''.join(common_chars), baseline)
         alnindex_score[aln_index] = vr1@mx@vr2.T
     return alnindex_score
 
@@ -549,7 +563,7 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
         for aln_index in alnindex_col_distr:
             aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
     if comm_args.structure_paths:
-        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation, baseline_or_normalize=comm_args.baseline_or_normalize)
+        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation, baseline=comm_args.baseline)
     if comm_args.nucleotide:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
     if comm_args.leegascuel:
