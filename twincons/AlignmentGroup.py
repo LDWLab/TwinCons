@@ -8,8 +8,9 @@ from Bio.PDB import PDBParser
 class AlignmentGroup:
     '''
     Class for a single group within an alignment.
-    Must pass the alignment object and optionally a 
-    structure object or secondary structure string
+    Must pass the alignment object and optionally a structure object
+    and a sequence distribution (used for gap adjustment). When no
+    sequence distribution is passed a uniform distribution is assumed.
     '''
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
     def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None):
