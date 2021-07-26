@@ -268,15 +268,17 @@ def baseline_matrix(mx, testFrequency=None):
     return np.subtract(np.array(mx),baseline)
 
 def determine_subs_matrix(comm_args):
+    '''Given the commandline args returns a substitution matrix, its min and max, and 
+    a background frequency, used to baseline the matrix'''
     if comm_args.nucleotide and comm_args.substitution_matrix:
         mx = nucl_matrix(comm_args.substitution_matrix)
         bgFreq = np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([2, 0])
-        return mx, mx.min(), mx.max()
+        return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif not comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([4.322, 0])
-        return mx, mx.min(), mx.max()
+        return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.leegascuel or comm_args.structure_paths:
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
         bgFreq = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').getPiFreqs
@@ -292,9 +294,10 @@ def determine_subs_matrix(comm_args):
         raise IOError("Impossible combination of arguments!")
     if comm_args.baseline == 'uniform':
         outMx = baseline_matrix(mx)
+        bgFreq = np.repeat(1/len(mx),len(mx))
     else:
         outMx = baseline_matrix(mx, bgFreq)
-    return outMx, outMx.min(), outMx.max()
+    return outMx, outMx.min(), outMx.max(), bgFreq
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
         ax = bars[0].axes
@@ -366,7 +369,7 @@ def gradients(data, positivegradient, negativegradient, mx_maxval, mx_minval):
         aln_index+=1
     return aln_index_hexcmap
 
-def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval):
+def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     """Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
     """
     from pathlib import Path, PureWindowsPath, PurePosixPath
@@ -406,7 +409,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
         else:
             #We have to recalculate the structure to alignment mapping
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             #Open the structure file
@@ -445,7 +448,7 @@ def jalview_output(output_dict, comm_args):
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
-def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval):
+def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     data = []
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
@@ -465,7 +468,7 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
         else:
             rv_output = open(f"{comm_args.output_path}_{alngroup_name}.csv","w")
             rv_output.write("resNum,DataCol,ColorCol\n")
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             for aln_index in alnindex_to_hexcolors.keys():
@@ -529,7 +532,7 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, ba
         alnindex_score[aln_index] = vr1@mx@vr2.T
     return alnindex_score
 
-def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_sequence_weight, mx):
+def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_sequence_weight, mx, bg_freq):
     '''Checks through the commandline options and does the appropriate frequency and score calculations.
     Returns a dictionary of alignment position -> computed score.
     '''
@@ -540,7 +543,7 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
     aln_index_dict = defaultdict(dict)
     struc_annotation = defaultdict(dict)
     for alngroup_name in sliced_alns:
-        alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+        alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name], seq_distribution=bg_freq)
         if comm_args.structure_paths:
             current_path = [s for s in comm_args.structure_paths if alngroup_name in ntpath.basename(s)]
             if len(current_path) == 0:
@@ -597,7 +600,7 @@ def main(commandline_arguments):
         raise IOError("Unhandled combination of arguments!")
 
     gp_mapping = dict()
-    subs_matrix, mx_minval, mx_maxval = determine_subs_matrix(comm_args)
+    subs_matrix, mx_minval, mx_maxval, bg_freq = determine_subs_matrix(comm_args)
 
     if comm_args.phylo_split:
         tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
@@ -661,7 +664,8 @@ def main(commandline_arguments):
                                             sliced_alns, 
                                             uniq_resis, 
                                             alngroup_to_sequence_weight, 
-                                            subs_matrix)
+                                            subs_matrix,
+                                            bg_freq)
     
     if (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both):
         mx_maxval = max(position_defined_scores.values())
@@ -681,7 +685,7 @@ def main(commandline_arguments):
     if comm_args.plotit:                                    #for plotting
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()), comm_args, mx_minval, mx_maxval)
     elif comm_args.write_pml_script:
-        pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval)
+        pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
     elif comm_args.return_within:
         return output_dict, gapped_sliced_alns, number_of_aligned_positions, gp_mapping
     elif comm_args.return_csv:
@@ -691,7 +695,7 @@ def main(commandline_arguments):
             for x in sorted(output_dict.keys(), key=abs):
                 csv_writer.writerow([x, output_dict[int(x)][0], output_dict[int(x)][1]])
     elif comm_args.ribovision:
-        ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval)
+        ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
     elif comm_args.jalview_output:
         jalview_output(output_dict, comm_args)
 

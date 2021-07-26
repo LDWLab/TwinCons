@@ -1,4 +1,5 @@
 import re, ntpath
+import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
@@ -16,7 +17,16 @@ class AlignmentGroup:
     def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None):
         self.aln_obj = aln_obj
         if seq_distribution is not None:
-            self.seq_distribution = seq_distribution 
+            if type(seq_distribution) is np.ndarray:
+                if len(seq_distribution) == 20:
+                    uniq_resi_list = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+                elif len(seq_distribution) == 4:
+                    uniq_resi_list = ['A','U','C','G']
+                self.seq_distribution = {uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
+            elif type(seq_distribution) is dict():
+                self.seq_distribution = seq_distribution
+            else:
+                raise IOError("Incorrect type of seq_distribution passed. Must be np.array or dict.")
         else:
             tempStorage = str()
             for entry in aln_obj:
