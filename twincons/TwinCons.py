@@ -33,6 +33,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
     parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
     output_type_group = parser.add_mutually_exclusive_group(required=True)
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
     output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.', choices=['unix', 'windows'])
@@ -253,7 +254,7 @@ def subs_matrix_bgFreq(matrix):
 
 def struc_anno_matrices (struc_anno, baselineType):
     '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat')
+    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/'+struc_anno+'.dat')
     if baselineType == 'uniform':
         return baseline_matrix(np.array(mx.lodd))
     return baseline_matrix(np.array(mx.lodd), mx.getPiFreqs)
@@ -589,7 +590,9 @@ def main(commandline_arguments):
     if comm_args.ribovision and not comm_args.structure_pymol:
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nRiboVision output requires at least one structure defined with -sy.")
-
+    if comm_args.compositional_adjustment and ((comm_args.substitution_matrix and not re.match(r'blosum',comm_args.substitution_matrix)) or not comm_args.substitution_matrix):
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nCompositional adjustment is only possible for BLOSUM matrices.")
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
     elif len(comm_args.alignment_paths) == 1:
