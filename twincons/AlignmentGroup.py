@@ -14,15 +14,12 @@ class AlignmentGroup:
     sequence distribution is passed a uniform distribution is assumed.
     '''
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
-    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None):
+    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None, uniq_resi_list=None):
         self.aln_obj = aln_obj
+        self.uniq_resi_list = self._determineUniqResis(aln_obj)
         if seq_distribution is not None:
             if type(seq_distribution) is np.ndarray:
-                if len(seq_distribution) == 20:
-                    uniq_resi_list = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-                elif len(seq_distribution) == 4:
-                    uniq_resi_list = ['A','U','C','G']
-                self.seq_distribution = {uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
+                self.seq_distribution = {self.uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
             elif type(seq_distribution) is dict():
                 self.seq_distribution = seq_distribution
             else:
@@ -34,6 +31,29 @@ class AlignmentGroup:
             self.seq_distribution = {i : tempStorage.count(i)/len(tempStorage) for i in set(tempStorage)}
         self.struc_path = struc_path if struc_path is not None else None
         self.sstruc_str = sstruc_str if sstruc_str is not None else None
+
+    def validateType(self, string, alphabet='protein'):
+        '''Check that a string only contains values from an alphabet'''
+        alphabets = {'dna': re.compile('^[acgtn]*$', re.I), 
+                     'rna': re.compile('^[acgun]*$', re.I),
+                 'protein': re.compile('^[acdefghiklmnpqrstvwy]*$', re.I)}
+
+        if alphabets[alphabet].search(string) is not None:
+             return True
+        else:
+             return False
+
+    def _determineUniqResis(self, aln_obj):
+        '''Used to determine the unique residues of the alignment.'''
+        tempSeq = ''.join([str(x.seq).replace('-','') for x in aln_obj])
+        if self.validateType(tempSeq):
+            return ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+        elif self.validateType(tempSeq, alphabet='rna'):
+            return ['A','U','C','G']
+        elif self.validateType(tempSeq, alphabet='dna'):
+            return ['A','T','C','G']
+        else:
+            raise IOError("Wasn't able to determine the type of alignment. Do you have weird characters in the alignment?")
 
     def add_struc_path(self, struc_path):
         from Bio.SeqRecord import SeqRecord
@@ -236,3 +256,6 @@ class AlignmentGroup:
     def _return_alignment_obj(self):
         '''Returns current alignment object of this group'''
         return self.aln_obj
+
+    def getAAfrequenciesList (self):
+        return [self.seq_distribution[aa] for aa in self.uniq_resi_list]
