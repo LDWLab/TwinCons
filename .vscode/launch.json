@@ -20,17 +20,17 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"~/Desktop/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
 				"-pml","unix",
 				"-s",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-ssbe",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-o",
-				"~/twc_ssbe_HS-CASP9_SC-MCASP"
+				"~/Desktop/twc_ssbe_HS-CASP9_SC-MCASP"
 			]
 		},{
 			"name": "TWC caspases",
@@ -40,14 +40,14 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"~/Desktop/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
 				"-pml","unix",
 				"-s",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-ssbe",
 				"-o",
 				"~/Desktop/twc_ssbe_HS-CASP9_SC-MCASPpml"
@@ -61,16 +61,16 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
 				"-pml",
 				"windows",
 				"-mx",
 				"blosum62",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
 				"-o",
-				"~/Desktop/bS1test"
+				"~/Desktop/bS1test", "-ca"
 			]
 		},{
 			"name": "Custom TWC bS1",
@@ -80,14 +80,14 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
 				"-pml",
 				"windows",
 				"-cm",
 				"./matrices/LG.dat",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
 				"-o",
 				"~/Desktop/bS1test"
 			]
@@ -100,14 +100,14 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_23S_rRNA.fa",
+				"~/Desktop/DATA/rRNA/AB_23S_rRNA.fa",
 				"-rv",
 				"-nc",
 				"-mx",
 				"blastn",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/PYRFU_LSUa.cif",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/ECOLI_LSUb.cif",
+				"~/Desktop/DATA/rRNA/PML/PYRFU_LSUa.cif",
+				"~/Desktop/DATA/rRNA/PML/ECOLI_LSUb.cif",
 				"-o",
 				"~/Desktop/TWC_blastn_AB_LSU2"
 			]
