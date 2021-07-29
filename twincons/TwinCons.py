@@ -268,7 +268,47 @@ def baseline_matrix(mx, testFrequency=None):
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
     return np.subtract(np.array(mx),baseline)
 
-def determine_subs_matrix(comm_args):
+def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
+    from subprocess import Popen, PIPE
+    '''Runs newton_direct_solve on a pre-computed joint probility for a substitution matrix.
+    Uses the two provided AA frequencies to output a substitution matrix which is compositionally
+    adjusted for these two frequencies.'''
+    jointProbLocation = f'{os.path.dirname(os.path.realpath(__file__))}/../matrices/jp/{subsMatrixName}.dat'
+    newton_direct_solve = f'{os.path.dirname(os.path.realpath(__file__))}/newton_direct_solve'
+    groupAAfreqs, groupLengths = list(), list()
+    multiplicationFactors = dict(blosum62 = 2, blosum30 = 5, blosum35 = 4, blosum40 = 4, blosum45 = 3, blosum50 = 3, blosum55 = 3,
+                                blosum60 = 2, blosum65 = 2, blosum70 = 2, blosum75 = 2, blosum80 = 2, blosum85 = 2, blosum90 = 2,
+                                blosum95 = 2, blosum100 = 2, blastn = 1, trans = 1, identity = 1)
+    if subsMatrixName not in multiplicationFactors.keys():
+        raise IOError(f"Can't handle compositional adjustment with matrix {subsMatrixName}! Use a BLSOUM matrix instead.")
+    for alnObj in sliced_alns.values():
+        alnGroup = AlignmentGroup(alnObj)
+        groupAAfreqs.append(alnGroup.getAAfrequenciesList())
+        groupLengths.append(alnObj.get_alignment_length())
+
+    g1Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG1freqs"
+    g2Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG2freqs"
+    tempMxfile = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempCAmatrix"
+
+    tempfiles = [g1Freqs, g2Freqs, tempMxfile]
+    for i, aaFreqs in enumerate(groupAAfreqs):
+        with open(tempfiles[i], "w") as f:
+            f.write('\n'.join([str(x) for x in aaFreqs]))
+
+    cmd = f'{newton_direct_solve} 1 {tempMxfile} {jointProbLocation} {g1Freqs} {g2Freqs} {groupLengths[0]} {groupLengths[1]} {len(mx)}'
+    pipe = Popen(cmd, stdout=PIPE, shell=True)
+    output = pipe.communicate()[0]
+    with open(tempMxfile, "r") as file:
+        li = [[float(x) for x in line.strip()[1:-1].split()] for line in file]
+
+    outputMx = np.array(li)
+    for tempf in tempfiles:
+        os.remove(tempf)
+    
+    return outputMx*multiplicationFactors[subsMatrixName]
+
+
+def determine_subs_matrix(comm_args, sliced_alns):
     '''Given the commandline args returns a substitution matrix, its min and max, and 
     a background frequency, used to baseline the matrix'''
     if comm_args.nucleotide and comm_args.substitution_matrix:
@@ -293,6 +333,8 @@ def determine_subs_matrix(comm_args):
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
+    if comm_args.compositional_adjustment:
+        mx = adjustMatrixGivenAlnFrequencies(comm_args.substitution_matrix, mx, sliced_alns)
     if comm_args.baseline == 'uniform':
         outMx = baseline_matrix(mx)
         bgFreq = np.repeat(1/len(mx),len(mx))
@@ -602,9 +644,6 @@ def main(commandline_arguments):
     else:
         raise IOError("Unhandled combination of arguments!")
 
-    gp_mapping = dict()
-    subs_matrix, mx_minval, mx_maxval, bg_freq = determine_subs_matrix(comm_args)
-
     if comm_args.phylo_split:
         tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
         deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)
@@ -623,6 +662,7 @@ def main(commandline_arguments):
     if comm_args.gap_threshold is None:
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
+    gp_mapping = dict()
     number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
     if comm_args.calculate_group_gaps:#Make sure its not above 1!
         if 2*comm_args.gap_threshold >= 1:
@@ -660,7 +700,7 @@ def main(commandline_arguments):
     if len(sliced_alns.keys()) != 2:
         raise IOError("For now does not support more than two groups! Offending groups are "+str(sliced_alns.keys()))
     
-    
+    subs_matrix, mx_minval, mx_maxval, bg_freq = determine_subs_matrix(comm_args, sliced_alns)
     
     position_defined_scores = decision_maker(comm_args, 
                                             alignIO_out_gapped, 
@@ -685,7 +725,7 @@ def main(commandline_arguments):
             continue
         output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
     
-    if comm_args.plotit:                                    #for plotting
+    if comm_args.plotit:
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()), comm_args, mx_minval, mx_maxval)
     elif comm_args.write_pml_script:
         pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
