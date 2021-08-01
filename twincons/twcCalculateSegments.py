@@ -75,7 +75,7 @@ def scatter_plot(alns_to_segment_stats, legend=False, average_weight=False):
             segment_weights = [n[2] for n in alns_to_segment_stats[file]]
         segment_lengths = [n[0] for n in alns_to_segment_stats[file]]
         abs_length = [n**2 for n in segment_lengths]
-        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',s=abs_length,color=color)
+        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',color=color)
         if len(segment_lengths) == 0:
             segment_lengths.append(0)
         if len(segment_weights) == 0:
@@ -186,12 +186,25 @@ def load_twincons_csv(file_dir):
                 continue
             alnindex_score[row[0]] = float(row[1])
     return alnindex_score, len(alnindex_score), dict()
-    
+
+def penalizeMissingPositions(score_list, score_dict):
+    '''Assigns score -1 to missing alignment positions.
+    These positions are gapped and should not produce 
+    a flat surface when using cumulative segment delineation.'''
+    outScoreList = list()
+    alnStart, alnEnd = int(score_list[0][0]), int(score_list[-1][0])+1
+    for alnPos in range(alnStart, alnEnd):
+        if str(alnPos) not in score_dict.keys():
+            score_dict[str(alnPos)] = -1
+        outScoreList.append((str(alnPos), score_dict[str(alnPos)]))
+    return outScoreList
+
 def identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=7, polyorder=2):
     '''Identify segments based on a cumulative score calculation.
     Identifies local score minima and maxima, using a window and polyorder for smoothing.'''
     cumScore, cumScoreSum, alnPositions = list(), list(), dict()
     cumScorePlot, cumScoreSumPlot, outSegments = list(), list(), list()
+    score_list = penalizeMissingPositions(score_list, dict(score_list))
     score_dict = dict(score_list)
     for index in range(1,int(score_list[-1][0])+1):
         if str(index) in score_dict.keys():
@@ -214,9 +227,10 @@ def identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=7, 
     correctIdxLows = [alnPositions[x] for x in lows]
     correctIdxHighs = [alnPositions[x]-1 for x in highs]
     segments = list(zip(correctIdxLows, correctIdxHighs))
+    segmentsAbsoluteIx = list(zip(lows, highs))
     #plotCumulativeScoreAndSegments(alnPositions, cumScoreSumPlot, smoothCumScoreSumPlot, correctIdxLows, correctIdxHighs, lows, segments, name)
-    for segmIx in segments:
-        outSegments.append(score_list[segmIx[0]-1:segmIx[1]])
+    for segmIx in segmentsAbsoluteIx:
+        outSegments.append(score_list[segmIx[0]:segmIx[1]])
     return outSegments
 
 def plotCumulativeScoreAndSegments(alnPositions, cumScoreSumPlot, smoothCumScoreSumPlot, correctIdxLows, correctIdxHighs, lows, segments, name):
