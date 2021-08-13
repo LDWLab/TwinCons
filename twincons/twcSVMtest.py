@@ -123,7 +123,7 @@ def load_and_assign_data(csv_list):
 def load_csv_data(csv_list, min_max_features=''):
     '''
     Normalizes all the data for x and y in the range 0,1
-    using the min/max(x) and min/max(y).
+    using XiNorm = (Xi-min(x))/(max(x)-min(x)).
     '''
     data_xy, data_identity, data_weights, aln_names = load_and_assign_data(csv_list)
     data_xy_normx = []
