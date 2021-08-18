@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
-import _pickle as cPickle
+import pickle as cPickle
 from twincons.twcSVMtest import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):

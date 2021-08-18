@@ -13,7 +13,7 @@ from matplotlib.colors import ListedColormap
 from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
                               AdaBoostClassifier)
 from sklearn.tree import DecisionTreeClassifier
-import _pickle as cPickle
+import pickle as cPickle
 
 from twincons.twcSVMtest import csv_iterator, \
                                 load_csv_data, \
