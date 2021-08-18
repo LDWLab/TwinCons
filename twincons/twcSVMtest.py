@@ -120,13 +120,18 @@ def load_and_assign_data(csv_list):
                 i+=1
     return data_xy, data_identity, data_weights, aln_names
 
+def normalize_features(data_xy, maxX, maxY, minX, minY):
+    data_xy_normx = list()
+    for tups in data_xy:
+        data_xy_normx.append([(float(tups[0])-minX)/(maxX-minX),(float(tups[1])-minY)/(maxY-minY)])
+    return data_xy_normx
+
 def load_csv_data(csv_list, min_max_features=''):
     '''
     Normalizes all the data for x and y in the range 0,1
     using XiNorm = (Xi-min(x))/(max(x)-min(x)).
     '''
     data_xy, data_identity, data_weights, aln_names = load_and_assign_data(csv_list)
-    data_xy_normx = []
     if min_max_features == '':
         maxX = max(np.asarray(data_xy)[:,0])
         maxY = max(np.asarray(data_xy)[:,1])
@@ -137,8 +142,7 @@ def load_csv_data(csv_list, min_max_features=''):
         maxY = float(min_max_features[1])
         minX = float(min_max_features[2])
         minY = float(min_max_features[3])
-    for tups in data_xy:
-        data_xy_normx.append([(float(tups[0])-minX)/(maxX-minX),(float(tups[1])-minY)/(maxY-minY)])
+    data_xy_normx = normalize_features(data_xy, maxX, maxY, minX, minY)
     return np.asarray(data_xy_normx), np.asarray(data_identity), data_weights, maxX, maxY, minX, minY, aln_names
 
 def test_function(csv_list, classifier, min_max_features):
