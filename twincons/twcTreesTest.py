@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import matplotlib.pyplot as plt
 from operator import itemgetter
-import _pickle as cPickle
+import pickle as cPickle
 
 from twincons.twcSVMtest import csv_iterator, \
                                 load_csv_data, \
@@ -44,6 +44,11 @@ def create_and_parse_argument_options(argument_list):
     calculate_positive = parser.add_mutually_exclusive_group(required=True)
     calculate_positive.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier.', action="store_true")
     calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier.', action="store_true")
+    parser.add_argument('-pt', '--probability_threshold', nargs=2, metavar=('Significance', 'Step'), 
+        help='Probability for identifying significant segments.\
+        \n\tSignificance: segment with probability above or equal is considered significant segment. Segment with probability below this number is non-significant.\
+        \n\tStep: only used when testing the classifier precision. It makes multiple evaluations of the data moving from 0 to 1 probabilities with the given step.\
+        \n\tDefault (0.95, 0.001)', default=[0.95, 0.001], type = float)
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
@@ -68,33 +73,29 @@ def bypass_zero_division(x,y):
     else:
         return 0
 
-def compare_thr(thr, segments, eval=False):
+def compare_thr(thr, segments):
     negative, positive = 0, 0
     for i in segments:
-        if eval:
-            positive += (math.exp(i[1][1]*i[1][2]*-1) < thr)
-            negative += (math.exp(i[1][1]*i[1][2]*-1) >= thr)
-        else:
-            positive += (i[1][1] > thr)
-            negative += (i[1][1] <= thr)
+        positive += (i[1][1] >= thr)
+        negative += (i[1][1] < thr)
     return (negative, positive)
 
-def calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn, eval=False):
+def calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn):
     for aln, segments in segment_pred_dist.items():
         if re.match('^A_|^B_', aln) is not None:
-            if compare_thr(thr, segments, eval=eval)[1] == 0:
+            if compare_thr(thr, segments)[1] == 0:
                 fn += 1
-            if compare_thr(thr, segments, eval=eval)[1] > 0:
+            if compare_thr(thr, segments)[1] > 0:
                 tp += 1
         if re.match('^C_|^D_', aln) is not None:
-            if compare_thr(thr, segments, eval=eval)[1] == 0:
+            if compare_thr(thr, segments)[1] == 0:
                 tn += 1
-            if compare_thr(thr, segments, eval=eval)[1] > 0:
+            if compare_thr(thr, segments)[1] > 0:
                 fp += 1
     #print(tp, tn, fp, fn)
     return tp, tn, fp, fn
 
-def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eval=False):
+def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1):
     '''For evaluating the decision function with 
     great number of alignments in separate groups.
     '''
@@ -102,8 +103,7 @@ def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eva
     ###   over a range of distances from the decision boundary         ###
     dist_to_stats = {}
     for thr in np.arange(min_threshold,max_threshold,step):
-        tp, tn, fp, fn = 0,0,0,0
-        tp, tn, fp, fn = calc_identity_stats(segment_pred_dist, thr, tp, tn, fp, fn, eval=eval)
+        tp, tn, fp, fn = calc_identity_stats(segment_pred_dist, thr, 0, 0, 0, 0)
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)
         precision = bypass_zero_division(tp,tp+fp)
@@ -111,10 +111,10 @@ def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eva
         #print ("Threshold "+str(thr),'\n',"tpr", tpr,"tnr", tnr,'\n',"precision",precision)
     return dist_to_stats
 
-def write_aln_rows(segments, csv_writer, aln):
+def write_aln_rows(segments, csv_writer, aln, probThr):
     for segment in segments:
-        if segment[1][0] != 0:
-            csv_writer.writerow([aln, segment[1][1], segment[0], math.exp(segment[1][1]*segment[1][2]*-1)])
+        if segment[1][1] >= probThr:
+            csv_writer.writerow([aln, segment[1][1], segment[0]])
     return True
 
 def main(commandline_arguments):
@@ -146,14 +146,14 @@ def main(commandline_arguments):
     #Fix from here
     if comm_args.test_classifier_precision:
         dist_to_se_sp_pr = mass_test(segment_pred_dist,
-            min_threshold=float(comm_args.range_distance_thresholds[0]), 
-            max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
-            step=float(comm_args.range_distance_thresholds[2]), eval=comm_args.evalue_threshold)
+            min_threshold=float(comm_args.probability_threshold[0]), 
+            max_threshold=float(comm_args.probability_threshold[1])+float(comm_args.probability_threshold[2]), 
+            step=float(comm_args.probability_threshold[2]))
         levels_labels_csv = [dist_to_se_sp_pr[thr] for thr in sorted(dist_to_se_sp_pr.keys())]
         roc_stats = [(thr,lev) for lev,thr in zip(levels_labels_csv, sorted(dist_to_se_sp_pr.keys()))]
         with open(comm_args.output_path, mode ="w") as output_csv:
             csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
+            csv_writer.writerow(['Alignment name', 'Segment Probability', 'Segment Position in Alignment'])
             for aln, segments in segment_pred_dist.items():
                 write_aln_rows(segments, csv_writer, aln)
             csv_writer.writerow(['ROC stats'])
@@ -161,25 +161,22 @@ def main(commandline_arguments):
             for row in roc_stats:
                 csv_writer.writerow([row[0],row[1][0],row[1][1],row[1][2]])
     if comm_args.test_query_alignments:
-        alnid_with_evalue = list()
-        alnid_to_eval = dict()
-        i = 0
+        alnIDwithProb, alnIDtoProb, i = list(), dict(), 0
         if comm_args.length_type_calculation == 'cms':
             grouped_data = flatten_alignment_segment_stats_to_groups(segment_pred_dist)
             for aln in sorted(grouped_data.keys()):
-                eval = math.exp(grouped_data[aln][0][0]*-1)
-                alnid_to_eval[aln] = eval
-                alnid_with_evalue.append((aln, eval, i))
+                alnIDtoProb[aln] = grouped_data[aln][0][0]
+                alnIDwithProb.append((aln, grouped_data[aln][0][0], i))
                 i+=1
         with open(comm_args.output_path, mode ="w") as output_csv:
             csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
+            csv_writer.writerow(['Alignment name', 'Segment Probability', 'Segment Position in Alignment'])
             for aln, segments in segment_pred_dist.items():
-                segment_id = compare_thr(float(comm_args.range_distance_thresholds[1]), segments)
-                alnid_with_evalue.append((aln, segment_id[1], i, max(segments, key = itemgetter(1))[1][1] ))
-                alnid_to_eval[aln] = segment_id[1]
+                segment_id = compare_thr(float(comm_args.probability_threshold[0]), segments)
+                alnIDwithProb.append((aln, segment_id[1], i, max(segments, key = itemgetter(1))[1][1] ))
+                alnIDtoProb[aln] = segment_id[1]
                 i+=1
-                write_aln_rows(segments, csv_writer, aln)
+                write_aln_rows(segments, csv_writer, aln, float(comm_args.probability_threshold[0]))
 
     ###   Plot the classifier   ###
     if comm_args.plot_df:
@@ -195,13 +192,13 @@ def main(commandline_arguments):
             aln_names_eval = list()
             for alnid in aln_names:
                 if cms:
-                    aln_names_eval.append(("{:2.1e}".format(alnid_to_eval[alnid])+" "+alnid[:15]))
+                    aln_names_eval.append(("{:2.1e}".format(alnIDtoProb[alnid])+" "+alnid[:15]))
                 else:
-                    aln_names_eval.append((str(alnid_to_eval[alnid])+" "+alnid[:15]))
+                    aln_names_eval.append((str(alnIDtoProb[alnid])+" "+alnid[:15]))
             plot_decision_function(classifier,X,y, sample_weight, axes, fig,
-                                plot_title,aln_names_eval,label_order_tups=alnid_with_evalue,
+                                plot_title,aln_names_eval,label_order_tups=alnIDwithProb,
                                 cms_or_identity=cms,
-                                thresholds=comm_args.range_distance_thresholds)
+                                thresholds=comm_args.probability_threshold)
         plt.tight_layout()
         plt.savefig(comm_args.plot_df, dpi=600, bbox_inches='tight')
 
