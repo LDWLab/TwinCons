@@ -149,14 +149,14 @@
 			"name": "PROSITE",
 			"type": "python",
 			"request": "launch",
-			"program": "./twincons/CalculateSegments.py",
+			"program": "./twincons/twcCalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-twc",
-				"../Score-test_data/PROSITE/TWC_results/GOOD/",
-				"./data/CSV/PRST-gd_cg09_it1_lt3",
+				"/mnt/d/Score-test_data/PROSITE/TWC_results/",
+				"./data/CSV/PRST-cumW7",
 				"-c",
-				"-p",
+				"-p", "-cms", "7"
 			]
 		},
 		{
@@ -191,6 +191,33 @@
 				"-ts", "1",
 				"-twca", "gt_0.9", "cg", "mx_blosum62",
 				"-csa", "lt_3", "it_1"
+			]
+		},{
+			"name": "Tree train BBS",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcTreesTrain.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBS_cg09_it1_lt3.csv",
+				"./data/PKL/Ensembles/BBS_RF",
+				"-mt", "AdaBoost", "RandomForest", "DecisionTree", "ExtraTrees",
+				"-pd",
+				"./data/outputs/RF/BBS_RF_all.png",
+			]
+		},{
+			"name": "Tree test query",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcTreesTest.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/QS_cg09_it1_lt3.csv",
+				"./data/outputs/RF/BBS_RF-QS.csv",
+				"./data/PKL/Ensembles/BBS_RF_RandomForest.pkl",
+				"-pd",
+				"./data/outputs/SVM/BBSp5vsQS.svg",
+				"-tqa"
 			]
 		},
 		{
