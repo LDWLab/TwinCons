@@ -75,7 +75,7 @@ def scatter_plot(alns_to_segment_stats, legend=False, average_weight=False):
             segment_weights = [n[2] for n in alns_to_segment_stats[file]]
         segment_lengths = [n[0] for n in alns_to_segment_stats[file]]
         abs_length = [n**2 for n in segment_lengths]
-        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',color=color)
+        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',color=color, alpha=0.3, lw=0)
         if len(segment_lengths) == 0:
             segment_lengths.append(0)
         if len(segment_weights) == 0:
