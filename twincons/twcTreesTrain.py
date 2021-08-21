@@ -41,18 +41,18 @@ def create_and_parse_argument_options(argument_list):
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
-def plot_decision_function(model, X, y, minX, minY, model_title, plot_idx, cmap, num_models):
+def plot_decision_function(model, X, y, model_title, plot_idx, cmap, num_models, aln_names=False, threshold=None, labelOrder=None, weight=None, fullData=False):
     '''
     Plots the data and the decision function. Besides the classifier function, takes in the sample weights
     and plots it as a size of the datapoints. If they are different than 1.
     '''
-    plt.subplot(1, num_models, plot_idx, aspect='equal', adjustable='box')
+    axes = plt.subplot(1, num_models, plot_idx, aspect='equal', adjustable='box')
     # Add a title for each subplot
     plt.title(model_title, fontsize=9)
     # Now plot the decision boundary using a fine mesh as input to a
     # filled contour plot
-    xx, yy = np.meshgrid(np.arange(0, 1+minX, 0.02),
-                         np.arange(0, 1+minY, 0.02))
+    xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100),
+                         np.linspace(0, math.ceil(max(X[:, 1])), 100))
     # Plot either a single DecisionTreeClassifier or alpha blend the
     # decision surfaces of the ensemble of classifiers
     if isinstance(model, DecisionTreeClassifier):
@@ -70,10 +70,38 @@ def plot_decision_function(model, X, y, minX, minY, model_title, plot_idx, cmap,
 
     # Plot the training points, these are clustered together and have a
     # black outline
-    plt.scatter(X[:, 0], X[:, 1], c=y,
+    if aln_names:
+        scatter = plotQuerySegments(X, aln_names, "black", axes, labelOrder, threshold, weight, fullData=fullData)
+    else:
+        plt.scatter(X[:, 0], X[:, 1], c=y,
                 cmap=ListedColormap(['purple', 'green']),
                 edgecolor='k', s=20)
+    plt.xlim(0)
     return True
+
+def plotQuerySegments(X, aln_names, edgecolor, axis, labelOrder, threshold, sample_weight, fullData=False):
+    import seaborn as sns
+    from operator import itemgetter
+    label_order = list()
+    abs_length = [float(n)**1.6 for n in sample_weight]
+    scatter = sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=aln_names, 
+            palette="tab10", edgecolor=edgecolor, s=abs_length)
+    
+    ##   Legend labels ordering only if full data  ###
+    if fullData:
+        handles, labels = axis.get_legend_handles_labels()
+        count_bellow_1=0
+        for tup in sorted(labelOrder, key = itemgetter(1), reverse=True):
+            if tup[1] > threshold:
+                count_bellow_1+=1
+            label_order.append(tup[2])
+        ordered_labels = [labels[idx] for idx in label_order]
+        ordered_handles = [handles[idx] for idx in label_order]
+        lgnd = plt.legend(ordered_handles[:count_bellow_1],
+                            ordered_labels[:count_bellow_1])
+    plt.legend(title=f"Alignments with segments\nabove probability {threshold}",
+              bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    return scatter
 
 def train_classifier(X, y, model, sample_weight=''):
     '''Fits the classifier'''
@@ -124,7 +152,7 @@ def main(commandline_arguments):
 
         ###   Plot the classifier   ###
         if comm_args.plot_df:
-            plot_decision_function(decision_function, X, y, minX/maxX, minY/maxY, modelName, modelIdx, plt.cm.PRGn, len(comm_args.model_type))
+            plot_decision_function(decision_function, X, y, modelName, modelIdx, plt.cm.gray, len(comm_args.model_type))
         modelIdx += 1
     if comm_args.plot_df:
         plt.tight_layout()
