@@ -265,7 +265,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
 
 
     ###   Draws each decision level (if present) with color from the viridis colormap   ###
-    if decision_levels is not '':
+    if decision_levels != '':
         draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels)
 
     ###   Draws the decision function as a red line   ###
@@ -280,7 +280,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
         edgecolor = "black"
 
     ###   Plot scatter of segments   ###
-    if decision_levels is not '':
+    if decision_levels != '':
         scatter = axis.scatter(X[:, 0], X[:, 1], c=y, alpha=0.5, 
         s=abs_length, cmap=plt.cm.bone, edgecolor=edgecolor)
     else:
