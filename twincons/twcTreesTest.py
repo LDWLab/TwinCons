@@ -123,12 +123,11 @@ def write_aln_rows(segments, csv_writer, aln, probThr=0):
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
-
+    cms = False
+    
     ###   Load alignment segment data   ###
     csv_list = csv_iterator(comm_args.csv_path)
-    cms = False
-    if comm_args.top_segments:
-        csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
+    csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
     if comm_args.length_type_calculation == 'cms':
         cms = True
         csv_list = recalculate_data_by_averaging_segments(csv_list)
@@ -161,7 +160,7 @@ def main(commandline_arguments):
                 csv_writer.writerow([row[0],row[1][0],row[1][1],row[1][2]])
     if comm_args.test_query_alignments:
         alnIDwithProb, alnIDtoProb, significantLogical, i = list(), dict(), list(), 0
-        if comm_args.length_type_calculation == 'cms':
+        if cms:
             grouped_data = flatten_alignment_segment_stats_to_groups(alnNameToSegmentPrediction)
             for aln in sorted(grouped_data.keys()):
                 alnIDtoProb[aln] = grouped_data[aln][0][0]

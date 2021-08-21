@@ -8,8 +8,6 @@ import os, sys, csv, math, argparse, json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 import pickle as cPickle
@@ -34,7 +32,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
         \nthis percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
     commandline_args = parser.parse_args(argument_list)
-    return commandline_args, parser
+    return commandline_args
 
 def csv_iterator(csv_location):
     '''Put csv in list'''
@@ -100,7 +98,7 @@ def train_classifier(X, y, penalty, gamma, kernel, sample_weight=''):
 
 def main(commandline_arguments):
     '''Main entry point'''
-    comm_args, parser = create_and_parse_argument_options(commandline_arguments)
+    comm_args = create_and_parse_argument_options(commandline_arguments)
 
     ###   Load alignment segment data   ###
     csv_list = csv_iterator(comm_args.csv_path)
