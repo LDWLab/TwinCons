@@ -3,11 +3,15 @@
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import auc, plot_roc_curve
+from sklearn.metrics import auc
 import os, sys, random, csv, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from twincons.twcSVMtest import load_and_assign_data, trim_data_by_top_segments, csv_iterator, use_absolute_length_of_segments, mass_test
+from twincons.twcSVMtest import load_and_assign_data, \
+                                trim_data_by_top_segments, \
+                                csv_iterator, mass_test, \
+                                use_absolute_length_of_segments, \
+                                normalize_features
 from twincons.twcSVMtrain import train_classifier
 
 def create_and_parse_argument_options(argument_list):
@@ -77,12 +81,6 @@ def predict_test_set(classifier, test_segment):
     segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
     return segment_pred, segment_dist
 
-def normalize_train_set(X, Y, maxX, maxY):
-    norm_xy = list()
-    for x, y in zip(X, Y):
-        norm_xy.append([float(x)/float(maxX), float(y)/float(maxY)])
-    return np.asarray(norm_xy)
-
 def load_data(csv_location, top_segments=1, abs_length=False):
     csv_list = csv_iterator(csv_location)
     csv_list = trim_data_by_top_segments(csv_list, top_segments)
@@ -102,8 +100,8 @@ def calc_stats_by_folds(aln_names, number_folds, X, y, sample_weight, penalty, g
         segment_pred_dist = dict()
         X_test, y_test, X_train, y_train, = X[test_ind], y[test_ind], X[train_ind], y[train_ind]
         sample_weight_train = list(np.asarray(sample_weight)[train_ind])
-        maxX, maxY = max(X_train[:, 0]), max(X_train[:, 1])
-        X_train_norm = normalize_train_set(X_train[:,0], X_train[:,1], maxX, maxY)
+        maxX, maxY, minX, minY = max(X_train[:, 0]), max(X_train[:, 1]), min(X_train[:, 0]), min(X_train[:, 1])
+        X_train_norm = np.asarray(normalize_features(list(zip(X_train[:,0], X_train[:,1])), maxX, maxY, minX, minY))
 
         classifier = train_classifier(X_train_norm, y_train, penalty, gamma, kernel, sample_weight=sample_weight_train)
 
