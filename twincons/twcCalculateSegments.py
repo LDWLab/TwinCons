@@ -7,6 +7,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
+from collections import deque
+from scipy.signal import argrelextrema, savgol_filter
 
 import twincons.TwinCons as TwinCons
 
@@ -20,6 +22,8 @@ def create_and_parse_argument_options(argument_list):
                                                 \nDefault: 3', type=int, default=3)
     parser.add_argument('-it','--intensity_threshold', help='Threshold for intensity over which a score is considered truly positive.\
                                                 \nDefault: 1', type=float, default=1)
+    parser.add_argument('-cms','--cumulative_segments', help='Delineate segments based on cumulative score and local minima/maxima, instead of specific thresholds.\
+                                                \nArgument should provide window size for smoothing of the cumulative score.', type=int)
     parser.add_argument('-avew','--average_weight', help='Use average weight for segments, instead of using their total weight.', action="store_true", default=False)
     parser.add_argument('-np','--treat_highly_negative_as_conserved', help='Treat low scoring positions as conserved for segment calculation. \
                                                 \nConsiders the absolute for negative positions when comparing with intensity threshold.', action="store_true", default=False)
@@ -71,7 +75,7 @@ def scatter_plot(alns_to_segment_stats, legend=False, average_weight=False):
             segment_weights = [n[2] for n in alns_to_segment_stats[file]]
         segment_lengths = [n[0] for n in alns_to_segment_stats[file]]
         abs_length = [n**2 for n in segment_lengths]
-        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',s=abs_length,color=color)
+        plt.scatter(scaled_lengths, segment_weights, label=re.sub(r'\.fas.*','',file),marker='.',color=color, alpha=0.3, lw=0)
         if len(segment_lengths) == 0:
             segment_lengths.append(0)
         if len(segment_weights) == 0:
@@ -183,7 +187,71 @@ def load_twincons_csv(file_dir):
             alnindex_score[row[0]] = float(row[1])
     return alnindex_score, len(alnindex_score), dict()
 
-def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, highly_neg_as_pos=False, path_type='aln_path'):
+def penalizeMissingPositions(score_list, score_dict):
+    '''Assigns score -1 to missing alignment positions.
+    These positions are gapped and should not produce 
+    a flat surface when using cumulative segment delineation.'''
+    outScoreList = list()
+    alnStart, alnEnd = int(score_list[0][0]), int(score_list[-1][0])+1
+    for alnPos in range(alnStart, alnEnd):
+        if str(alnPos) not in score_dict.keys():
+            score_dict[str(alnPos)] = -1
+        outScoreList.append((str(alnPos), score_dict[str(alnPos)]))
+    return outScoreList
+
+def identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=7, polyorder=2):
+    '''Identify segments based on a cumulative score calculation.
+    Identifies local score minima and maxima, using a window and polyorder for smoothing.'''
+    cumScore, cumScoreSum, alnPositions = list(), list(), dict()
+    cumScorePlot, cumScoreSumPlot, outSegments = list(), list(), list()
+    score_list = penalizeMissingPositions(score_list, dict(score_list))
+    score_dict = dict(score_list)
+    for index in range(1,int(score_list[-1][0])+1):
+        if str(index) in score_dict.keys():
+            cumScorePlot.append(score_dict[str(index)])
+        else:
+            cumScorePlot.append(0)
+        cumScoreSumPlot.append(sum(cumScorePlot))
+    for idx, (alnPos, currScore) in enumerate(score_list):
+        alnPositions[idx] = int(alnPos)
+        cumScore.append(currScore)
+        cumScoreSum.append(sum(cumScore))
+    smoothCumScoreSum = savgol_filter(cumScoreSum,smoothWindow,polyorder)
+    smoothCumScoreSumPlot = savgol_filter(cumScoreSumPlot,smoothWindow,polyorder)
+    lows = argrelextrema(smoothCumScoreSum, np.less)[0].tolist()
+    highs = argrelextrema(smoothCumScoreSum, np.greater)[0].tolist()
+    if lows[0] > highs[0]:
+        lows.insert(0, 0)
+    if highs[-1] < lows[-1]:
+        highs.append(len(cumScoreSum)-1)
+    correctIdxLows = [alnPositions[x] for x in lows]
+    correctIdxHighs = [alnPositions[x]-1 for x in highs]
+    segments = list(zip(correctIdxLows, correctIdxHighs))
+    segmentsAbsoluteIx = list(zip(lows, highs))
+    #plotCumulativeScoreAndSegments(alnPositions, cumScoreSumPlot, smoothCumScoreSumPlot, correctIdxLows, correctIdxHighs, lows, segments, name)
+    for segmIx in segmentsAbsoluteIx:
+        outSegments.append(score_list[segmIx[0]:segmIx[1]])
+    return outSegments
+
+def plotCumulativeScoreAndSegments(alnPositions, cumScoreSumPlot, smoothCumScoreSumPlot, correctIdxLows, correctIdxHighs, lows, segments, name):
+    x = np.linspace(1,max(alnPositions.values()),max(alnPositions.values()))
+    plt.clf()
+    plt.plot(cumScoreSumPlot, label="Cumulative score")
+    plt.plot(smoothCumScoreSumPlot, label=f"Cumulative score smooth")
+    plt.plot(np.array(x)[correctIdxLows],smoothCumScoreSumPlot[correctIdxLows], "rd")
+    plt.plot(np.array(x)[correctIdxHighs],smoothCumScoreSumPlot[correctIdxHighs], "gx")
+    for singleSegm in segments:
+        segmWeight = cumScoreSumPlot[singleSegm[1]]-cumScoreSumPlot[singleSegm[0]]
+        plt.arrow(singleSegm[0],min(smoothCumScoreSumPlot[lows])-0.5,singleSegm[1]-singleSegm[0],0, 
+            shape="right", length_includes_head=True)
+        plt.text((singleSegm[0]+singleSegm[1])/2, min(smoothCumScoreSumPlot[lows])-0.2,
+            '{0:.1f}'.format(segmWeight), size=3)
+    plt.legend()
+    plt.title(f'Cumulative TWC for {name}')
+    plt.savefig(f'/home/ppenev/Desktop/tests/{name}.png', dpi=300)
+    return True
+
+def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, name, highly_neg_as_pos=False, cmsWindow=False, path_type='aln_path'):
     '''Calculating segment stats'''
     out_dict = dict()
     score_list = list()
@@ -197,10 +265,13 @@ def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, hi
             raise IOError("Missing input for TwinCons data!")
         score_list.append((position, pos_score))
         out_dict[position] = pos_score
-    unfiltered_segment_list = split_by_thresholds(score_list, 
-                                                  int_thr, 
-                                                  length_thr, 
-                                                  treat_highly_negative_as_conserved=highly_neg_as_pos)
+    if cmsWindow:
+        unfiltered_segment_list = identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=cmsWindow)
+    else:
+        unfiltered_segment_list = split_by_thresholds(score_list, 
+                                                    int_thr, 
+                                                    length_thr, 
+                                                    treat_highly_negative_as_conserved=highly_neg_as_pos)
     segment_stats = calculate_segment_stats(unfiltered_segment_list, 
                                             int_thr, 
                                             num_alned_pos, 
@@ -239,7 +310,9 @@ def main(commandline_args):
                                             number_of_aligned_positions, 
                                             comm_args.intensity_threshold,
                                             comm_args.length_threshold,
+                                            file.split('.')[0],
                                             highly_neg_as_pos=comm_args.treat_highly_negative_as_conserved,
+                                            cmsWindow=comm_args.cumulative_segments,
                                             path_type=path_type)
         alns_to_segment_stats[file.split('.')[0]] = segment_stats
     if comm_args.plot:

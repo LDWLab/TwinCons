@@ -108,6 +108,9 @@ do
     done
 done
 
+#shuf -zn5000 -e *.csv | xargs -0 cp -vt ./subset/
+#for windowSize in $(seq 3 2 11); do ./twincons/twcCalculateSegments.py -twc /mnt/d/Score-test_data/PROSITE/TWC_results/subset/ ./data/CSV/PRSTsub-cumW${windowSize} -c -p -cms $windowSize;done
+
 #nohup ./twincons/test_parameter.sh &> ./param-test-prms_nohup.out &
 # for gap_cut in $(seq 0.1 0.1 0.9)
 #     do for it in $(seq 1 0.5 3)

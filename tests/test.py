@@ -3,7 +3,7 @@ import unittest, re, pathlib, sys, os, itertools, filecmp
 from Bio.SubsMat import MatrixInfo
 
 sys.path.append(os.path.dirname(os.path.abspath(__name__)))
-from bin import TwinCons
+from twincons import TwinCons
 
 class TestTwinCons(unittest.TestCase):
     output_type_args = ['-csv', '-jv', '-p']

@@ -20,17 +20,37 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"~/Desktop/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
 				"-pml","unix",
 				"-s",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-ssbe",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/HUMAN_CASP9.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
 				"-o",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/caspases/twc_ssbe_HS-CASP9_SC-MCASP"
+				"~/Desktop/twc_ssbe_HS-CASP9_SC-MCASP"
+			]
+		},{
+			"name": "TWC caspases",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/TwinCons.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-a",
+				"~/Desktop/DATA/caspases/ALNS/casp9-mcasp_struct.fa",
+				"-pml","unix",
+				"-s",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"-sy",
+				"~/Desktop/DATA/caspases/PDB/HUMAN_CASP9.pdb",
+				"~/Desktop/DATA/caspases/PDB/YEAST_MCASP.pdb",
+				"-ssbe",
+				"-o",
+				"~/Desktop/twc_ssbe_HS-CASP9_SC-MCASPpml"
 			]
 		},
 		{
@@ -41,14 +61,33 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
 				"-pml",
 				"windows",
 				"-mx",
 				"blosum62",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"-o",
+				"~/Desktop/bS1test", "-ca"
+			]
+		},{
+			"name": "Custom TWC bS1",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/TwinCons.py",
+			"console": "integratedTerminal",
+			"args": [
+				"-a",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
+				"-pml",
+				"windows",
+				"-cm",
+				"./matrices/LG.dat",
+				"-sy",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
+				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
 				"-o",
 				"~/Desktop/bS1test"
 			]
@@ -61,14 +100,14 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/AB_LSU_rRNA.fa",
+				"~/Desktop/DATA/rRNA/AB_23S_rRNA.fa",
 				"-rv",
 				"-nc",
 				"-mx",
 				"blastn",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/PYRFU_LSUa.cif",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/rRNA/PML/ECOLI_LSUb.cif",
+				"~/Desktop/DATA/rRNA/PML/PYRFU_LSUa.cif",
+				"~/Desktop/DATA/rRNA/PML/ECOLI_LSUb.cif",
 				"-o",
 				"~/Desktop/TWC_blastn_AB_LSU2"
 			]
@@ -110,14 +149,14 @@
 			"name": "PROSITE",
 			"type": "python",
 			"request": "launch",
-			"program": "./twincons/CalculateSegments.py",
+			"program": "./twincons/twcCalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-twc",
-				"../Score-test_data/PROSITE/TWC_results/GOOD/",
-				"./data/CSV/PRST-gd_cg09_it1_lt3",
+				"/mnt/d/Score-test_data/PROSITE/TWC_results/",
+				"./data/CSV/PRST-cumW7",
 				"-c",
-				"-p",
+				"-p", "-cms", "7"
 			]
 		},
 		{
@@ -152,6 +191,33 @@
 				"-ts", "1",
 				"-twca", "gt_0.9", "cg", "mx_blosum62",
 				"-csa", "lt_3", "it_1"
+			]
+		},{
+			"name": "Tree train BBS",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcTreesTrain.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/BBS_cg09_it1_lt3.csv",
+				"./data/PKL/Ensembles/BBS_RF",
+				"-mt", "AdaBoost", "RandomForest", "DecisionTree", "ExtraTrees",
+				"-pd",
+				"./data/outputs/RF/BBS_RF_all.png",
+			]
+		},{
+			"name": "Tree test query",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcTreesTest.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/QS_cg09_it1_lt3.csv",
+				"./data/outputs/RF/BBS_RF-QS.csv",
+				"./data/PKL/Ensembles/BBS_RF_RandomForest.pkl",
+				"-pd",
+				"./data/outputs/SVM/BBSp5vsQS.svg",
+				"-tqa"
 			]
 		},
 		{
@@ -194,11 +260,11 @@
 			"program": "./twincons/twcSVMtest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBS-BBS.csv",
+				"./data/CSV/PRST_cg09_it1_lt3.csv",
+				"./data/outputs/SVM/BBS-PRST.csv",
 				"./data/PKL/BBS_cg09_it1_lt3.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_BBS.svg",
+				"./data/outputs/SVM/BBS_vs_PRST.svg",
 				"-ts",
 				"1",
 				"-tcp",

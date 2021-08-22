@@ -1,4 +1,5 @@
 import re, ntpath
+import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
@@ -8,15 +9,51 @@ from Bio.PDB import PDBParser
 class AlignmentGroup:
     '''
     Class for a single group within an alignment.
-    Must pass the alignment object and optionally a 
-    structure object or secondary structure string
+    Must pass the alignment object and optionally a structure object
+    and a sequence distribution (used for gap adjustment). When no
+    sequence distribution is passed a uniform distribution is assumed.
     '''
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
-    def __init__(self,aln_obj, struc_path=None, sstruc_str=None):
+    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None, uniq_resi_list=None):
         self.aln_obj = aln_obj
-        
+        self.uniq_resi_list = self._determineUniqResis(aln_obj)
+        if seq_distribution is not None:
+            if type(seq_distribution) is np.ndarray:
+                self.seq_distribution = {self.uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
+            elif type(seq_distribution) is dict():
+                self.seq_distribution = seq_distribution
+            else:
+                raise IOError("Incorrect type of seq_distribution passed. Must be np.array or dict.")
+        else:
+            tempStorage = str()
+            for entry in aln_obj:
+                tempStorage += str(entry.seq).replace('-','').replace('\n','')
+            self.seq_distribution = {i : tempStorage.count(i)/len(tempStorage) for i in set(tempStorage)}
         self.struc_path = struc_path if struc_path is not None else None
         self.sstruc_str = sstruc_str if sstruc_str is not None else None
+
+    def validateType(self, string, alphabet='protein'):
+        '''Check that a string only contains values from an alphabet'''
+        alphabets = {'dna': re.compile('^[acgtn]*$', re.I), 
+                     'rna': re.compile('^[acgun]*$', re.I),
+                 'protein': re.compile('^[acdefghiklmnpqrstvwy]*$', re.I)}
+
+        if alphabets[alphabet].search(string) is not None:
+             return True
+        else:
+             return False
+
+    def _determineUniqResis(self, aln_obj):
+        '''Used to determine the unique residues of the alignment.'''
+        tempSeq = ''.join([str(x.seq).replace('-','') for x in aln_obj])
+        if self.validateType(tempSeq):
+            return ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+        elif self.validateType(tempSeq, alphabet='rna'):
+            return ['A','U','C','G']
+        elif self.validateType(tempSeq, alphabet='dna'):
+            return ['A','T','C','G']
+        else:
+            raise IOError("Wasn't able to determine the type of alignment. Do you have weird characters in the alignment?")
 
     def add_struc_path(self, struc_path):
         from Bio.SeqRecord import SeqRecord
@@ -138,7 +175,11 @@ class AlignmentGroup:
             n_i = adjsuted_column_list.count(base) # Number of residues of type i
             if base in weight_aa_distr.keys():     # In case of weighted
                 n_i = weight_aa_distr[base]*M
-            n_i += gap_freq
+            #Gap adjustment
+            if base in self.seq_distribution.keys():
+                n_i += self.seq_distribution[base]*num_gaps
+            else:
+                n_i += gap_freq
             P_i = n_i/float(M) # n_i(Number of residues of type i) / M(Number of residues in column)
             frequency_list.append(P_i)
         return frequency_list
@@ -215,3 +256,6 @@ class AlignmentGroup:
     def _return_alignment_obj(self):
         '''Returns current alignment object of this group'''
         return self.aln_obj
+
+    def getAAfrequenciesList (self):
+        return [self.seq_distribution[aa] for aa in self.uniq_resi_list]

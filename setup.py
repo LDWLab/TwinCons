@@ -1,7 +1,15 @@
-from setuptools import setup
-from setuptools import find_packages
 from os import path
+from setuptools import setup, find_packages, Extension
 this_directory = path.abspath(path.dirname(__file__))
+
+#https://docs.python.org/2/extending/building.html
+#https://stackoverflow.com/questions/24146840/how-do-i-package-for-distribution-a-python-module-that-uses-a-shared-library
+# extensions = [Extension("twincons.ext_library",
+#                        ["src/library.c"],
+#                        depends=["src/library.h"],
+#                        include_dirs=["src"],
+#               ),
+# ]
 
 with open(path.join(this_directory, "README.md"), encoding='utf-8') as fh:
     long_description = fh.read()
@@ -11,16 +19,17 @@ with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
 
 setup(
     name='TwinCons',
-    version='0.5.1.dev0',
+    version='0.5.3.dev0',
     description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
     long_description = long_description,
     long_description_content_type='text/markdown',
     author='Petar Penev',
     author_email='ppenev@gatech.edu',
     url='https://github.com/petaripenev/AlignmentScore',
-    packages=find_packages(exclude=('tests', 'ROC', 'data', '.vscode')),
+    packages=find_packages(exclude=('tests', 'ROC', 'data', '.vscode', 'matrixAdjustments')),
     python_requires='>=3.5',
     install_requires=required,
+    #ext_modules=extensions,
     data_files=[
         ('matrices', [
             './matrices/B.dat',

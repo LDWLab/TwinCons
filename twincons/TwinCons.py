@@ -14,7 +14,7 @@ from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 import twincons.SequenceWeightFromTree as Sequence_Weight_from_Tree
 from twincons.MatrixLoad import PAMLmatrix
-from Bio.SubsMat import MatrixInfo
+import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
     subtitution_mx = MatrixInfo.available_matrices
@@ -24,6 +24,7 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
+    parser.add_argument('-bn','--baseline', help='Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.\n\t(Default: bgfreq)', choices=['uniform', 'bgfreq'], default='bgfreq')
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
     parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
     parser.add_argument('-gt','--gap_threshold', help='Specify %% gaps per alignment position. (Default = the smaller between ((sequences of group1)/(all sequences) and (sequences of group2)/(all sequences)) minus 0.05)', type=float)
@@ -32,6 +33,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
     parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
     output_type_group = parser.add_mutually_exclusive_group(required=True)
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
     output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.', choices=['unix', 'windows'])
@@ -41,6 +43,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
+    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix. For example format see the matrices folder.',)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -208,22 +211,136 @@ def slice_by_name(unsliced_aln_obj):
         sliced_dict[prot]=what
     return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
-def determine_subs_matrix(comm_args):
+def nucl_matrix(mx_def):
+    '''Return a substitution matrix for nucleotides.
+    '''
+    if mx_def == 'identity':
+        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
+    elif mx_def == 'blastn':
+        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
+    elif mx_def == 'trans':
+        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
+    else:
+        raise IOError("Couldn't assign nucleotide matrix!")
+    return nuc_mx
+
+def subs_matrix(matrix):
+    '''Load and return a numpy form of the substitution matrix.
+    '''
+    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
+    loddmx = []
+    substitution_matrix = getattr(MatrixInfo,matrix)
+    for aa in aa_sequence:
+        linemx=[]
+        for aa2 in aa_sequence:
+            if (aa,aa2) in substitution_matrix:
+                linemx.append(substitution_matrix[(aa,aa2)])
+            else:
+                linemx.append(substitution_matrix[(aa2,aa)])
+        loddmx.append(linemx)
+    return np.array(loddmx)
+
+def subs_matrix_bgFreq(matrix):
+    if re.match(r'PAM.*',matrix):
+        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034, 
+           0.035, 0.085, 0.085, 0.012, 0.045, 0.041, 0.057, 0.062, 0.012, 0.030, 0.078])
+    elif re.match(r'blosum.*', matrix):
+        with open (str(os.path.dirname(__file__))+'/../matrices/BLOSUM/'+matrix+'.out') as f:
+            freqs = f.readlines()[37]
+        return np.array([float(x) for x in freqs.split()])
+    else:
+        raise IOError(f"Impossible combination of arguments!\
+             Can't use background frequencies with matrix {matrix}!")
+
+def struc_anno_matrices (struc_anno, baselineType):
+    '''Returns a log odds matrix from a given name of a PAML type matrix'''
+    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/'+struc_anno+'.dat')
+    if baselineType == 'uniform':
+        return baseline_matrix(np.array(mx.lodd))
+    return baseline_matrix(np.array(mx.lodd), mx.getPiFreqs)
+
+def baseline_matrix(mx, testFrequency=None):
+    if testFrequency is None:
+        testFrequency = np.repeat(1/len(mx),len(mx))
+    baseline = float(testFrequency@np.array(mx)@testFrequency.T)
+    revtestA=np.subtract(np.array(mx), baseline)
+    if int(testFrequency@revtestA@testFrequency.T) != 0:
+        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
+    return np.subtract(np.array(mx),baseline)
+
+def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
+    from subprocess import Popen, PIPE
+    '''Runs newton_direct_solve on a pre-computed joint probility for a substitution matrix.
+    Uses the two provided AA frequencies to output a substitution matrix which is compositionally
+    adjusted for these two frequencies.'''
+    jointProbLocation = f'{os.path.dirname(os.path.realpath(__file__))}/../matrices/jp/{subsMatrixName}.dat'
+    newton_direct_solve = f'{os.path.dirname(os.path.realpath(__file__))}/newton_direct_solve'
+    groupAAfreqs, groupLengths = list(), list()
+    multiplicationFactors = dict(blosum62 = 2, blosum30 = 5, blosum35 = 4, blosum40 = 4, blosum45 = 3, blosum50 = 3, blosum55 = 3,
+                                blosum60 = 2, blosum65 = 2, blosum70 = 2, blosum75 = 2, blosum80 = 2, blosum85 = 2, blosum90 = 2,
+                                blosum95 = 2, blosum100 = 2, blastn = 1, trans = 1, identity = 1)
+    if subsMatrixName not in multiplicationFactors.keys():
+        raise IOError(f"Can't handle compositional adjustment with matrix {subsMatrixName}! Use a BLSOUM matrix instead.")
+    for alnObj in sliced_alns.values():
+        alnGroup = AlignmentGroup(alnObj)
+        groupAAfreqs.append(alnGroup.getAAfrequenciesList())
+        groupLengths.append(alnObj.get_alignment_length())
+
+    g1Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG1freqs"
+    g2Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG2freqs"
+    tempMxfile = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempCAmatrix"
+
+    tempfiles = [g1Freqs, g2Freqs, tempMxfile]
+    for i, aaFreqs in enumerate(groupAAfreqs):
+        with open(tempfiles[i], "w") as f:
+            f.write('\n'.join([str(x) for x in aaFreqs]))
+
+    cmd = f'{newton_direct_solve} 1 {tempMxfile} {jointProbLocation} {g1Freqs} {g2Freqs} {groupLengths[0]} {groupLengths[1]} {len(mx)}'
+    pipe = Popen(cmd, stdout=PIPE, shell=True)
+    output = pipe.communicate()[0]
+    with open(tempMxfile, "r") as file:
+        li = [[float(x) for x in line.strip()[1:-1].split()] for line in file]
+
+    outputMx = np.array(li)
+    for tempf in tempfiles:
+        os.remove(tempf)
+    
+    return outputMx*multiplicationFactors[subsMatrixName]
+
+
+def determine_subs_matrix(comm_args, sliced_alns):
+    '''Given the commandline args returns a substitution matrix, its min and max, and 
+    a background frequency, used to baseline the matrix'''
     if comm_args.nucleotide and comm_args.substitution_matrix:
         mx = nucl_matrix(comm_args.substitution_matrix)
+        bgFreq = np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([2, 0])
+        return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif not comm_args.nucleotide and (comm_args.shannon_entropy or comm_args.reflected_shannon):
         mx = np.array([4.322, 0])
+        return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.leegascuel or comm_args.structure_paths:
         mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+        bgFreq = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').getPiFreqs
+    elif comm_args.custom_matrix:
+        mx = np.array(PAMLmatrix(str(comm_args.custom_matrix)).lodd)
+        bgFreq = PAMLmatrix(str(comm_args.custom_matrix)).getPiFreqs
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
+        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix)
     elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
-    return mx, mx.min(), mx.max()
+    if comm_args.compositional_adjustment:
+        mx = adjustMatrixGivenAlnFrequencies(comm_args.substitution_matrix, mx, sliced_alns)
+    if comm_args.baseline == 'uniform':
+        outMx = baseline_matrix(mx)
+        bgFreq = np.repeat(1/len(mx),len(mx))
+    else:
+        outMx = baseline_matrix(mx, bgFreq)
+    return outMx, outMx.min(), outMx.max(), bgFreq
 
 def gradientbars(bars, positivegradient, negativegradient, mx_min, mx_max):
         ax = bars[0].axes
@@ -295,7 +412,7 @@ def gradients(data, positivegradient, negativegradient, mx_maxval, mx_minval):
         aln_index+=1
     return aln_index_hexcmap
 
-def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval):
+def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     """Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
     """
     from pathlib import Path, PureWindowsPath, PurePosixPath
@@ -335,7 +452,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
         else:
             #We have to recalculate the structure to alignment mapping
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             #Open the structure file
@@ -374,7 +491,7 @@ def jalview_output(output_dict, comm_args):
         jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
-def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval):
+def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     data = []
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
@@ -394,7 +511,7 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
         else:
             rv_output = open(f"{comm_args.output_path}_{alngroup_name}.csv","w")
             rv_output.write("resNum,DataCol,ColorCol\n")
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name],current_path[0])
+            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             for aln_index in alnindex_to_hexcolors.keys():
@@ -437,52 +554,7 @@ def shannon_entropy(alnObject, aa_list, commandline_args, alngroup_to_sequence_w
             entropyDict[column_ix]=sh_entropy
     return entropyDict
 
-def nucl_matrix(mx_def):
-    '''Return a substitution matrix for nucleotides.
-    '''
-    nucl_sequence = ['A','U','C','G']
-    if mx_def == 'identity':
-        nuc_mx = np.array([[7,-5,-5,-5],[-5,7,-5,-5],[-5,-5,7,-5],[-5,-5,-5,7],])
-    elif mx_def == 'blastn':
-        nuc_mx = np.array([[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5],])
-    elif mx_def == 'trans':
-        nuc_mx = np.array([[6,-5,-5,-1],[-5,6,-1,-5],[-5,-1,6,-5],[-1,-5,-5,6],])
-    else:
-        raise IOError("Couldn't assign nucleotide matrix!")
-
-    testvr = np.repeat(1/len(nucl_sequence),len(nucl_sequence))
-    baseline = float(testvr@np.array(nuc_mx)@testvr.T)
-    revtestA=np.add(np.array(nuc_mx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    return np.add(np.array(nuc_mx),abs(baseline))
-
-def subs_matrix(matrix):
-    '''Baseline and return a numpy form of the substitution matrix.
-    '''
-    aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
-    loddmx = []
-    substitution_matrix = getattr(MatrixInfo,matrix)
-    for aa in aa_sequence:
-        linemx=[]
-        for aa2 in aa_sequence:
-            if (aa,aa2) in substitution_matrix:
-                linemx.append(substitution_matrix[(aa,aa2)])
-            else:
-                linemx.append(substitution_matrix[(aa2,aa)])
-        loddmx.append(linemx)
-    testvr = np.repeat(1/len(aa_sequence),len(aa_sequence))
-    baseline = float(testvr@np.array(loddmx)@testvr.T)
-    revtestA=np.add(np.array(loddmx), abs(baseline))
-    if int(testvr@revtestA@testvr.T) != 0:
-        raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
-    return np.add(np.array(loddmx),abs(baseline))
-
-def struc_anno_matrices (struc_anno):
-    '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    return np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/'+struc_anno+'.dat').lodd)
-
-def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None):
+def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, baseline=None):
     '''
     Computes transformation score between two groups, using substitution 
     matrices on the common structural elements between two groups.
@@ -499,11 +571,11 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None):
             if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
                 common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
                 if len(common_chars) > 0:
-                    mx = struc_anno_matrices(''.join(common_chars))
+                    mx = struc_anno_matrices(''.join(common_chars), baseline)
         alnindex_score[aln_index] = vr1@mx@vr2.T
     return alnindex_score
 
-def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_sequence_weight, mx):
+def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_sequence_weight, mx, bg_freq):
     '''Checks through the commandline options and does the appropriate frequency and score calculations.
     Returns a dictionary of alignment position -> computed score.
     '''
@@ -514,7 +586,7 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
     aln_index_dict = defaultdict(dict)
     struc_annotation = defaultdict(dict)
     for alngroup_name in sliced_alns:
-        alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name])
+        alngroup_name_object = AlignmentGroup(sliced_alns[alngroup_name], seq_distribution=bg_freq)
         if comm_args.structure_paths:
             current_path = [s for s in comm_args.structure_paths if alngroup_name in ntpath.basename(s)]
             if len(current_path) == 0:
@@ -537,12 +609,12 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
         for aln_index in alnindex_col_distr:
             aln_index_dict[aln_index][alngroup_name]=alnindex_col_distr[aln_index]
     if comm_args.structure_paths:
-        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation)
+        return compute_score(aln_index_dict, list(struc_annotation.keys()), struc_annotation=struc_annotation, baseline=comm_args.baseline)
     if comm_args.nucleotide:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
     if comm_args.leegascuel:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
-    if comm_args.substitution_matrix:
+    if comm_args.substitution_matrix or comm_args.custom_matrix:
         return compute_score(aln_index_dict, list(sliced_alns.keys()), mx=mx)
 
 def main(commandline_arguments):
@@ -560,7 +632,9 @@ def main(commandline_arguments):
     if comm_args.ribovision and not comm_args.structure_pymol:
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nRiboVision output requires at least one structure defined with -sy.")
-
+    if comm_args.compositional_adjustment and ((comm_args.substitution_matrix and not re.match(r'blosum',comm_args.substitution_matrix)) or not comm_args.substitution_matrix):
+        raise IOError("TwinCons can not take in this combination of arguments!\
+    \nCompositional adjustment is only possible for BLOSUM matrices.")
     if comm_args.alignment_string:
         alignIO_out_gapped = list(AlignIO.parse(StringIO(comm_args.alignment_string), 'fasta'))[0]
     elif len(comm_args.alignment_paths) == 1:
@@ -569,9 +643,6 @@ def main(commandline_arguments):
         alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
     else:
         raise IOError("Unhandled combination of arguments!")
-
-    gp_mapping = dict()
-    subs_matrix, mx_minval, mx_maxval = determine_subs_matrix(comm_args)
 
     if comm_args.phylo_split:
         tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
@@ -591,6 +662,7 @@ def main(commandline_arguments):
     if comm_args.gap_threshold is None:
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
+    gp_mapping = dict()
     number_of_aligned_positions, extremely_gapped = count_aligned_positions(alignIO_out_gapped, comm_args.gap_threshold)
     if comm_args.calculate_group_gaps:#Make sure its not above 1!
         if 2*comm_args.gap_threshold >= 1:
@@ -628,14 +700,15 @@ def main(commandline_arguments):
     if len(sliced_alns.keys()) != 2:
         raise IOError("For now does not support more than two groups! Offending groups are "+str(sliced_alns.keys()))
     
-    
+    subs_matrix, mx_minval, mx_maxval, bg_freq = determine_subs_matrix(comm_args, sliced_alns)
     
     position_defined_scores = decision_maker(comm_args, 
                                             alignIO_out_gapped, 
                                             sliced_alns, 
                                             uniq_resis, 
                                             alngroup_to_sequence_weight, 
-                                            subs_matrix)
+                                            subs_matrix,
+                                            bg_freq)
     
     if (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both):
         mx_maxval = max(position_defined_scores.values())
@@ -652,10 +725,10 @@ def main(commandline_arguments):
             continue
         output_dict_pml[gp_mapping[x]] = (position_defined_scores[x], extremely_gapped[gp_mapping[x]])
     
-    if comm_args.plotit:                                    #for plotting
+    if comm_args.plotit:
         upsidedown_horizontal_gradient_bar(output_dict, list(gapped_sliced_alns.keys()), comm_args, mx_minval, mx_maxval)
     elif comm_args.write_pml_script:
-        pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval)
+        pymol_script_writer(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
     elif comm_args.return_within:
         return output_dict, gapped_sliced_alns, number_of_aligned_positions, gp_mapping
     elif comm_args.return_csv:
@@ -665,7 +738,7 @@ def main(commandline_arguments):
             for x in sorted(output_dict.keys(), key=abs):
                 csv_writer.writerow([x, output_dict[int(x)][0], output_dict[int(x)][1]])
     elif comm_args.ribovision:
-        ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval)
+        ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
     elif comm_args.jalview_output:
         jalview_output(output_dict, comm_args)
 
