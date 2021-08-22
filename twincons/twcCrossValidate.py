@@ -22,7 +22,7 @@ def create_and_parse_argument_options(argument_list):
                                     action="store_true", default=False)
     parser.add_argument('-nf', '--number_folds', help='Number of folds to split the training dataset into. (Default = 3)', type=int, default=3)
     parser.add_argument('-p', '--penalties', nargs='+', help='List of penalty options to evaluate. (Default = 0.05, 0.1, 1, 2, 5, 10, 20, 50, 100',
-                                    default=[0.05, 0.1, 1, 2, 5, 10, 20, 50, 100])
+                                    default=[0.05, 0.1, 1, 2, 5, 10, 20, 50, 100], type=float)
     parser.add_argument('-dt', '--range_distances', nargs=3, metavar=('Start', 'Stop', 'Step'), 
                                     help='Range of distances from the decision boundary to evaluate.\
                                     \nDefault (-20, 20, 0.05).', default=[-20, 20, 0.05], type = float)

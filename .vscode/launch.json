@@ -212,12 +212,12 @@
 			"program": "./twincons/twcTreesTest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/QS_cg09_it1_lt3.csv",
-				"./data/outputs/RF/BBS_RF-QS.csv",
-				"./data/PKL/Ensembles/BBS_RF_RandomForest.pkl",
+				"./data/CSV/rProt_cg09_it1_lt3.csv",
+				"./data/outputs/RF/BBS_ET-RP.csv",
+				"./data/PKL/Ensembles/BBS_RF_ExtraTrees.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBSp5vsQS.svg",
-				"-tqa"
+				"./data/outputs/RF/BBS-ETvsRP.png",
+				"-tcp",
 			]
 		},
 		{
@@ -317,6 +317,28 @@
 				"-dt", "-1.5", "25", "0.01",
 				"-nf", "5",
 				"-abs"
+			]
+		},{
+			"name": "Cross val Trees",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcCrossValidateTrees.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/PRST-cumW7.csv",
+				"-o", "./ROC/trees_crossVal_out/PRST-cumW7_ROC_3folds_crossval",
+				"-ps", "0.01"
+			]
+		},{
+			"name": "Cross val cumulative SVM",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcCrossValidate.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/PRST-cumW7.csv",
+				"-o", "./ROC/crossVal_out/PRST-cumW7_SVMROC_3folds_crossval",
+				"-p", "1", "2", "10", "-dt", "-20", "20", "0.1"
 			]
 		},
 	]
