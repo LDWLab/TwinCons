@@ -28,13 +28,18 @@ def read_csv(csv_location):
 
 def construct_param_struc(split_label, datastruc, tpr, fpr):
     
-    if (split_label[1],split_label[6]) not in datastruc.keys():
-        datastruc[(split_label[1],split_label[6])] = dict()
-
-    if (split_label[2],split_label[5]) not in datastruc[(split_label[1],split_label[6])].keys():
-        datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])] = list()
-
-    datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])].append(((split_label[3],split_label[7],split_label[9],split_label[10]), (tpr, fpr)))
+    if len(split_label) > 10:
+        if (split_label[1],split_label[6]) not in datastruc.keys():
+            datastruc[(split_label[1],split_label[6])] = dict()
+        if (split_label[2],split_label[5]) not in datastruc[(split_label[1],split_label[6])].keys():
+            datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])] = list()
+        datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])].append(((split_label[3],split_label[7],split_label[9],split_label[10]), (tpr, fpr)))
+    else:
+        if (split_label[1],split_label[5]) not in datastruc.keys():
+            datastruc[(split_label[1],split_label[5])] = dict()
+        if (split_label[2],split_label[5]) not in datastruc[(split_label[1],split_label[5])].keys():
+            datastruc[(split_label[1],split_label[5])][(split_label[2],split_label[5])] = list()
+        datastruc[(split_label[1],split_label[5])][(split_label[2],split_label[5])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
     return datastruc
 
 def plot_five_by_two(datastruc, file_name, titleplot):
@@ -56,8 +61,11 @@ Weighted: {it[0]}, Intensity thr: {it[1]}'
             axs[row,col].set_title(subplot_title)
             datatruc_idx = range(0, len(datastruc[lt][it]))
             colormap_ix = [item for sublist in [[x]*8 for x in [0.2,0.5,0.8]] for item in sublist]
-            markers = ['.','.','1','1']*6
             colormaps = [plt.cm.Purples, plt.cm.Greens]*12
+            if lt[1] == it[1]:
+                colormap_ix = [item for sublist in [[x]*4 for x in [0.8]] for item in sublist]
+                colormaps = [plt.cm.Purples, plt.cm.Greens]*6
+            markers = ['.','.','1','1']*6
             linestyles = ['-','-','-','-',':',':',':',':']*3
             for label_to_data, i in zip(datastruc[lt][it], datatruc_idx):
                 accuracy = auc(label_to_data[1][1],label_to_data[1][0])
