@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 '''Takes in csv data for different parameters and outputs ROC graphs comparing all parameters'''
 import re, os, sys, csv, argparse
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import auc
 
@@ -42,6 +43,12 @@ def construct_param_struc(split_label, datastruc, tpr, fpr):
         datastruc[(split_label[1],split_label[5])][(split_label[2],split_label[5])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
     return datastruc
 
+def constructTranslator(names, vals):
+    outDict = dict()
+    for n,v in zip(names, vals):
+        outDict[n] = v
+    return outDict
+
 def plot_five_by_two(datastruc, file_name, titleplot):
     rows = len(datastruc) 
     cols = list()
@@ -55,18 +62,26 @@ def plot_five_by_two(datastruc, file_name, titleplot):
         #print (row, lt, end=" ")
         for col, it in zip(list(range(max(cols))), datastruc[lt].keys()):
             #print(col, it)
+            allArgLength = len(datastruc[lt][it])
+            firstArgs = [x[0][0] for x in datastruc[lt][it]]
+            secondArgs = [x[0][1] for x in datastruc[lt][it]]
+            thirdArgs = [x[0][2] for x in datastruc[lt][it]]
+            firstArgLength = len(set(firstArgs))
             subplot_title = f'Matrix: {lt[0]}, Length thr: {lt[1]},\n\
 Weighted: {it[0]}, Intensity thr: {it[1]}'
             #print(subplot_title)
             axs[row,col].set_title(subplot_title)
-            datatruc_idx = range(0, len(datastruc[lt][it]))
-            colormap_ix = [item for sublist in [[x]*8 for x in [0.2,0.5,0.8]] for item in sublist]
-            colormaps = [plt.cm.Purples, plt.cm.Greens]*12
-            if lt[1] == it[1]:
-                colormap_ix = [item for sublist in [[x]*4 for x in [0.8]] for item in sublist]
-                colormaps = [plt.cm.Purples, plt.cm.Greens]*6
-            markers = ['.','.','1','1']*6
-            linestyles = ['-','-','-','-',':',':',':',':']*3
+            datatruc_idx = range(0, allArgLength)
+
+            colormaps = [plt.cm.Purples, plt.cm.Greens]*int(allArgLength/2)
+            availAlphas, availMarkers, availLineStyles = list(np.linspace(0.2,1,firstArgLength)), ['.','1'], ['-',':']
+            alphaTr = constructTranslator(list(dict.fromkeys(firstArgs)), availAlphas)
+            lineTransl = constructTranslator(set(secondArgs), availLineStyles)
+            markerTr = constructTranslator(set(thirdArgs), availMarkers)
+            colormap_ix = [alphaTr[x] for x in firstArgs]
+            linestyles = [lineTransl[x] for x in secondArgs]
+            markers = [markerTr[x] for x in thirdArgs]
+
             for label_to_data, i in zip(datastruc[lt][it], datatruc_idx):
                 accuracy = auc(label_to_data[1][1],label_to_data[1][0])
                 gap_label = "{:.0%} ".format(float(label_to_data[0][0].replace('p','.')[2:]))
