@@ -3,7 +3,6 @@
 import re, os, csv, sys, Bio.Align, argparse, math, matplotlib, ntpath
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-matplotlib.use('Agg')
 import numpy as np
 from datetime import date
 from Bio import AlignIO
@@ -12,7 +11,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
-import twincons.SequenceWeightFromTree as Sequence_Weight_from_Tree
+from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
 from twincons.MatrixLoad import PAMLmatrix
 import MatrixInfo
 
@@ -645,9 +644,9 @@ def main(commandline_arguments):
         raise IOError("Unhandled combination of arguments!")
 
     if comm_args.phylo_split:
-        tree = Sequence_Weight_from_Tree.tree_construct(alignIO_out_gapped)
-        deepestanc_to_child = Sequence_Weight_from_Tree.find_deepest_ancestors(tree)
-        gapped_sliced_alns = Sequence_Weight_from_Tree.slice_by_anc(alignIO_out_gapped, deepestanc_to_child)
+        tree = tree_construct(alignIO_out_gapped)
+        deepestanc_to_child = find_deepest_ancestors(tree)
+        gapped_sliced_alns = slice_by_anc(alignIO_out_gapped, deepestanc_to_child)
     else:
         deepestanc_to_child = {}
         gapped_sliced_alns = slice_by_name(alignIO_out_gapped)
@@ -682,9 +681,9 @@ def main(commandline_arguments):
         alngroup_to_sequence_weight['shannon'] = list()
         if comm_args.weigh_sequences:
             if comm_args.reflected_shannon or comm_args.shannon_entropy:
-                alngroup_to_sequence_weight['shannon'] = Sequence_Weight_from_Tree.calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
+                alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
             else:
-                alngroup_to_sequence_weight[alngroup] = Sequence_Weight_from_Tree.calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
+                alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
 
     uniq_resis = uniq_resi_list(alignIO_out_gapped)
     if comm_args.nucleotide:
@@ -694,7 +693,7 @@ def main(commandline_arguments):
         uniq_resis = ['A','U','C','G']
     
     if comm_args.phylo_split:
-        sliced_alns = Sequence_Weight_from_Tree.slice_by_anc(alignIO_out_gapped, deepestanc_to_child)
+        sliced_alns = slice_by_anc(alignIO_out_gapped, deepestanc_to_child)
     else:
         sliced_alns = slice_by_name(alignIO_out_gapped)
     if len(sliced_alns.keys()) != 2:
