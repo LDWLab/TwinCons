@@ -325,8 +325,8 @@
 			"program": "./twincons/twcCrossValidateTrees.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/cumulativeWindowTest/PRST-bl_bgfreq_cg0p9__cmsW7_nn.csv",
-				"-o", "./ROC/trees_crossVal_out/PRST-cumW7_ROC_3folds_crossval",
+				"./data/CSV/cumulativeWindowTest/BBS-bl_bgfreq_cg0p9__cmsW7_nn.csv",
+				"-o", "./ROC/trees_crossVal_out/BBS-cumW7_ROC_3folds_crossvalT",
 				"-ps", "0.01"
 			]
 		},{

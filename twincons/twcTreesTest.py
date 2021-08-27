@@ -78,8 +78,8 @@ def bypass_zero_division(x,y):
 def compare_thr(thr, segments):
     negative, positive = 0, 0
     for i in segments:
-        positive += (i[1][1] > thr)
-        negative += (i[1][1] <= thr)
+        positive += (i[1][1] >= thr)
+        negative += (i[1][1] < thr)
     return (negative, positive)
 
 def calc_identity_stats(alnNameToSegmentPrediction, thr, tp, tn, fp, fn):
