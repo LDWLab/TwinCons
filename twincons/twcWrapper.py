@@ -32,7 +32,7 @@ def create_and_parse_argument_options(argument_list):
 def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
 
-    if comm_args.decision_boundary:
+    if comm_args.classifier:
         classifier_path = f"{str(os.path.dirname(__file__))}/../{classifiers[comm_args.classifier]}"
     else:
         classifier_path = comm_args.custom_classifier
@@ -41,7 +41,7 @@ def main(commandline_arguments):
         if not os.path.isfile(classifier_path+".json"):
             raise IOError(f"Could not find the custom decision boundary json file at {comm_args.custom_classifier}.json")
 
-    calc_args, minmax_features = twcSVMtest.read_features(classifier_path+".json")
+    calc_args, minmax_features = twcSVMtest.read_features(classifier_path.replace('.pkl','')+".json")
 
     g_list=[list(g) for k,g in groupby(calc_args , lambda i : '-twca' in i or '-csa' in i)]
     for i, args in enumerate(g_list[1:]):
@@ -59,7 +59,7 @@ def main(commandline_arguments):
             if re.match('np|treat_highly_negative_as_conserved', segm_opt):
                 positive_as_negative = True
             if re.match('cms|cumulative_segments', segm_opt):
-                cmsWindow = int(segm_opt.split('_')[1])
+                cmsWindow = int(segm_opt.split('cmsW')[1])
 
     twincons_alns = ["-r"]
     if comm_args.alignment_paths:

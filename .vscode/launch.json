@@ -204,7 +204,7 @@
 				"-mt", "AdaBoost", "RandomForest", "DecisionTree", "ExtraTrees",
 				"-pd",
 				"./data/outputs/RF/BBS_best_ensemble.svg", "-ne", "100",
-				"-twca", "lg","bgfreq","cg0p9","cmsW7","nn"
+				"-twca", "lg","bn_bgfreq","gt_0.9","-csa","cmsW7"
 			]
 		},{
 			"name": "Tree test query",
@@ -300,10 +300,10 @@
 			"name": "wrapper",
 			"type": "python",
 			"request": "launch",
-			"program": "./twincons/wrapper.py",
+			"program": "./twincons/twcWrapper.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-db", "BaliBase-BL62",
+				"-c", "ExtraTrees-BBS-LG",
 				"-a", "~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas"
 			]
 		},{

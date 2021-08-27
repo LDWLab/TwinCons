@@ -131,7 +131,7 @@ def slice_by_anc(unsliced_aln_obj, deepestanc_to_child):
         #print(anc, os.path.commonprefix(deepestanc_to_child[anc]).replace("_",""))
         anc_names[anc] = os.path.commonprefix(deepestanc_to_child[anc]).replace("_","")
         #In the case of no common name found between sequences from 1 group
-        if os.path.commonprefix(deepestanc_to_child[anc])[:-1] is '':
+        if os.path.commonprefix(deepestanc_to_child[anc])[:-1] == '':
             anc_names[anc] = i
             i += 1
     
