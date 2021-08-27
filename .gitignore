@@ -8,5 +8,7 @@ param-test-prms_nohup.out
 *egg-info
 dist/*
 build/*
+*.out
+.vscode/settings.json
 matrixAdjustments/matrixCA*
 ROC/SVMCalibration*

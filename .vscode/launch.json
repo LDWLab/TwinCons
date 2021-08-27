@@ -153,10 +153,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-twc",
-				"/mnt/d/Score-test_data/PROSITE/TWC_results/",
-				"./data/CSV/PRST-cumW7",
-				"-c",
-				"-p", "-cms", "7"
+				"./data/test_twc_parameters/TWC/bl_uniform_cg0p9/PRST/",
+				"./data/test_twc_parameters/SegmentCSV/PRST/bl_uniform_cg0p9__cmsW11_nn",
+				"-c", "-p"
+				"-cms", "11"
 			]
 		},
 		{
@@ -339,6 +339,15 @@
 				"./data/CSV/PRST-cumW7.csv",
 				"-o", "./ROC/crossVal_out/PRST-cumW7_SVMROC_3folds_crossval",
 				"-p", "1", "2", "10", "-dt", "-20", "20", "0.1"
+			"name": "ROC 4by4 with new",
+			"type": "python",
+			"request": "launch",
+			"program": "./ROC/plotROC_4by4.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/test_twc_parameters/out_stats/BBSvIND/",
+				"./data/outputs/SVG/BBS-INDnew.svg",
+				"BBS vs IND"
 			]
 		},
 	]
