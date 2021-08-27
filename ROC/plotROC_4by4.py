@@ -36,11 +36,11 @@ def construct_param_struc(split_label, datastruc, tpr, fpr):
             datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])] = list()
         datastruc[(split_label[1],split_label[6])][(split_label[2],split_label[5])].append(((split_label[3],split_label[7],split_label[9],split_label[10]), (tpr, fpr)))
     else:
-        if (split_label[1],split_label[5]) not in datastruc.keys():
-            datastruc[(split_label[1],split_label[5])] = dict()
-        if (split_label[2],split_label[5]) not in datastruc[(split_label[1],split_label[5])].keys():
-            datastruc[(split_label[1],split_label[5])][(split_label[2],split_label[5])] = list()
-        datastruc[(split_label[1],split_label[5])][(split_label[2],split_label[5])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
+        if split_label[5] not in datastruc.keys():
+            datastruc[split_label[5]] = dict()
+        if (split_label[2],split_label[1]) not in datastruc[split_label[5]].keys():
+            datastruc[split_label[5]][(split_label[2],split_label[1])] = list()
+        datastruc[split_label[5]][(split_label[2],split_label[1])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
     return datastruc
 
 def constructTranslator(names, vals):
@@ -69,12 +69,15 @@ def plot_five_by_two(datastruc, file_name, titleplot):
             firstArgLength = len(set(firstArgs))
             subplot_title = f'Matrix: {lt[0]}, Length thr: {lt[1]},\n\
 Weighted: {it[0]}, Intensity thr: {it[1]}'
+            if lt[:3] == 'cms':
+                subplot_title = f'Matrix: {it[1]}, Window smoothing: {lt[4:]},\n\
+Matrix normalization: {it[0]}'
             #print(subplot_title)
             axs[row,col].set_title(subplot_title)
             datatruc_idx = range(0, allArgLength)
 
             colormaps = [plt.cm.Purples, plt.cm.Greens]*int(allArgLength/2)
-            availAlphas, availMarkers, availLineStyles = list(np.linspace(0.2,1,firstArgLength)), ['.','1'], ['-',':']
+            availAlphas, availMarkers, availLineStyles = list(np.linspace(1,0.2,firstArgLength)), ['.','1'], ['-',':']
             alphaTr = constructTranslator(list(dict.fromkeys(firstArgs)), availAlphas)
             lineTransl = constructTranslator(set(secondArgs), availLineStyles)
             markerTr = constructTranslator(set(thirdArgs), availMarkers)
@@ -97,6 +100,7 @@ Weighted: {it[0]}, Intensity thr: {it[1]}'
                 axs[row,col].legend(loc=4, title="% cut gaps   AUC", prop={'size': 6})
                 axs[row,col].set_xlabel("False positive rate")
                 axs[row,col].set_ylabel("True positive rate")
+    plt.tight_layout()
     plt.savefig(file_name, dpi=600)
 
 def main (commandline_arguments):
