@@ -1,0 +1,16 @@
+[
+    {
+        "maxX": 0.5076923076923077,
+        "maxY": 264.92649621212115,
+        "minX": 0.0017241379310344827,
+        "minY": 1.0000000000000004
+    },
+    [
+        "./data/CSV/PRST-cumW7.csv",
+        "./data/PKL/PRST_RF_cumW7.pkl",
+        "-pd",
+        "./data/outputs/SVM/PRST_RF_cumW7.png",
+        "-ts",
+        "1"
+    ]
+]
