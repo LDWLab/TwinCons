@@ -339,6 +339,8 @@
 				"./data/CSV/PRST-cumW7.csv",
 				"-o", "./ROC/crossVal_out/PRST-cumW7_SVMROC_3folds_crossval",
 				"-p", "1", "2", "10", "-dt", "-20", "20", "0.1"
+			]
+		},{
 			"name": "ROC 4by4 with new",
 			"type": "python",
 			"request": "launch",
