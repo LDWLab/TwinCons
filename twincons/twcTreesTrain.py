@@ -145,7 +145,7 @@ def main(commandline_arguments):
         ###   Save associated max feature values   ###
         min_max_features = {"maxX":maxX, "maxY": maxY, "minX":minX, "minY":minY}
         data = [min_max_features, commandline_arguments]
-        with open(str(comm_args.output_path)+".json", 'w', encoding='utf-8') as f:
+        with open(f'{comm_args.output_path}_{modelName}.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f"MinMax on X axis: {minX} {maxX} \nMinMax on Y axis: {minY} {maxY}")
         print(f"Model {modelName} has a score of {scores}")
