@@ -347,9 +347,9 @@
 			"program": "./ROC/plotROC_4by4.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/test_twc_parameters/out_stats/BBSvIND/",
-				"./data/outputs/SVG/BBS-INDnew.svg",
-				"BBS vs IND"
+				"./data/test_twc_parameters/out_stats_new/PRSTvrProt/",
+				"./data/outputs/SVG/PRST-rProtnew.svg",
+				""
 			]
 		},
 	]

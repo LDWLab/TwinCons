@@ -89,38 +89,38 @@ do
                         train_dir="./data/test_twc_parameters/PKL/newParams/BBS/${twc_param}__${segment_param}__${train_param}.pkl"
                         allparam=${twc_param}__${segment_param}__${train_param}
                         #echo $twc_param ${segment_dir/BBS/PRST} ${train_dir}
-                        echo ./twincons/twcSVMtrain.py ${segment_dir} ${train_dir} -ts $ts -l $avew
+                        #echo ./twincons/twcSVMtrain.py ${segment_dir} ${train_dir} -ts $ts -l $avew
                         #python3 -W ignore ./twincons/twcSVMtrain.py ${segment_dir} ${train_dir} -ts $ts -l $avew
                         
-                        outstat_dir="./data/test_twc_parameters/out_stats/"
-                        echo ./twincons/twcSVMtest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts -l ${avew} -dt -5 5 0.1
+                        outstat_dir="./data/test_twc_parameters/out_stats_new/"
+                        #echo ./twincons/twcSVMtest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts -l ${avew} -dt -5 5 0.1
                         #python3 -W ignore ./twincons/twcSVMtest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv $train_dir -tcp -ts $ts -l ${avew} -dt -5 5 0.1
                         
-                        echo ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
                         #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
-                        echo ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
                         #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv $train_dir -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
-                        echo ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
 
 
                         echo ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
-                        #python3 -W ignore ./twincons/twcSVMtrain.py ${segment_dir} ${train_dir/BBS/PRST} -ts $ts -l $avew
+                        python3 -W ignore ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
 
                         echo ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
                         echo ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
                         echo ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
                         echo ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                     
                         echo "Done training params "$train_param
                     done

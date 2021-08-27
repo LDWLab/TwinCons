@@ -3,11 +3,9 @@
 import re, os, sys, csv, argparse, matplotlib
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
-from collections import deque
 from scipy.signal import argrelextrema, savgol_filter
 
 import twincons.TwinCons as TwinCons
@@ -220,6 +218,8 @@ def identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=7, 
     smoothCumScoreSumPlot = savgol_filter(cumScoreSumPlot,smoothWindow,polyorder)
     lows = argrelextrema(smoothCumScoreSum, np.less)[0].tolist()
     highs = argrelextrema(smoothCumScoreSum, np.greater)[0].tolist()
+    if len(lows) == 0:
+        lows.append(0)
     if lows[0] > highs[0]:
         lows.insert(0, 0)
     if highs[-1] < lows[-1]:

@@ -11,7 +11,7 @@ from itertools import combinations, product
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
-import twincons.TwinCons as TwinCons
+from twincons.TwinCons import read_align, slice_by_name
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -200,7 +200,7 @@ def main(commandline_arguments):
     if comm_args.indelible_tree_file:
         indeli_trees = read_indeli_trees_file(comm_args.indelible_tree_file)
         for name,tree in indeli_trees.items():
-            alignIO_out = TwinCons.read_align(comm_args.alignment_file+'INDELI_TRUE_'+name+'.fas')
+            alignIO_out = read_align(comm_args.alignment_file+'INDELI_TRUE_'+name+'.fas')
             deepest_anc = find_deepest_ancestors(tree)
             gapped_sliced_alns = slice_by_anc (alignIO_out, deepest_anc)
             print(name, gapped_sliced_alns)
@@ -209,7 +209,7 @@ def main(commandline_arguments):
                     for entry in alignment:
                         tagged_aln_file.write(str(">"+str(aln_group_name)+"_"+str(entry.id)+"\n"+entry.seq+"\n"))
         sys.exit()
-    alignIO_out = TwinCons.read_align(comm_args.alignment_file)
+    alignIO_out = read_align(comm_args.alignment_file)
     if comm_args.nucleotide_alignments:
         for sequence in alignIO_out:
             sequence.seq = sequence.seq.back_transcribe()
@@ -224,7 +224,7 @@ def main(commandline_arguments):
             output_split_alignments(sliced_dict, comm_args.save_split_alignments, comm_args.alignment_file)
             sys.exit()
     else:
-        sliced_dict = TwinCons.slice_by_name(alignIO_out)
+        sliced_dict = slice_by_name(alignIO_out)
 
     if comm_args.dhat:
         # #D hat here figure out why it always ranges between 0.4-0.7
