@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Bio import AlignIO
 
 import twincons.TwinCons as TwinCons
+from twincons.twcSupportFunctions import read_align, slice_by_name
 
 def create_and_parse_argument_options(argument_list):
 	parser = argparse.ArgumentParser(description='Slide two groups of an alignment and calculate a score for each sliding position')
@@ -73,8 +74,8 @@ def uninterrupted_stretches(alnindex, alnindex_score,comm_args):
 
 def main(commandline_args):
 	comm_args = create_and_parse_argument_options(commandline_args)
-	alignment_file = TwinCons.read_align(comm_args.alignment_path)
-	sliced_alignments = TwinCons.slice_by_name(alignment_file)
+	alignment_file = read_align(comm_args.alignment_path)
+	sliced_alignments = slice_by_name(alignment_file)
 	first_aln = sorted(list(sliced_alignments.keys()))[0]
 	slided_scores={}				#Sliding increment -> (scores,alignment objects)
 	for i in range(0,sliced_alignments[first_aln].get_alignment_length(),comm_args.window):

@@ -11,7 +11,7 @@ from itertools import combinations, product
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
-from twincons.TwinCons import read_align, slice_by_name
+from twincons.twcSupportFunctions import read_align, slice_by_name
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)

@@ -12,6 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
+from twincons.twcSupportFunctions import read_align, slice_by_name
 from twincons.MatrixLoad import PAMLmatrix
 import MatrixInfo
 
@@ -65,13 +66,7 @@ def required_length(nmin,nmax):
             setattr(args, self.dest, values)
     return RequiredLength
 
-def read_align(aln_path):
-    '''Reads the fasta file and gets the sequences.
-    '''
-    alignment = AlignIO.read(open(aln_path), "fasta")
-    for record in alignment:
-        record.seq = record.seq.upper()
-    return alignment
+
 
 def deletefile(file_loc):
     '''Tries to delete provided file path.
@@ -189,26 +184,6 @@ def uniq_resi_list(aln_obj):
     if len(Counter(hash_resi.keys())) > len(Counter(default_aa_sequence)):
         raise ValueError("Alignment has non-standard AAs:\n"+' ,'.join(hash_resi.keys()))
     return default_aa_sequence
-
-def slice_by_name(unsliced_aln_obj):
-    '''
-    Slices an alignment into different alignments
-    by first string (should hold protein name)
-    Returns a dictionary with keys being the alignment
-    names pointing to the alignIO objects
-    '''
-    prot_list=[]
-    sliced_dict={}
-    for entry in unsliced_aln_obj:
-        prot_list.append(entry.id.split("_")[0])
-    uniq_prot_list=set(prot_list)
-    for prot in uniq_prot_list:
-        what = Bio.Align.MultipleSeqAlignment([])
-        for entry in unsliced_aln_obj:
-            if re.match(prot,entry.id.split("_")[0]):
-                what.append(entry)
-        sliced_dict[prot]=what
-    return sliced_dict            #Iterate over the dict and create instances of AlignmentGroup
 
 def nucl_matrix(mx_def):
     '''Return a substitution matrix for nucleotides.
