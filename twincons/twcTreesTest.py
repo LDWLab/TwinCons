@@ -49,7 +49,7 @@ def create_and_parse_argument_options(argument_list):
         help='Probability for identifying significant segments.\
         \n\tSignificance: segment with probability above or equal is considered significant segment. Segment with probability below this number is non-significant.\
         \n\tStep: only used when testing the classifier precision. It makes multiple evaluations of the data moving from 0 to 1 probabilities with the given step.\
-        \n\tDefault (0.95, 0.001)', default=[0.95, 0.001], type = float)
+        \n\tDefault (0.95, 0.001)', default=[0.95, 0.01], type = float)
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
@@ -78,7 +78,7 @@ def bypass_zero_division(x,y):
 def compare_thr(thr, segments):
     negative, positive = 0, 0
     for i in segments:
-        positive += (i[1][1] >= thr)
+        positive += (i[1][1] > thr)
         negative += (i[1][1] < thr)
     return (negative, positive)
 
