@@ -155,7 +155,7 @@ def merger_commands(sequence_groups,output_path):
 	return True
 
 def prosite_cleanup(list_with_ids, prst_loc):
-	from TwinCons import read_align
+	from twincons.twcSupportFunctions import read_align
 	from os import listdir
 	from os.path import isfile, join
 	prst_aln_dir = f"{prst_loc}/prosite_alignments_handle/"

@@ -199,11 +199,12 @@
 			"program": "./twincons/twcTreesTrain.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/BBS_cg09_it1_lt3.csv",
-				"./data/PKL/Ensembles/BBS_RF",
+				"./data/CSV/BBS_lg_bgfreq_cg0p9__cmsW7_nn.csv",
+				"./data/PKL/Ensembles/BBS_best",
 				"-mt", "AdaBoost", "RandomForest", "DecisionTree", "ExtraTrees",
 				"-pd",
-				"./data/outputs/RF/BBS_RF_all.png",
+				"./data/outputs/RF/BBS_best_ensemble.svg", "-ne", "100",
+				"-twca", "lg","bn_bgfreq","gt_0.9","-csa","cmsW7"
 			]
 		},{
 			"name": "Tree test query",
@@ -299,10 +300,10 @@
 			"name": "wrapper",
 			"type": "python",
 			"request": "launch",
-			"program": "./twincons/wrapper.py",
+			"program": "./twincons/twcWrapper.py",
 			"console": "integratedTerminal",
 			"args": [
-				"-db", "BaliBase-BL62",
+				"-c", "ExtraTrees-BBS-LG",
 				"-a", "~/Dropbox-Gatech/ProteinProject/Alignments/rProteins/UniAB/uL02ab_txid_tagged.fas"
 			]
 		},{

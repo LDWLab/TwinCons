@@ -1,0 +1,23 @@
+[
+    {
+        "maxX": 0.2109375,
+        "maxY": 78.27431486880467
+    },
+    [
+        "./data/CSV/BBS_cg09_it1_lt3.csv",
+        "./data/PKL/BBS_cg09_it1_lt3.pkl",
+        "-pd",
+        "./data/outputs/SVM/BBS_p1.svg",
+        "-tp",
+        "1",
+        "-ts",
+        "1",
+        "-twca",
+        "gt_0.9",
+        "cg",
+        "mx_blosum62",
+        "-csa",
+        "lt_3",
+        "it_1"
+    ]
+]

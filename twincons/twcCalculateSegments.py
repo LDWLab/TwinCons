@@ -197,7 +197,7 @@ def penalizeMissingPositions(score_list, score_dict):
         outScoreList.append((str(alnPos), score_dict[str(alnPos)]))
     return outScoreList
 
-def identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=7, polyorder=2):
+def identifySegmentsWithCumulativeSmoothScore(score_list, smoothWindow=7, polyorder=2):
     '''Identify segments based on a cumulative score calculation.
     Identifies local score minima and maxima, using a window and polyorder for smoothing.'''
     cumScore, cumScoreSum, alnPositions = list(), list(), dict()
@@ -251,7 +251,7 @@ def plotCumulativeScoreAndSegments(alnPositions, cumScoreSumPlot, smoothCumScore
     plt.savefig(f'/home/ppenev/Desktop/tests/{name}.png', dpi=300)
     return True
 
-def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, name, highly_neg_as_pos=False, cmsWindow=False, path_type='aln_path'):
+def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, highly_neg_as_pos=False, cmsWindow=False, path_type='aln_path'):
     '''Calculating segment stats'''
     out_dict = dict()
     score_list = list()
@@ -263,10 +263,10 @@ def calc_segments_for_aln(alnindex_score, num_alned_pos, int_thr, length_thr, na
             pos_score = alnindex_score[x]
         else:
             raise IOError("Missing input for TwinCons data!")
-        score_list.append((position, pos_score))
+        score_list.append((str(position), pos_score))
         out_dict[position] = pos_score
     if cmsWindow:
-        unfiltered_segment_list = identifySegmentsWithCumulativeSmoothScore(score_list, name, smoothWindow=cmsWindow)
+        unfiltered_segment_list = identifySegmentsWithCumulativeSmoothScore(score_list, smoothWindow=cmsWindow)
     else:
         unfiltered_segment_list = split_by_thresholds(score_list, 
                                                     int_thr, 
@@ -310,7 +310,6 @@ def main(commandline_args):
                                             number_of_aligned_positions, 
                                             comm_args.intensity_threshold,
                                             comm_args.length_threshold,
-                                            file.split('.')[0],
                                             highly_neg_as_pos=comm_args.treat_highly_negative_as_conserved,
                                             cmsWindow=comm_args.cumulative_segments,
                                             path_type=path_type)
