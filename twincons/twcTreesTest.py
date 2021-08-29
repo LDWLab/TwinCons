@@ -49,7 +49,7 @@ def create_and_parse_argument_options(argument_list):
         help='Probability for identifying significant segments.\
         \n\tSignificance: segment with probability above or equal is considered significant segment. Segment with probability below this number is non-significant.\
         \n\tStep: only used when testing the classifier precision. It makes multiple evaluations of the data moving from 0 to 1 probabilities with the given step.\
-        \n\tDefault (0.95, 0.001)', default=[0.95, 0.001], type = float)
+        \n\tDefault (0.95, 0.001)', default=[0.95, 0.01], type = float)
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
@@ -103,7 +103,7 @@ def mass_test(alnNameToSegmentPrediction, step=0.1):
     calculating Sensitivity(tpr), Specificity(tnr) and Precision.
     '''
     dist_to_stats = {}
-    for thr in np.arange(0, 1+float(step), step):
+    for thr in np.arange(0, 1+2*float(step), step):
         tp, tn, fp, fn = calc_identity_stats(alnNameToSegmentPrediction, thr, 0, 0, 0, 0)
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)

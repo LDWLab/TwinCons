@@ -40,7 +40,10 @@ def construct_param_struc(split_label, datastruc, tpr, fpr):
             datastruc[split_label[5]] = dict()
         if (split_label[2],split_label[1]) not in datastruc[split_label[5]].keys():
             datastruc[split_label[5]][(split_label[2],split_label[1])] = list()
-        datastruc[split_label[5]][(split_label[2],split_label[1])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
+        if len(split_label) > 9:
+            datastruc[split_label[5]][(split_label[2],split_label[1])].append(((split_label[3],split_label[6],split_label[8],split_label[9]), (tpr, fpr)))
+        else:
+            datastruc[split_label[5]][(split_label[2],split_label[1])].append(((split_label[3],split_label[6],split_label[8]), (tpr, fpr)))
     return datastruc
 
 def constructTranslator(names, vals):
@@ -77,7 +80,7 @@ Matrix normalization: {it[0]}'
             datatruc_idx = range(0, allArgLength)
 
             colormaps = [plt.cm.Purples, plt.cm.Greens]*int(allArgLength/2)
-            availAlphas, availMarkers, availLineStyles = list(np.linspace(1,0.2,firstArgLength)), ['.','1'], ['-',':']
+            availAlphas, availMarkers, availLineStyles = list(np.linspace(1,0.2,firstArgLength)), ['.','1','s','^'], ['-',':']
             alphaTr = constructTranslator(list(dict.fromkeys(firstArgs)), availAlphas)
             lineTransl = constructTranslator(set(secondArgs), availLineStyles)
             markerTr = constructTranslator(set(thirdArgs), availMarkers)
@@ -89,7 +92,10 @@ Matrix normalization: {it[0]}'
                 accuracy = auc(label_to_data[1][1],label_to_data[1][0])
                 gap_label = "{:.0%} ".format(float(label_to_data[0][0].replace('p','.')[2:]))
                 ts_label = label_to_data[0][2].replace('p','.')
-                legend_label = gap_label+f"{label_to_data[0][1]} {ts_label} {label_to_data[0][3]} "+"{:.1%}".format(float(accuracy))
+                if len(label_to_data[0]) == 3:
+                    legend_label = gap_label+f"{label_to_data[0][1]} {ts_label} "+"{:.1%}".format(float(accuracy))
+                else:
+                    legend_label = gap_label+f"{label_to_data[0][1]} {ts_label} {label_to_data[0][3]} "+"{:.1%}".format(float(accuracy))
                 axs[row,col].plot(label_to_data[1][1], 
                                   label_to_data[1][0], 
                                   label=legend_label, 
