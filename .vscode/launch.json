@@ -326,8 +326,8 @@
 			"program": "./twincons/twcCrossValidateTrees.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/cumulativeWindowTest/BBS-bl_bgfreq_cg0p9__cmsW7_nn.csv",
-				"-o", "./ROC/trees_crossVal_out/BBS-cumW7_ROC_3folds_crossval",
+				"./data/CSV/cumulativeWindowTest/rProt_lg_bgfreq_cg0p9__cmsW7_nn.csv",
+				"-o", "./ROC/trees_crossVal_out/rProt-cumW7_ROC_3folds_crossval",
 				"-ps", "0.01"
 			]
 		},{
@@ -338,7 +338,7 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/PRST-cumW7.csv",
-				"-o", "./ROC/crossVal_out/PRST-cumW7_SVMROC_3folds_crossval",
+				"-o", "./ROC/crossval_out/PRST-cumW7_SVMROC_3folds_crossval",
 				"-p", "1", "2", "10", "-dt", "-20", "20", "0.1"
 			]
 		},{
@@ -348,8 +348,8 @@
 			"program": "./ROC/plotROC_4by4.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/test_twc_parameters/out_stats_new/PRSTvrProt/",
-				"./data/outputs/SVG/PRST-rProtnew.svg",
+				"./data/test_twc_parameters/out_stats_ensemble/BBSvrProt/",
+				"./data/outputs/SVG/BBS-rProt_Ensemble.svg",
 				""
 			]
 		},

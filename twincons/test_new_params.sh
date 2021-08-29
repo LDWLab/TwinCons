@@ -124,46 +124,43 @@ do
                     
                         #echo "Done training params "$train_param
                     done
-                    
-                    
-                    train_dir="./data/test_twc_parameters/PKL/RF/BBS/${twc_param}__${segment_param}"
-                    echo ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
-                    python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
-                    
-                    echo ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
-                    python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                done
 
-                    for ensembleType in AdaBoost RandomForest DecisionTree ExtraTrees
-                    do
-                        allparam=${twc_param}__${segment_param}__${ensembleType}
-                        outstat_dir="./data/test_twc_parameters/out_stats_ensemble/"
-                        #echo ./twincons/twcTreesTest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        #python3 -W ignore ./twincons/twcTreesTest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp 
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp 
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                        
-
-                        #echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        #python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        
-                        echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                        python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                train_dir="./data/test_twc_parameters/PKL/RF/BBS/${twc_param}__${segment_param}"
+                #echo ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                #python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                
+                echo ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                for ensembleType in AdaBoost RandomForest DecisionTree ExtraTrees
+                do
+                    allparam=${twc_param}__${segment_param}__${ensembleType}
+                    outstat_dir="./data/test_twc_parameters/out_stats_ensemble/"
+                    #echo ./twincons/twcTreesTest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    #python3 -W ignore ./twincons/twcTreesTest.py $segment_dir ${outstat_dir}BBSvBBS/BBSvBBS_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
                     
-                        echo "Done testing params "$allparam
-                    done
+                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}BBSvrProt/BBSvrProt_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp 
+                    
+                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp 
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    
+                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    
+                    #echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    #python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    
+                    echo ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    
+                    echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    
+                    echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                
+                    echo "Done testing params "$allparam
                 done
             done
         done
