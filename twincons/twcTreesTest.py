@@ -78,7 +78,7 @@ def bypass_zero_division(x,y):
 def compare_thr(thr, segments):
     negative, positive = 0, 0
     for i in segments:
-        positive += (i[1][1] > thr)
+        positive += (i[1][1] >= thr)
         negative += (i[1][1] < thr)
     return (negative, positive)
 
@@ -103,7 +103,7 @@ def mass_test(alnNameToSegmentPrediction, step=0.1):
     calculating Sensitivity(tpr), Specificity(tnr) and Precision.
     '''
     dist_to_stats = {}
-    for thr in np.arange(0, 1+float(step), step):
+    for thr in np.arange(0, 1+2*float(step), step):
         tp, tn, fp, fn = calc_identity_stats(alnNameToSegmentPrediction, thr, 0, 0, 0, 0)
         tpr = bypass_zero_division(tp,tp+fn)
         tnr = bypass_zero_division(tn,tn+fp)
@@ -135,7 +135,7 @@ def main(commandline_arguments):
         csv_list = use_absolute_length_of_segments(csv_list)
 
     ###   Test data   ###
-    train_args, min_max_features = read_features(comm_args.pickle+".json")
+    train_args, min_max_features = read_features(comm_args.pickle.replace('.pkl','')+".json")
     classifier = cPickle.load(open(comm_args.pickle, 'rb'))
     normalizedData = normalize_features([[float(row[2]),float(row[3])] for row in csv_list], 
                                         min_max_features[0], 
