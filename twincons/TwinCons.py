@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from datetime import date
-from Bio import AlignIO
+from Bio import AlignIO, Seq
 from io import StringIO
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
@@ -616,7 +616,7 @@ def main(commandline_arguments):
     else:
         raise IOError("Unhandled combination of arguments!")
     for x in alignIO_out_gapped:
-        x.seq = x.seq.replace('X','-')
+        x.seq = Seq.Seq(str(x.seq).replace('X','-'))
     if comm_args.phylo_split:
         tree = tree_construct(alignIO_out_gapped)
         deepestanc_to_child = find_deepest_ancestors(tree)
