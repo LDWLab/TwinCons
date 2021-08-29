@@ -1,0 +1,18 @@
+[
+    {
+        "maxX": 0.38613861386138615,
+        "maxY": 82.16770993376493,
+        "minX": 0.0015479876160990713,
+        "minY": 1.0009468202327076
+    },
+    [
+        "./data/CSV/BBS_lg_bgfreq_cg0p9__cmsW7_nn.csv",
+        "./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20.pkl",
+        "-pd",
+        "./data/outputs/SVM/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20.png",
+        "-ts",
+        "1",
+        "-tp",
+        "20"
+    ]
+]

@@ -127,22 +127,21 @@
 			]
 		},
 		{
-			"name": "QuerySet cg09 lt3 it1",
+			"name": "QuerySet cg09 cmsW7",
 			"type": "python",
 			"request": "launch",
-			"program": "./twincons/CalculateSegments.py",
+			"program": "./twincons/twcCalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"../Score-test_data/QS_clean/",
-				"./data/CSV/QScl_cg09_it1_lt3.csv",
+				"/mnt/d/Score-test_data/QS_clean/",
+				"./data/CSV/QScl_cg09_LG-bgfr_cmsW7.csv",
 				"-c",
-				"-l",
-				"-p",
+				"-cms", "7",
 				"-co",
 				"gt_0.9",
 				"cg",
-				"mx_blosum62"
+				"lg", "bn_bgfreq"
 			]
 		},
 		{
@@ -213,28 +212,27 @@
 			"program": "./twincons/twcTreesTest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/rProt_cg09_it1_lt3.csv",
-				"./data/outputs/RF/BBS_ET-RP.csv",
-				"./data/PKL/Ensembles/BBS_RF_ExtraTrees.pkl",
+				"./data/CSV/QScl_cg09_LG-bgfr_cmsW7.csv",
+				"./data/outputs/RF/BBS-RFvsQS.csv",
+				"./data/PKL/Ensembles/BBS_best_RandomForest.pkl",
 				"-pd",
-				"./data/outputs/RF/BBS-ETvsRP.png",
-				"-tcp",
+				"./data/outputs/RF/BBS-RFvsQS.svg",
+				"-tqa", "-pt", "0.9", "0.01"
 			]
 		},
 		{
-			"name": "SVM train PRST",
+			"name": "SVM train BBS cumulative",
 			"type": "python",
 			"request": "launch",
 			"program": "./twincons/twcSVMtrain.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/PRST_cg09_it1_lt3.csv",
-				"./data/PKL/PRST_cg09_it1_lt3_abs_p5.pkl",
+				"./data/CSV/BBS_lg_bgfreq_cg0p9__cmsW7_nn.csv",
+				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20.pkl",
 				"-pd",
-				"./data/outputs/SVM/PRST_cg09_it1_lt3_abs_p5.png",
+				"./data/outputs/SVM/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20.png",
 				"-ts", "1",
-				"-tp", "5", 
-				"-l", "absolute"
+				"-tp", "20",
 			]
 		},
 		{
@@ -244,14 +242,14 @@
 			"program": "./twincons/twcSVMtest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/QS_cg09_it1_lt3.csv",
-				"./data/outputs/SVM/BBSp5-QS.csv",
-				"./data/PKL/BBSp5_cg09_it1_lt3.pkl",
+				"./data/CSV/QScl_cg09_LG-bgfr_cmsW7.csv",
+				"./data/outputs/SVM/BBS-QScmsCAL.csv",
+				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20_cal.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBSp5vsQS.svg",
+				"./data/outputs/SVM/BBSvsQScmsW7p20cal.svg",
 				"-ts", "1",
 				"-tqa",
-				"-dt", "-1", "1", "0.1"
+				"-dt", "-1", "0.95", "0.1"
 			]
 		},
 		{
@@ -351,6 +349,16 @@
 				"./data/test_twc_parameters/out_stats_new/PRSTvrProt/",
 				"./data/outputs/SVG/PRST-rProtnew.svg",
 				""
+			]
+		},{
+			"name": "Try calibration",
+			"type": "python",
+			"request": "launch",
+			"program": "./twincons/twcCalibrate.py",
+			"console": "integratedTerminal",
+			"args": [
+				"./data/CSV/cumulativeWindowTest/BBS-bl_bgfreq_cg0p9__cmsW7_nn.csv",
+				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20_cal.pkl",
 			]
 		},
 	]

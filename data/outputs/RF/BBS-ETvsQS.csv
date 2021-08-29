@@ -1,0 +1,16 @@
+Alignment name,Segment Probability,Segment Position in Alignment
+IF2-EFTU_Ploop,1.0,33-58
+N-struc_bS01-RNAP7Ca,0.99,518-537
+aIF5-bEFTU,1.0,156-202
+aIF5-bEFTU,1.0,39-63
+aL08-aL30,0.95,54-90
+aL08-aL30,0.97,124-136
+aL37-bL34,0.99,77-98
+aeL14-eL27,1.0,87-100
+seq-bS01-RNAP7Ca,0.98,550-569
+seq-bS01-RNAP7Ca,0.99,577-587
+seq-bS01-RNAP7Ca,0.97,609-625
+uL02b-bL34,0.98,321-347
+uL03a-aRNAPA,1.0,23-49
+uL03a-aRNAPA,0.95,142-165
+uL33_nonperm,1.0,174-185
