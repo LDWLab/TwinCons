@@ -89,7 +89,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
 
 def train_classifier(X, y, penalty, gamma, kernel, sample_weight=''):
     '''Fits the classifier'''
-    decision_function = svm.SVC(C=penalty, gamma=gamma, kernel=kernel)
+    decision_function = svm.SVC(C=penalty, gamma=gamma, kernel=kernel, probability=True)
     if sample_weight != '':
         decision_function.fit(X, y, sample_weight=sample_weight)
     else:
@@ -121,7 +121,7 @@ def main(commandline_arguments):
     ###   Save associated max feature values   ###
     min_max_features = {"maxX":maxX, "maxY": maxY, "minX":minX, "minY":minY}
     data = [min_max_features, commandline_arguments]
-    with open(str(comm_args.output_path)+".json", 'w', encoding='utf-8') as f:
+    with open(str(comm_args.output_path.replace('.pkl',''))+".json", 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     print("MinMax on X axis:", minX, maxX, "\nMinMax on Y axis:", minY,maxY)
 

@@ -12,6 +12,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from operator import itemgetter
 import pickle as cPickle
+from sklearn.calibration import CalibratedClassifierCV
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -155,7 +156,11 @@ def test_function(csv_list, classifier, min_max_features):
     for entry in csv_list:
         test_segment = np.array([(float(entry[2])-minX)/(maxX-minX),(float(entry[3])-minY)/(maxY-minY)])
         segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
-        segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
+        if isinstance(classifier, CalibratedClassifierCV):
+            segment_dist = classifier.predict_proba(test_segment.reshape(1,-1))[0][1]
+        else:
+            segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
+        segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))
         if str(entry[0]) not in segment_pred_dist.keys():
             segment_pred_dist[str(entry[0])] = []
         segment_pred_dist[str(entry[0])].append([entry[4],(segment_pred,segment_dist,entry[1])])
@@ -260,6 +265,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     '''
     # plot the decision function
     xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
+    if isinstance(classifier, CalibratedClassifierCV):
+        classifier = classifier.base_estimator
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 
