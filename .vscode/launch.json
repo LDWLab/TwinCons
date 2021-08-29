@@ -134,8 +134,8 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"/mnt/d/Score-test_data/QS_clean/",
-				"./data/CSV/QScl_cg09_LG-bgfr_cmsW7.csv",
+				"/mnt/d/Score-test_data/query_set/",
+				"./data/CSV/QS_cg09_LG-bgfr_cmsW7.csv",
 				"-c",
 				"-cms", "7",
 				"-co",
@@ -242,11 +242,11 @@
 			"program": "./twincons/twcSVMtest.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/QScl_cg09_LG-bgfr_cmsW7.csv",
-				"./data/outputs/SVM/BBS-QScmsCAL.csv",
-				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20_cal.pkl",
+				"./data/CSV/QS_cg09_LG-bgfr_cmsW7.csv",
+				"./data/outputs/SVM/BBS-QScmsCALp1.csv",
+				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p1_cal.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBSvsQScmsW7p20cal.svg",
+				"./data/outputs/SVM/BBSvsQScmsW7p1cal.svg",
 				"-ts", "1",
 				"-tqa",
 				"-dt", "-1", "0.95", "0.1"
@@ -357,8 +357,9 @@
 			"program": "./twincons/twcCalibrate.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/cumulativeWindowTest/BBS-bl_bgfreq_cg0p9__cmsW7_nn.csv",
-				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p20_cal.pkl",
+				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW7_nn.csv",
+				"./data/PKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts1_p5_cal.pkl",
+				"-p","5"
 			]
 		},
 	]

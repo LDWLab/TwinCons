@@ -17,6 +17,7 @@ def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('csv_path', help='Path to csv file with segment data for training and calibration', type=str)
     parser.add_argument('pickle', help='Path to output trained and calibrated classifer', type=str)
+    parser.add_argument('-p',"--penalty", help='Penalty to train the classifier. Default: 1', type=float, default=1)
 
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
@@ -66,7 +67,7 @@ def main(commandline_arguments):
     validate_ind = [item for sublist in validate_ind_alns for item in sublist]
     test_ind = [item for sublist in test_ind_alns for item in sublist]
     X_train, y_train, X_test, y_test, X_valid, y_valid = X[train_ind], y[train_ind], X[test_ind], y[test_ind], X[validate_ind], y[validate_ind]
-    classifier = train_classifier(X_train, y_train, 20, 'auto', 'rbf', sample_weight=np.array(sample_weight)[train_ind])
+    classifier = train_classifier(X_train, y_train, comm_args.penalty, 'auto', 'rbf', sample_weight=np.array(sample_weight)[train_ind])
     calibratedClassifier = calibrate(classifier, X_test, y_test, X_valid, y_valid, np.array(sample_weight)[test_ind])
 
     with open(comm_args.pickle, 'wb') as classifier_output:
