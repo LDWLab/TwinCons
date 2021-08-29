@@ -359,7 +359,7 @@ def main(commandline_arguments):
         comm_args.range_distance_thresholds[2] = 0.01
 
     ###   Test data   ###
-    train_args, min_max_features = read_features(comm_args.pickle+".json")
+    train_args, min_max_features = read_features(comm_args.pickle.replace('.pkl','')+".json")
     classifier = cPickle.load(open(comm_args.pickle, 'rb'))
     segment_pred_dist = test_function(csv_list, classifier, min_max_features)
 

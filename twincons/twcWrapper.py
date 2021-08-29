@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 '''Calculate and visualize conservation between two groups of sequences from one alignment'''
 import re, os, sys, argparse
+
+from numpy.lib.index_tricks import OGridClass
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from itertools import groupby
+import pickle as cPickle
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
+                              AdaBoostClassifier)
+
+
 
 from twincons import TwinCons, twcCalculateSegments, twcSVMtest, twcTreesTest
 
@@ -78,9 +87,21 @@ def main(commandline_arguments):
                                                                 length_thr=length_thr, 
                                                                 highly_neg_as_pos=positive_as_negative,
                                                                 cmsWindow=cmsWindow)
-    print(segment_stats)
-    print("Success!")
-    pass
+    
+    classifier = cPickle.load(open(classifier_path, 'rb'))
+    if isinstance(classifier, SVC):
+        pass
+    elif isinstance(classifier, DecisionTreeClassifier):
+        pass
+        #Decision tree
+    elif isinstance(classifier, RandomForestClassifier):
+        pass
+    elif isinstance(classifier, ExtraTreesClassifier):
+        pass
+    elif isinstance(classifier, AdaBoostClassifier):
+        pass
+    else:
+        raise IOError("Unsuported classifier type!")
 
 
 if __name__ == '__main__':

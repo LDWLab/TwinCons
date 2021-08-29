@@ -135,7 +135,7 @@ def main(commandline_arguments):
         csv_list = use_absolute_length_of_segments(csv_list)
 
     ###   Test data   ###
-    train_args, min_max_features = read_features(comm_args.pickle+".json")
+    train_args, min_max_features = read_features(comm_args.pickle.replace('.pkl','')+".json")
     classifier = cPickle.load(open(comm_args.pickle, 'rb'))
     normalizedData = normalize_features([[float(row[2]),float(row[3])] for row in csv_list], 
                                         min_max_features[0], 
