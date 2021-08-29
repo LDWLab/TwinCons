@@ -26,7 +26,7 @@ def create_and_parse_argument_options(argument_list):
                                     default=[2, 5, 10, 30, 60, 100], type=int)
     parser.add_argument('-ps', '--probability_step', help='Probability step used for ROC calculation when identifying significant segments.\
         \nMakes multiple evaluations of the data moving from 0 to 1 probabilities with the given step.Default (0.001)', default=0.001, type = float)
-    parser.add_argument('-mt','--model_type', help='Select the model of the classifier. List multiple for comparison. (Deafult: RandomForest)', 
+    parser.add_argument('-mt','--model_type', help='Select the model of the classifier. TODO: List multiple for comparison. (Deafult: RandomForest)', 
                         nargs='+', choices=['RandomForest','ExtraTrees', 'AdaBoost'], default=['RandomForest'])
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
@@ -111,7 +111,7 @@ def main(commandline_arguments):
                                                                             probStep)
         nEst_to_stats[numberEstimator] = (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr)
 
-    write_stats_csv(nEst_to_stats, np.arange(0, 1+probStep, probStep), comm_args.output_path+'.csv')
+    write_stats_csv(nEst_to_stats, np.arange(0, 1+2*probStep, probStep), comm_args.output_path+'.csv')
     
     fig, ax = plt.subplots()
     color_indexes = np.linspace(0, 1, len(n_estimators))
