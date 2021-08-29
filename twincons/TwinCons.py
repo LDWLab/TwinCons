@@ -66,8 +66,6 @@ def required_length(nmin,nmax):
             setattr(args, self.dest, values)
     return RequiredLength
 
-
-
 def deletefile(file_loc):
     '''Tries to delete provided file path.
     '''
@@ -617,7 +615,8 @@ def main(commandline_arguments):
         alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
     else:
         raise IOError("Unhandled combination of arguments!")
-
+    for x in alignIO_out_gapped:
+        x.seq = x.seq.replace('X','-')
     if comm_args.phylo_split:
         tree = tree_construct(alignIO_out_gapped)
         deepestanc_to_child = find_deepest_ancestors(tree)
