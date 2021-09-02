@@ -26,12 +26,12 @@ do
         #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/BBS/${g##*/}
         #         python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/BBS/${g##*/}
         #     done
-        # for f in /home/ppenev/twc_test_alns/rProt/*.fas
-        #     do 
-        #         g=${f%%.fas}
-        #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/rProt/${g##*/}
-        #         python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/rProt/${g##*/}
-        #     done
+        #for f in /home/ppenev/twc_test_alns/rProt/*.fas
+        #    do 
+        #        g=${f%%.fas}
+        #        echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/rProt/${g##*/}
+        #        python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/rProt/${g##*/}
+        #    done
         # for f in /home/ppenev/twc_test_alns/IND/*.fas
         #     do 
         #         g=${f%%.fas}
@@ -39,12 +39,12 @@ do
         #         python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/IND/${g##*/}
         #     done
         #for f in /home/ppenev/twc_test_alns/PRST/*.fas 
-        #     do 
-        #         g=${f%%.fas}
-        #         echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/PRST/${g##*/}
-        #         python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param  -csv -o $twc_dir/PRST/${g##*/}
-        #     done
-        #echo "Done TWC params "$twc_param
+        #    do 
+        #        g=${f%%.fas}
+        #        echo ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param -csv -o $twc_dir/PRST/${g##*/}
+        #        python3 -W ignore ./twincons/TwinCons.py -a $f -cg -gt $gap_cut $mx_param $bn_param  -csv -o $twc_dir/PRST/${g##*/}
+        #    done
+        echo "Done TWC params "$twc_param
         for type in old cms 
         do 
             for window in $(seq 3 2 11) 
@@ -107,22 +107,22 @@ do
                         
 
 
-                        #echo ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
-                        #python3 -W ignore ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
+                        # echo ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
+                        # python3 -W ignore ./twincons/twcSVMtrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -ts $ts -l $avew
 
-                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # echo ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
-                        #echo ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # echo ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
-                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # echo ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                         
-                        #echo ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
-                        #python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # echo ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
+                        # python3 -W ignore ./twincons/twcSVMtest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST} -tcp -ts $ts -l $avew -dt -5 5 0.1
                     
-                        #echo "Done training params "$train_param
+                        # echo "Done training params "$train_param
                     done
                 done
 
@@ -130,8 +130,8 @@ do
                 #echo ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
                 #python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir} ${train_dir} -mt AdaBoost RandomForest DecisionTree ExtraTrees
                 
-                echo ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
-                python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                #echo ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
+                #python3 -W ignore ./twincons/twcTreesTrain.py ${segment_dir/BBS/PRST} ${train_dir/BBS/PRST} -mt AdaBoost RandomForest DecisionTree ExtraTrees
                 for ensembleType in AdaBoost RandomForest DecisionTree ExtraTrees
                 do
                     allparam=${twc_param}__${segment_param}__${ensembleType}
@@ -145,20 +145,20 @@ do
                     # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp 
                     # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}BBSvIND/BBSvIND_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
                     
-                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
-                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
+                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}BBSvPRST/BBSvPRST_${allparam}.csv ${train_dir}_${ensembleType}.pkl -tcp
                     
                     #echo ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
                     #python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/PRST} ${outstat_dir}PRSTvPRST/PRSTvPRST_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
                     
-                    echo ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # echo ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir} ${outstat_dir}PRSTvBBS/PRSTvBBS_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
                     
-                    echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/IND} ${outstat_dir}PRSTvIND/PRSTvIND_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
                     
-                    echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
-                    python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # echo ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
+                    # python3 -W ignore ./twincons/twcTreesTest.py ${segment_dir/BBS/rProt} ${outstat_dir}PRSTvrProt/PRSTvrProt_${allparam}.csv ${train_dir/BBS/PRST}_${ensembleType}.pkl -tcp
                 
                     echo "Done testing params "$allparam
                 done

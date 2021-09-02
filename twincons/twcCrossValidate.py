@@ -79,7 +79,8 @@ def cv_by_alns(aln_names, num_of_splits):
 def predict_test_set(classifier, test_segment):
     segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
     segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
-    return segment_pred, segment_dist
+    segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))[0][1]
+    return segment_pred, segment_dist, segment_prob
 
 def load_data(csv_location, top_segments=1, abs_length=False):
     csv_list = csv_iterator(csv_location)
@@ -107,7 +108,7 @@ def calc_stats_by_folds(aln_names, number_folds, X, y, sample_weight, penalty, g
 
         for segment, aln_ind in zip(X_test, test_ind):
             test_segment = np.array([float(segment[0])/float(maxX),float(segment[1])/float(maxY)])
-            segment_pred, segment_dist = predict_test_set(classifier, test_segment)
+            segment_pred, segment_dist, segment_prob = predict_test_set(classifier, test_segment)
             if aln_names[aln_ind] not in segment_pred_dist.keys():
                 segment_pred_dist[aln_names[aln_ind]] = list()
             segment_pred_dist[aln_names[aln_ind]].append(['',(segment_pred, segment_dist,'')])
