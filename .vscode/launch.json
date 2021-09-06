@@ -335,9 +335,9 @@
 			"program": "./twincons/twcCrossValidate.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/PRST-cumW7.csv",
-				"-o", "./ROC/crossval_out/PRST-cumW7_SVMROC_3folds_crossval",
-				"-p", "1", "2", "10", "-dt", "-20", "20", "0.1"
+				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW9_nn.csv",
+				"-o", "./ROC/crossval_cumulative/BBS-W9ts0p5_SVMROC_3folds_crossval",
+				"-dt", "-20", "20", "0.1"
 			]
 		},{
 			"name": "ROC 4by4 with new",
