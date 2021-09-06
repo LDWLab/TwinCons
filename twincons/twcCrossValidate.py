@@ -21,8 +21,10 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-abs', '--absolute_length', help='Use the segment absolute length as X coordinate. Does not weight segments.', 
                                     action="store_true", default=False)
     parser.add_argument('-nf', '--number_folds', help='Number of folds to split the training dataset into. (Default = 3)', type=int, default=3)
-    parser.add_argument('-p', '--penalties', nargs='+', help='List of penalty options to evaluate. (Default = 0.05, 0.1, 1, 2, 5, 10, 20, 50, 100',
+    parser.add_argument('-p', '--penalties', nargs='+', help='List of penalty options to evaluate. ON by default. (Default = 0.05, 0.1, 1, 2, 5, 10, 20, 50, 100)',
                                     default=[0.05, 0.1, 1, 2, 5, 10, 20, 50, 100], type=float)
+    parser.add_argument('-g', '--gamma', nargs='+', help='List of gamma values to evaluate. OFF by default, if passed arguments turns OFF the penalties.',
+                                    type=float)
     parser.add_argument('-dt', '--range_distances', nargs=3, metavar=('Start', 'Stop', 'Step'), 
                                     help='Range of distances from the decision boundary to evaluate.\
                                     \nDefault (-20, 20, 0.05).', default=[-20, 20, 0.05], type = float)
@@ -168,24 +170,38 @@ def main(commandline_arguments):
     start_dist, stop_dist, step_dist = comm_args.range_distances[0], comm_args.range_distances[1], comm_args.range_distances[2],
 
     penalty_to_stats = dict()
-    for var_penalty in penalties:
-        penalty, gamma, kernel = set_SVM_train_params(var_penalty, 'auto', 'rbf')
-        mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr = calc_stats_by_folds(aln_names, 
-                                                                            number_folds, 
-                                                                            X, y, sample_weight,
-                                                                            penalty, gamma, kernel,
-                                                                            start_dist, stop_dist, step_dist)
-        penalty_to_stats[var_penalty] = (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr)
+    if comm_args.gamma:
+        for var_gamma in comm_args.gamma:
+            penalty, gamma, kernel = set_SVM_train_params(1, var_gamma, 'rbf')
+            mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr = calc_stats_by_folds(aln_names, 
+                                                                                number_folds, 
+                                                                                X, y, sample_weight,
+                                                                                penalty, gamma, kernel,
+                                                                                start_dist, stop_dist, step_dist)
+            penalty_to_stats[var_gamma] = (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr)
+    else:
+        for var_penalty in penalties:
+            penalty, gamma, kernel = set_SVM_train_params(var_penalty, 'auto', 'rbf')
+            mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr = calc_stats_by_folds(aln_names, 
+                                                                                number_folds, 
+                                                                                X, y, sample_weight,
+                                                                                penalty, gamma, kernel,
+                                                                                start_dist, stop_dist, step_dist)
+            penalty_to_stats[var_penalty] = (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr)
 
     write_stats_csv(penalty_to_stats, np.arange(start_dist, stop_dist, step_dist), comm_args.output_path+'.csv')
     
     fig, ax = plt.subplots()
     color_indexes = np.linspace(0, 1, len(penalties))
-    
+    if comm_args.gamma:
+        color_indexes = np.linspace(0, 1, len(comm_args.gamma))
     for i, (penalty, stats) in enumerate(penalty_to_stats.items()):
+        label = f'Penalty: {penalty}'
+        if comm_args.gamma:
+            label = f'Gamma: {penalty}'
         (mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr) = stats
         plot_roc_curve(ax, mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr,
-                         label = f'Penalty: {penalty}', 
+                         label = label, 
                          color = color_indexes[i])
 
     ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],

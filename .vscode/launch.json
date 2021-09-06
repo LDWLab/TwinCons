@@ -336,8 +336,8 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW9_nn.csv",
-				"-o", "./ROC/crossval_cumulative/BBS-W9ts0p5_SVMROC_3folds_crossval",
-				"-dt", "-20", "20", "0.1"
+				"-o", "./ROC/crossval_cumulative/BBS-W9ts0p5_SVMROC_3folds_crossvalg",
+				"-g","0.1", "0.2", "0.5", "1"
 			]
 		},{
 			"name": "ROC 4by4 with new",
