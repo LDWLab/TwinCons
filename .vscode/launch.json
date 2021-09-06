@@ -347,7 +347,7 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/test_twc_parameters/out_stats_ensemble/BBSvrProt/",
-				"./data/outputs/SVG/BBS-rProt_Ensemble.svg",
+				"./data/outputs/SVG/BBS-rProt_Trees.pdf",
 				""
 			]
 		},{
