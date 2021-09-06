@@ -157,7 +157,7 @@ def test_function(csv_list, classifier, min_max_features):
         test_segment = np.array([(float(entry[2])-minX)/(maxX-minX),(float(entry[3])-minY)/(maxY-minY)])
         segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
         if isinstance(classifier, CalibratedClassifierCV):
-            segment_dist = classifier.predict_proba(test_segment.reshape(1,-1))[0][1]
+            segment_dist = classifier.base_estimator.decision_function(test_segment.reshape(1,-1))[0]
         else:
             segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
         segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))
