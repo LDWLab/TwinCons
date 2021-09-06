@@ -163,7 +163,7 @@ def test_function(csv_list, classifier, min_max_features):
         segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))
         if str(entry[0]) not in segment_pred_dist.keys():
             segment_pred_dist[str(entry[0])] = []
-        segment_pred_dist[str(entry[0])].append([entry[4],(segment_pred,segment_dist,entry[1])])
+        segment_pred_dist[str(entry[0])].append([entry[4],(segment_pred,segment_dist,entry[1], segment_prob[0][1])])
     return segment_pred_dist
 
 def flatten_alignment_segment_stats_to_groups(segment_pred_dist, by_group=False):
@@ -235,12 +235,12 @@ def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eva
 
 def draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels, clean=False):
 
-    vir_cmap = plt.cm.get_cmap('viridis')
+    curr_cmap = plt.cm.get_cmap('PRGn').copy()
     # Specifies under and over values to first and last color of the colormap
-    vir_cmap.set_under(vir_cmap(0))
-    vir_cmap.set_over(vir_cmap(1))
+    curr_cmap.set_under(curr_cmap(0))
+    curr_cmap.set_over(curr_cmap(1))
     CS1 = axis.contourf(xx, yy, Z, sorted(decision_levels.keys()), 
-                        colors=vir_cmap(np.linspace(0, 1, len(decision_levels))),
+                        colors=curr_cmap(np.linspace(0, 1, len(decision_levels))),
                         extend='both')
     cbar = fig.colorbar(CS1, ticks=sorted(decision_levels.keys()))
     
@@ -342,7 +342,7 @@ def read_features(features_path):
 def write_aln_rows(segments, csv_writer, aln):
     for segment in segments:
         if segment[1][0] != 0:
-            csv_writer.writerow([aln, segment[1][1], segment[0], math.exp(segment[1][1]*segment[1][2]*-1)])
+            csv_writer.writerow([aln, segment[1][1], segment[0], segment[1][3]])
     return True
 
 def main(commandline_arguments):
@@ -399,7 +399,7 @@ def main(commandline_arguments):
                 i+=1
         with open(comm_args.output_path, mode ="w") as output_csv:
             csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
+            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'Probability'])
             for aln, segments in segment_pred_dist.items():
                 segment_id = compare_thr(float(comm_args.range_distance_thresholds[1]), segments)
                 alnid_with_evalue.append((aln, segment_id[1], i, max(segments, key = itemgetter(1))[1][1] ))
@@ -410,6 +410,8 @@ def main(commandline_arguments):
     ###   Plot the classifier   ###
     if comm_args.plot_df:
         plot_title = re.sub('.csv','',str(re.sub(r'.*/','',comm_args.csv_path))).replace("_", " ")
+        letters = [x[0][:1] for x in csv_list]
+        reorderedList = csv_list[letters.index("C"):]+csv_list[:letters.index("C")]
         X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list, min_max_features=min_max_features)
         fig, axes = plt.subplots(1, 1, )
         if comm_args.test_classifier_precision:
