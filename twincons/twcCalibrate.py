@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sklearn.calibration import CalibratedClassifierCV
 from twincons.twcSVMtrain import train_classifier
-from twincons.twcSVMtest import load_csv_data, csv_iterator
+from twincons.twcSVMtest import load_csv_data, csv_iterator, trim_data_by_top_segments
 from twincons.twcCrossValidate import make_idx
 import pickle as cPickle
 
@@ -18,6 +18,8 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('csv_path', help='Path to csv file with segment data for training and calibration', type=str)
     parser.add_argument('pickle', help='Path to output trained and calibrated classifer', type=str)
     parser.add_argument('-p',"--penalty", help='Penalty to train the classifier. Default: 1', type=float, default=1)
+    parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
+        \nthis percentage of the total normalized length and weight. (Default = 0.5)', type=float, default=0.5)
 
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
@@ -60,7 +62,9 @@ def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
     #if comm_args.output_path == None:
     #    comm_args.output_path = comm_args.csv_path.replace('.csv', '')+'_calibrate'
-    X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_iterator(comm_args.csv_path))
+    csv_list = csv_iterator(comm_args.csv_path)
+    csv_list = trim_data_by_top_segments(csv_list, comm_args.top_segments)
+    X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list)
 
     train_ind_alns, validate_ind_alns, test_ind_alns = make_idx(aln_names, 3)
     train_ind = [item for sublist in train_ind_alns for item in sublist]
