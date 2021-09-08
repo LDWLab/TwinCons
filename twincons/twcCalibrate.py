@@ -42,17 +42,17 @@ def calibrate(clf, X_test, y_test, X_valid, y_valid, weights_test):
     sig_clf_probs = calClassifierSig.predict_proba(X_test)
     sig_score = log_loss(y_test, iso_clf_probs)
 
-    print("Log loss scores: (the smaller the better)")
-    print("With isotonic calibration: %1.3f" % iso_score)
-    print("With sigmoid calibration: %1.3f" % sig_score)
+    #print("Log loss scores: (the smaller the better)")
+    #print("With isotonic calibration: %1.3f" % iso_score)
+    #print("With sigmoid calibration: %1.3f" % sig_score)
 
-    print("Brier scores: (the smaller the better)")
-    clf_score = brier_score_loss(y_test, prob_pos_clf, sample_weight=weights_test)
-    print("No calibration: %1.3f" % clf_score)
-    clf_isotonic_score = brier_score_loss(y_test, iso_clf_probs[:, 1], sample_weight=weights_test)
-    print("With isotonic calibration: %1.3f" % clf_isotonic_score)
-    clf_sigmoid_score = brier_score_loss(y_test, sig_clf_probs[:, 1], sample_weight=weights_test)
-    print("With sigmoid calibration: %1.3f" % clf_sigmoid_score)
+    #print("Brier scores: (the smaller the better)")
+    #clf_score = brier_score_loss(y_test, prob_pos_clf, sample_weight=weights_test)
+    #print("No calibration: %1.3f" % clf_score)
+    #clf_isotonic_score = brier_score_loss(y_test, iso_clf_probs[:, 1], sample_weight=weights_test)
+    #print("With isotonic calibration: %1.3f" % clf_isotonic_score)
+    #clf_sigmoid_score = brier_score_loss(y_test, sig_clf_probs[:, 1], sample_weight=weights_test)
+    #print("With sigmoid calibration: %1.3f" % clf_sigmoid_score)
 
     if iso_score > sig_score:
         return calClassifierSig
