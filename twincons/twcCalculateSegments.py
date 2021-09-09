@@ -202,7 +202,7 @@ def identifySegmentsWithCumulativeSmoothScore(score_list, smoothWindow=7, polyor
     Identifies local score minima and maxima, using a window and polyorder for smoothing.'''
     cumScore, cumScoreSum, alnPositions = list(), list(), dict()
     cumScorePlot, cumScoreSumPlot, outSegments = list(), list(), list()
-    score_list = penalizeMissingPositions(score_list, dict(score_list))
+    #score_list = penalizeMissingPositions(score_list, dict(score_list))
     score_dict = dict(score_list)
     for index in range(1,int(score_list[-1][0])+1):
         if str(index) in score_dict.keys():
@@ -220,6 +220,8 @@ def identifySegmentsWithCumulativeSmoothScore(score_list, smoothWindow=7, polyor
     highs = argrelextrema(smoothCumScoreSum, np.greater)[0].tolist()
     if len(lows) == 0:
         lows.append(0)
+    if len(highs) == 0:
+        highs.append(len(cumScoreSum)-1)
     if lows[0] > highs[0]:
         lows.insert(0, 0)
     if highs[-1] < lows[-1]:
