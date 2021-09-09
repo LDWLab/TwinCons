@@ -293,13 +293,15 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     else:
         import seaborn as sns
         from operator import itemgetter
+        colors = [plt.cm.tab20.colors,plt.cm.tab20b.colors]
+        flattenedColors = [item for sublist in colors for item in sublist]
         dummy_levels = dict()
         for thr in np.arange(float(thresholds[0]),float(thresholds[1])+float(thresholds[2]),float(thresholds[2])):
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
         scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
-                palette="tab20", edgecolor=edgecolor, s=abs_length)
+                palette=flattenedColors[:len(set(aln_names))], edgecolor=edgecolor, s=abs_length)
 
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
@@ -329,8 +331,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     # legend2 = axis.legend(handles, size_labels, loc="lower right", title="Segment length")
     
     
-    plt.xlim(0, math.ceil(max(X[:, 0])))
-    plt.ylim(0, math.ceil(max(X[:, 1])))
+    plt.xlim(0, 1.75)
+    plt.ylim(0, 1.5)
     axis.set_title(title)
     return True
 
