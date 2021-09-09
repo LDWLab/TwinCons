@@ -227,9 +227,10 @@ def subs_matrix_bgFreq(matrix):
 def struc_anno_matrices (struc_anno, baselineType):
     '''Returns a log odds matrix from a given name of a PAML type matrix'''
     mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/'+struc_anno+'.dat')
+    behosMX = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/BEHOS.dat')
     if baselineType == 'uniform':
         return baseline_matrix(np.array(mx.lodd))
-    return baseline_matrix(np.array(mx.lodd), mx.getPiFreqs)
+    return baseline_matrix(np.array(mx.lodd), behosMX.getPiFreqs)
 
 def baseline_matrix(mx, testFrequency=None):
     if testFrequency is None:
