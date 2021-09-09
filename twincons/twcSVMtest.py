@@ -194,8 +194,8 @@ def compare_thr(thr, segments, eval=False):
     negative, positive = 0, 0
     for i in segments:
         if eval:
-            positive += (math.exp(i[1][1]*i[1][2]*-1) < thr)
-            negative += (math.exp(i[1][1]*i[1][2]*-1) >= thr)
+            positive += (i[1][3] < thr)
+            negative += (i[1][3] >= thr)
         else:
             positive += (i[1][1] > thr)
             negative += (i[1][1] <= thr)
@@ -373,15 +373,18 @@ def main(commandline_arguments):
     segment_pred_dist = test_function(csv_list, classifier, min_max_features)
 
     if comm_args.test_classifier_precision:
-        dist_to_se_sp_pr = mass_test(segment_pred_dist,
-            min_threshold=float(comm_args.range_distance_thresholds[0]), 
-            max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
-            step=float(comm_args.range_distance_thresholds[2]), eval=comm_args.evalue_threshold)
+        if isinstance(classifier, CalibratedClassifierCV):
+            dist_to_se_sp_pr = mass_test(segment_pred_dist, min_threshold=0, max_threshold=1.02, step=0.01, eval=True)
+        else:
+            dist_to_se_sp_pr = mass_test(segment_pred_dist,
+                min_threshold=float(comm_args.range_distance_thresholds[0]), 
+                max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
+                step=float(comm_args.range_distance_thresholds[2]), eval=comm_args.evalue_threshold)
         levels_labels_csv = [dist_to_se_sp_pr[thr] for thr in sorted(dist_to_se_sp_pr.keys())]
         roc_stats = [(thr,lev) for lev,thr in zip(levels_labels_csv, sorted(dist_to_se_sp_pr.keys()))]
         with open(comm_args.output_path, mode ="w") as output_csv:
             csv_writer = csv.writer(output_csv)
-            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'E-value'])
+            csv_writer.writerow(['Alignment name', 'Distance from boundary', 'Alignment position', 'Probability'])
             for aln, segments in segment_pred_dist.items():
                 write_aln_rows(segments, csv_writer, aln)
             csv_writer.writerow(['ROC stats'])
