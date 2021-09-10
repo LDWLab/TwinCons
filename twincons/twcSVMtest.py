@@ -331,8 +331,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     # legend2 = axis.legend(handles, size_labels, loc="lower right", title="Segment length")
     
     
-    plt.xlim(0, 1.75)
-    plt.ylim(0, 1.5)
+    plt.xlim(0, math.ceil(max(X[:, 0])))
+    plt.ylim(0, math.ceil(max(X[:, 1])))
     axis.set_title(title)
     return True
 
