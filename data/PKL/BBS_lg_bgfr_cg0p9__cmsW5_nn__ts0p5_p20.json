@@ -1,0 +1,18 @@
+[
+    {
+        "maxX": 0.22549019607843138,
+        "maxY": 81.48794974079479,
+        "minX": 0.0022624434389140274,
+        "minY": 4.624011153013447
+    },
+    [
+        "./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW5_nn.csv",
+        "./data/PKL/BBS_lg_bgfr_cg0p9__cmsW5_nn__ts0p5_p20.pkl",
+        "-pd",
+        "./data/outputs/SVM/BBS_lg_bgfr_cg0p9__cmsW5_nn__ts0p5_p20.png",
+        "-ts",
+        "0.5",
+        "-tp",
+        "20"
+    ]
+]

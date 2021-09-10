@@ -127,17 +127,17 @@
 			]
 		},
 		{
-			"name": "QuerySet cg09 cmsW3",
+			"name": "QuerySet cg09 cmsW9",
 			"type": "python",
 			"request": "launch",
 			"program": "./twincons/twcCalculateSegments.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"/mnt/d/Score-test_data/query_set/",
-				"./data/CSV/QS_cg09_LG-bgfr_cmsW3.csv",
+				"/mnt/d/Score-test_data/QS_clean/",
+				"./data/CSV/QS_cg09_LG-bgfr_cmsW9_fixGap.csv",
 				"-c",
-				"-cms", "3",
+				"-cms", "9",
 				"-co",
 				"gt_0.9",
 				"cg",
@@ -227,12 +227,12 @@
 			"program": "./twincons/twcSVMtrain.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW9_nn.csv",
-				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p5.pkl",
+				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW5_nn.csv",
+				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW5_nn__ts0p5_p20.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p5.png",
+				"./data/outputs/SVM/BBS_lg_bgfr_cg0p9__cmsW5_nn__ts0p5_p20.png",
 				"-ts", "0.5",
-				"-tp", "5",
+				"-tp", "20",
 			]
 		},
 		{
@@ -249,7 +249,7 @@
 				"./data/outputs/SVM/BBSvsQS-W9p20ts0p5.svg",
 				"-ts", "0.5",
 				"-tqa",
-				"-dt", "-0.5", "0.5", "0.1"
+				"-dt", "-1", "1", "0.2"
 			]
 		},
 		{
@@ -356,8 +356,8 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW9_nn.csv",
-				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p20_cal.pkl",
-				"-p","20"
+				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts1_p20_cal.pkl",
+				"-p","20", "-ts", "1"
 			]
 		},
 	]
