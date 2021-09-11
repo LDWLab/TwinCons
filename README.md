@@ -39,7 +39,7 @@ SEQNAME3_GROUP2.pdb
 Typical usage:
 ```
 TwinCons.py -a ./data/ALNS/test_aln.fa -mx blosum62 -csv -o ./test_aln
-TwinCons.py -a ./data/ALNS/test_aln.fa -ssbe -s ./data/PDB/seq1_group1.pdb ./data/PDB/seq2_group2.pdb -sy ./data/PDB/seq1_group1.pdb ./data/PDB/seq2_group2.pdb -pml windows -o ./test_aln
+TwinCons.py -a ./data/ALNS/casp9-mcasp_struct.fa -pml unix -s ./data/PDB/HUMAN_CASP9.pdb ./data/PDB/YEAST_MCASP.pdb -ssbe -sy ./data/PDB/HUMAN_CASP9.pdb ./data/PDB/YEAST_MCASP.pdb -o ./twc_ssbe_HS-CASP9_SC-MCASP
 ```
 
 2. Output files
@@ -51,27 +51,24 @@ TwinCons.py -a ./data/ALNS/test_aln.fa -ssbe -s ./data/PDB/seq1_group1.pdb ./dat
 
 Usage:
 ```
-TwinCons.py [-h] [-o OUTPUT_PATH]
-                   (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] | -as ALIGNMENT_STRING)
-                   [-cg] [-gg] [-gt GAP_THRESHOLD]
-                   [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]]
-                   [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]] [-phy] [-nc]
-                   [-w {pairwise,voronoi}]
-                   (-p | -pml {unix,windows} | -r | -csv | -rv | -jv)
-                   [-mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,feng,fitch,genetic,gonnet,grant,ident,johnson,levin,mclach,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,rao,risler,structure,blastn,identity,trans} | -lg | -e | -rs]
+TwinCons.py [-h] [-o OUTPUT_PATH] (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] | -as ALIGNMENT_STRING) [-bn {uniform,bgfreq}] [-cg] [-gg] [-gt GAP_THRESHOLD] [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]] [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]]
+                   [-phy] [-nc] [-w {pairwise,voronoi}] [-ca] (-p | -pml {unix,windows} | -r | -csv | -rv | -jv)
+                   [-mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans} | -cm CUSTOM_MATRIX | -lg | -e | -rs]
                    [-ss | -be | -ssbe]
 
 Calculate and visualize conservation between two groups of sequences from one alignment
 
-Required arguments:
+optional arguments:
+  -h, --help            show this help message and exit
   -o OUTPUT_PATH, --output_path OUTPUT_PATH
                         Output path
   -a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...], --alignment_paths ALIGNMENT_PATHS [ALIGNMENT_PATHS ...]
                         Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.
   -as ALIGNMENT_STRING, --alignment_string ALIGNMENT_STRING
                         Alignment string
-Optional arguments:
-  -h, --help            show this help message and exit
+  -bn {uniform,bgfreq}, --baseline {uniform,bgfreq}
+                        Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.
+                                (Default: bgfreq)
   -cg, --cut_gaps       Remove alignment positions with % gaps greater than the specified value with gap_threshold.
   -gg, --calculate_group_gaps
                         Calculate alignment position gaps in 3 groups using 2*gap threshold value:
@@ -88,17 +85,24 @@ Optional arguments:
   -nc, --nucleotide     Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs
   -w {pairwise,voronoi}, --weigh_sequences {pairwise,voronoi}
                         Weigh sequences within each alignment group.
+  -ca, --compositional_adjustment
+                        Adjust the substitution matrix with residue frequencies computed from the two alignment groups.
+                         Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.
   -p, --plotit          Plots the calculated score as a bar graph for each alignment position.
   -pml {unix,windows}, --write_pml_script {unix,windows}
                         Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.
   -r, --return_within   To be used from within other python programs. Returns dictionary of alnpos->score.
   -csv, --return_csv    Saves a csv with alignment position -> score.
   -rv, --ribovision     Saves a csv formatted for RiboVision. Requires at least one structure defined with the -sy argument.
-  -jv, --jalview_output Saves an annotation file for Jalview.
-  -mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,feng,fitch,genetic,gonnet,grant,ident,johnson,levin,mclach,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,rao,risler,structure,blastn,identity,trans} | -lg | -e | -rs, --substitution_matrix {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,feng,fitch,genetic,gonnet,grant,ident,johnson,levin,mclach,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,rao,risler,structure,blastn,identity,trans} | -lg | -e | -rs
+  -jv, --jalview_output
+                        Saves an annotation file for Jalview.
+  -mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans}, --substitution_matrix {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans}
                         Choose a substitution matrix for score calculation.
+  -cm CUSTOM_MATRIX, --custom_matrix CUSTOM_MATRIX
+                        Provide path to a custom PAML format matrix. For example format see the matrices folder.
   -lg, --leegascuel     Use LG matrix for score calculation
-  -e, --shannon_entropy Use shannon entropy for conservation calculation.
+  -e, --shannon_entropy
+                        Use shannon entropy for conservation calculation.
   -rs, --reflected_shannon
                         Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.
   -ss, --secondary_structure
@@ -120,15 +124,11 @@ It does support the options: **-gt**, **-cg**, **-phy**, [**-lg**, **-bl**, **-e
 
 Typical usage:
 ```
-CalculateSegments.py ./folder_with_alignments/ ./output_file -c -t 1 -co cg gt_0.9 phy bl
+twcCalculateSegments.py ./folder_with_alignments/ ./output_file -c -cms 9 -co cg gt_0.9 phy bl
 ```
 Usage:
 ```
-CalculateSegments.py [-h] (-a ALIGNMENT_PATH | -twc TWINCONS_PATH)
-                            [-t LENGTH_THRESHOLD] [-it INTENSITY_THRESHOLD]
-                            [-avew] [-np] [-c] [-p] [-l]
-                            [-co CALCULATION_OPTIONS [CALCULATION_OPTIONS ...]]
-                            output_path
+twcCalculateSegments.py [-h] (-a ALIGNMENT_PATH | -twc TWINCONS_PATH) [-t LENGTH_THRESHOLD] [-it INTENSITY_THRESHOLD] [-cms CUMULATIVE_SEGMENTS] [-avew] [-np] [-c] [-p] [-l] [-co CALCULATION_OPTIONS [CALCULATION_OPTIONS ...]] output_path
 
 Calculates segments for multiple or single alignments
 
@@ -147,6 +147,9 @@ optional arguments:
   -it INTENSITY_THRESHOLD, --intensity_threshold INTENSITY_THRESHOLD
                         Threshold for intensity over which a score is considered truly positive.                                                
                         Default: 1
+  -cms CUMULATIVE_SEGMENTS, --cumulative_segments CUMULATIVE_SEGMENTS
+                        Delineate segments based on cumulative score and local minima/maxima, instead of specific thresholds.                                                
+                        Argument should provide window size for smoothing of the cumulative score.
   -avew, --average_weight
                         Use average weight for segments, instead of using their total weight.
   -np, --treat_highly_negative_as_conserved
