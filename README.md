@@ -173,14 +173,87 @@ Sample output:
 
 Must include parameters used in TwinCons and CalculateSegments. Use the same format as -co from Calculate segments. For example:
 
-	SVM_Train.py output.csv output.pkl -pd "output.png -ts 1 -tp 1 -twca mx_blosum62 gt_0.9 cg -csa lt_3 it_2
+	twcSVMtrain.py output.csv output.pkl -pd output.png -ts 1 -tp 1 -twca mx_blosum62 gt_0.9 cg -csa lt_3 it_2
 
-No need to specify if defaults where used.
+Usage:
+```
+twcSVMtrain.py [-h] [-twca TWINCONS_ARGS [TWINCONS_ARGS ...]] [-csa CALCSEGM_ARGS [CALCSEGM_ARGS ...]] [-pd PLOT_DF] [-tp PENALTY] [-k {linear,poly,rbf,sigmoid,precomputed}] [-g {auto,scale}]
+                      [-l {absolute,normalized,cms}] [-ts TOP_SEGMENTS]
+                      csv_path output_path
+
+Generate SVM from alignment segments.
+Computes a decision function from csv generated with twcCalculateSegments
+
+positional arguments:
+  csv_path              Path to csv file storing alignment segment data
+  output_path           Output path
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -twca TWINCONS_ARGS [TWINCONS_ARGS ...], --twincons_args TWINCONS_ARGS [TWINCONS_ARGS ...]
+                        Arguments used with TwinCons.
+  -csa CALCSEGM_ARGS [CALCSEGM_ARGS ...], --calcsegm_args CALCSEGM_ARGS [CALCSEGM_ARGS ...]
+                        Arguments used with twcCalculateSegments.
+  -pd PLOT_DF, --plot_df PLOT_DF
+                        Path to output plot for the decision function.
+  -tp PENALTY, --penalty PENALTY
+                        Penalty for training algorithm. (Default = 1)
+  -k {linear,poly,rbf,sigmoid,precomputed}, --kernel {linear,poly,rbf,sigmoid,precomputed}
+                        Kernel for the training algorithm
+  -g {auto,scale}, --gamma {auto,scale}
+                        Gamma function for training algorithm
+  -l {absolute,normalized,cms}, --length_type_calculation {absolute,normalized,cms}
+                        Choose what type of segment calculation should be used.        
+                                 absolute:   absolute length of the segments.        
+                                 normalized: length of segments is normalized with the total alignment length.        
+                                 cms:        average position (center of mass) from all segments per alignment.
+  -ts TOP_SEGMENTS, --top_segments TOP_SEGMENTS
+                        Limit input for each alignment to the top segments that cover        
+                        this percentage of the total normalized length and weight. (Default = 0.5)
+```
 
 Example output of BaliBASE decision boundary:
 <img src="./data/outputs/SVM/BBS.png">
 
 ## Testing a classifier
+Usage:
+```
+twcSVMtest.py [-h] [-pd PLOT_DF] [-ts TOP_SEGMENTS] [-l {absolute,normalized,cms}] (-tcp | -tqa) [-dt Start End Step] csv_path output_path pickle
+
+Evaluates alignment entries in csv generated from twcCalculateSegments.
+Requires a decision function and json features generated from SVM_train.
+Train and test only with the same parameters!
+Such parameters can be % cutting gaps, center mass segments, top segments.
+
+positional arguments:
+  csv_path              Path to csv file storing alignment segment data
+  output_path           Path to output significant segment results
+  pickle                Provide path to classifier pickle binary file. The script will also search for an identically                                    
+                        named file with extension ".json" containing parameters used for training the classifier, for example:                                    
+                        pickle file:    random_test.pkl                                    
+                        maximal values: random_test.pkl.maxvals
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -pd PLOT_DF, --plot_df PLOT_DF
+                        Path to output plot for the decision function.
+  -ts TOP_SEGMENTS, --top_segments TOP_SEGMENTS
+                        Limit input for each alignment to the top segments that cover                                    
+                         this percentage of the total normalized length and weight. (Default = 0.5)
+  -l {absolute,normalized,cms}, --length_type_calculation {absolute,normalized,cms}
+                        Choose what type of segment calculation should be used.        
+                                 absolute:   absolute length of the segments.        
+                                 normalized: length of segments is normalized with the total alignment length.        
+                                 cms:        average position (center of mass) from all segments per alignment.
+  -tcp, --test_classifier_precision
+                        Provided csv is annotated for testing the classifier.
+  -tqa, --test_query_alignments
+                        Provided csv is a query and is not annotated for testing the classifier.
+  -dt Start End Step, --range_distance_thresholds Start End Step
+                        Range of distances from the decision boundary to evaluate.                                    
+                        Default for non evalue (-20, 20, 0.05).
+```
+
 
 ### Average distance
 In the case of large segments there will be few segments and they will be far away from the boundary => cost nearing 0. In the case of many small segments their distance to the boundary will be accumulated resulting in big negative number (larger than any segment can attain on it's own) => cost nearing infinity.
