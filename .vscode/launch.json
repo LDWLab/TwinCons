@@ -64,13 +64,12 @@
 				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
 				"-pml",
 				"windows",
-				"-mx",
-				"blosum62",
+				"-lg",
 				"-sy",
 				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
 				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
 				"-o",
-				"~/Desktop/bS1test", "-ca"
+				"~/Desktop/bS1test"
 			]
 		},{
 			"name": "Custom TWC bS1",
