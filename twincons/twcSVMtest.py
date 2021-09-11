@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Evaluates alignment entries in csv generated from twcCalculateSegments.
-Requires a decision function and max features generated from SVM_train.
+Requires a decision function and json features generated from SVM_train.
 Train and test only with the same parameters!
 Such parameters can be % cutting gaps, center mass segments, top segments.
 """
@@ -19,12 +19,10 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('csv_path', help='Path to csv file storing alignment segment data', type=str)
     parser.add_argument('output_path', help='Path to output significant segment results', type=str)
     parser.add_argument('pickle',help='Provide path to classifier pickle binary file. The script will also search for an identically\
-                                    \nnamed file with extension ".maxvals" containing comma separated maximal values, for example:\
+                                    \nnamed file with extension ".json" containing parameters used for training the classifier, for example:\
                                     \npickle file:\trandom_test.pkl\
                                     \nmaximal values:\trandom_test.pkl.maxvals', type=str)
     parser.add_argument('-pd','--plot_df', help='Path to output plot for the decision function.', type=str)
-    parser.add_argument('-et','--evalue_threshold', help='Use confidence calculation for segment determination. Uses the range distance thresholds Start.',
-                                                                            action="store_true")
     parser.add_argument('-ts','--top_segments', help='Limit input for each alignment to the top segments that cover\
                                     \n this percentage of the total normalized length and weight. (Default = 0.5)', 
                                                                                             type=float, default=0.5)
@@ -36,9 +34,8 @@ def create_and_parse_argument_options(argument_list):
     calculate_positive.add_argument('-tcp','--test_classifier_precision', help='Provided csv is annotated for testing the classifier.', action="store_true")
     calculate_positive.add_argument('-tqa','--test_query_alignments', help='Provided csv is a query and is not annotated for testing the classifier.', action="store_true")
     parser.add_argument('-dt', '--range_distance_thresholds', nargs=3, metavar=('Start', 'End', 'Step'), 
-                                    help='Range of distances from the decision boundary to evaluate. Also works with --evalue_threshold\
-                                    \nDefault for non evalue (-20, 20, 0.05).\
-                                    \nDefault for evalue distance (0, 1, 0.0001)', default=[-20, 20, 0.05], type = float)
+                                    help='Range of distances from the decision boundary to evaluate.\
+                                    \nDefault for non evalue (-20, 20, 0.05).', default=[-20, 20, 0.05], type = float)
     commandline_args = parser.parse_args(argument_list)
     return commandline_args, parser
 
@@ -331,8 +328,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     # legend2 = axis.legend(handles, size_labels, loc="lower right", title="Segment length")
     
     
-    plt.xlim(0, 1.75)
-    plt.ylim(0, 1.5)
+    plt.xlim(0, math.ceil(max(X[:, 0])))
+    plt.ylim(0, math.ceil(max(X[:, 1])))
     axis.set_title(title)
     return True
 
