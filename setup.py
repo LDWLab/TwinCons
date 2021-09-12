@@ -1,4 +1,5 @@
-from os import path
+from os import path, walk
+from glob import glob
 from setuptools import setup, find_packages, Extension
 this_directory = path.abspath(path.dirname(__file__))
 
@@ -19,7 +20,7 @@ with open(path.join(this_directory, 'requirements.txt'), encoding='utf-8') as f:
 
 setup(
     name='TwinCons',
-    version='0.5.3.dev0',
+    version='0.6.1.dev0',
     description='This projects provides several packages for analysis of MSAs comprised of two sequence groups.',
     long_description = long_description,
     long_description_content_type='text/markdown',
@@ -31,34 +32,25 @@ setup(
     install_requires=required,
     #ext_modules=extensions,
     data_files=[
-        ('matrices', [
-            './matrices/B.dat',
-            './matrices/BEHOS.dat',
-            './matrices/BH.dat',
-            './matrices/BO.dat',
-            './matrices/BS.dat',
-            './matrices/E.dat',
-            './matrices/EH.dat',
-            './matrices/EO.dat',
-            './matrices/ES.dat',
-            './matrices/H.dat',
-            './matrices/LG.dat',
-            './matrices/O.dat',
-            './matrices/S.dat',
-            './matrices/WAG.dat',
-        ]),
+        ('matrices', ['./matrices/LG.dat']),
+        ('matrices/BLOSUM', glob('./matrices/BLOSUM/*.out', recursive=True)),
+        ('matrices/structureDerived', glob('./matrices/structureDerived/*.dat', recursive=True)),
+        ('matrices/jp', glob('./matrices/jp/*.dat', recursive=True)),
         ('twcPKL', [
-            './data/PKL/BBS_cg09_it1_lt3.pkl',
-            './data/PKL/BBS_cg09_it1_lt3.pkl.json',
+            './data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p20.pkl',
+            './data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p20.json',
         ]),
     ],
     scripts = [
         './twincons/TwinCons.py',
         './twincons/twcCalculateSegments.py',
         './twincons/twcCrossValidate.py',
+        './twincons/twcCrossValidateTrees.py',
         './twincons/twcParseAlnDatabase.py',
         './twincons/twcSVMtest.py',
         './twincons/twcSVMtrain.py',
+        './twincons/twcTreesTrain.py',
+        './twincons/twcTreesTest.py',
         './twincons/twcWrapper.py',
     ],
     classifiers = [

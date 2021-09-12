@@ -14,7 +14,7 @@ from twincons.AlignmentGroup import AlignmentGroup
 from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
 from twincons.twcSupportFunctions import read_align, slice_by_name
 from twincons.MatrixLoad import PAMLmatrix
-import MatrixInfo
+from twincons import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
     subtitution_mx = MatrixInfo.available_matrices
