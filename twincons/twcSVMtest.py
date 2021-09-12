@@ -359,11 +359,6 @@ def main(commandline_arguments):
     if comm_args.length_type_calculation == 'absolute':
         csv_list = use_absolute_length_of_segments(csv_list)
 
-    if comm_args.evalue_threshold and (comm_args.range_distance_thresholds[0] == -20 or comm_args.range_distance_thresholds[1] == 20):
-        comm_args.range_distance_thresholds[0] = 0
-        comm_args.range_distance_thresholds[1] = 2
-        comm_args.range_distance_thresholds[2] = 0.01
-
     ###   Test data   ###
     train_args, min_max_features = read_features(comm_args.pickle.replace('.pkl','')+".json")
     classifier = cPickle.load(open(comm_args.pickle, 'rb'))
@@ -376,7 +371,7 @@ def main(commandline_arguments):
             dist_to_se_sp_pr = mass_test(segment_pred_dist,
                 min_threshold=float(comm_args.range_distance_thresholds[0]), 
                 max_threshold=float(comm_args.range_distance_thresholds[1])+float(comm_args.range_distance_thresholds[2]), 
-                step=float(comm_args.range_distance_thresholds[2]), eval=comm_args.evalue_threshold)
+                step=float(comm_args.range_distance_thresholds[2]), eval=False)
         levels_labels_csv = [dist_to_se_sp_pr[thr] for thr in sorted(dist_to_se_sp_pr.keys())]
         roc_stats = [(thr,lev) for lev,thr in zip(levels_labels_csv, sorted(dist_to_se_sp_pr.keys()))]
         with open(comm_args.output_path, mode ="w") as output_csv:
