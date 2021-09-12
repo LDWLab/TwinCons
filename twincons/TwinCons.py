@@ -418,7 +418,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
     #Bellow here needs fixing to properly do structures for plotting
     for alngroup_name in group_names:
         #Match groupnames with structure files
-        current_path = [s for s in comm_args.structure_pymol if alngroup_name in s]
+        current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
         
         if len(current_path) == 0:
             raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
@@ -477,7 +477,7 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
     group_names = list(gapped_sliced_alns.keys())
     for alngroup_name in group_names:
         #Match groupnames with structure files
-        current_path = [s for s in comm_args.structure_pymol if alngroup_name in s]
+        current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
         if len(current_path) == 0:
             raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
                and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
