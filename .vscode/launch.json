@@ -343,8 +343,8 @@
 			"program": "./ROC/plotROC_4by4.py",
 			"console": "integratedTerminal",
 			"args": [
-				"./data/test_twc_parameters/out_stats_ensemble/BBSvPRST/",
-				"./data/outputs/SVG/BBS-PRST_TreesTEMP.svg",
+				"./data/test_twc_parameters/out_stats_new/BBSvPRST/",
+				"./data/outputs/SVG/BBS-PRST_Cumulative.pdf",
 				""
 			]
 		},{
