@@ -72,23 +72,24 @@
 				"~/Desktop/bS1test"
 			]
 		},{
-			"name": "Custom TWC bS1",
+			"name": "Map uL2",
 			"type": "python",
 			"request": "launch",
 			"program": "./twincons/TwinCons.py",
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"~/Desktop/DATA/protein_results/bS1-RNAP7C/alns/bS01-RNAP7Ca.fa",
-				"-pml",
-				"windows",
-				"-cm",
-				"./matrices/LG.dat",
+				"/mnt/d/Score-test_data/QS_clean/aIF5-bEFTU.fa",
+				"-pml","unix",
+				"-s",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/ECOLI_EFTU.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/AERPE_aIF5.pdb",
+				"-ssbe",
 				"-sy",
-				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/PYRFU_RNAP7Ca.pdb",
-				"~/Desktop/DATA/protein_results/bS1-RNAP7C/struc/ECOLI_bS01_longer.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/ECOLI_EFTU.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/AERPE_aIF5.pdb",
 				"-o",
-				"~/Desktop/bS1test"
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/EFTU-aIF5"
 			]
 		},
 		{
@@ -259,10 +260,10 @@
 			"console": "integratedTerminal",
 			"args": [
 				"./data/CSV/cumulativeWindowTest/BBS_lg_bgfreq_cg0p9__cmsW9_nn.csv",
-				"./data/outputs/SVM/BBS-BBS-W9p5ts0p5.csv",
-				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p5.pkl",
+				"./data/outputs/SVM/BBS-BBS-W9p20ts0p5.csv",
+				"./data/PKL/BBS_lg_bgfr_cg0p9__cmsW9_nn__ts0p5_p20.pkl",
 				"-pd",
-				"./data/outputs/SVM/BBS_vs_BBS_W9p5ts0p5.svg",
+				"./data/outputs/SVM/BBS_vs_BBS_W9p20ts0p5.svg",
 				"-tcp",
 				"-dt",
 				"-1",
