@@ -18,7 +18,8 @@ from twincons import TwinCons, twcCalculateSegments, twcSVMtest, twcTreesTest
 
 classifiers = {
     'SVM-BBS-BL62':"twcPKL/BBS_cg09_it1_lt3.pkl",
-    'ExtraTrees-BBS-LG':"twcPKL/BBS_best_ExtraTrees.pkl"
+    'ExtraTrees-BBS-LG':"twcPKL/BBS_best_ExtraTrees.pkl",
+    'SVM-BBS-CumulativeW9-LG':"twcPKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts0p5_normalized.pkl"
     }
 
 def create_and_parse_argument_options(argument_list):

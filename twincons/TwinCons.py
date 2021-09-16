@@ -710,7 +710,10 @@ def main(commandline_arguments):
             csv_writer = csv.writer(output_csv, delimiter=',')
             csv_writer.writerow(["Alignment index", "Score", f"More than {comm_args.gap_threshold*100}% gaps"])
             for x in sorted(output_dict.keys(), key=abs):
-                csv_writer.writerow([x, output_dict[int(x)][0], output_dict[int(x)][1]])
+                outScore = output_dict[int(x)][0]
+                if output_dict[int(x)][1] == 'True':
+                    outScore = 0
+                csv_writer.writerow([x, outScore, output_dict[int(x)][1]])
     elif comm_args.ribovision:
         ribovision_output(output_dict_pml, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq)
     elif comm_args.jalview_output:

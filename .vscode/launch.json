@@ -79,17 +79,14 @@
 			"console": "integratedTerminal",
 			"args": [
 				"-a",
-				"/mnt/d/Score-test_data/QS_clean/aIF5-bEFTU.fa",
-				"-pml","unix",
-				"-s",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/ECOLI_EFTU.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/AERPE_aIF5.pdb",
-				"-ssbe",
+				"~/Desktop/uL33bpermBack.fa",
+				"-pml", "unix"
+				"-lg",
 				"-sy",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/ECOLI_EFTU.pdb",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/struc/AERPE_aIF5.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/uL33/ECOLI_bL33CP.pdb",
+				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/uL33/PYRFU_aL42.pdb",
 				"-o",
-				"~/Dropbox-Gatech/_2019_Petar_Methods-Score/DATA/protein_results/aIF5-bEFTU/EFTU-aIF5"
+				"~/Desktop/uL33_bpermBack"
 			]
 		},
 		{
