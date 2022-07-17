@@ -407,8 +407,8 @@ def main(commandline_arguments):
     ###   Plot the classifier   ###
     if comm_args.plot_df:
         plot_title = re.sub('.csv','',str(re.sub(r'.*/','',comm_args.csv_path))).replace("_", " ")
-        letters = [x[0][:1] for x in csv_list]
-        reorderedList = csv_list[letters.index("C"):]+csv_list[:letters.index("C")]
+        #letters = [x[0][:1] for x in csv_list]
+        #reorderedList = csv_list[letters.index("C"):]+csv_list[:letters.index("C")]
         X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list, min_max_features=min_max_features)
         fig, axes = plt.subplots(1, 1, )
         if comm_args.test_classifier_precision:
