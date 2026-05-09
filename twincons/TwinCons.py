@@ -79,7 +79,7 @@ def run_mafft(aln_paths):
     '''Tags separate alignments for TwinCons and merges them with mafft --merge.
     '''
     import warnings
-    tempfiles = ['./tempsubMSAtable', './tempconcatfasta.fas', './tempmergedfasta.fas']
+    tempfiles = ['./tempsubMSAtable', './tempconcatfasta.fas']
     for tempfile in tempfiles:
         if os.path.isfile(tempfile):
             warnings.warn(f"When using mafft for merging two alignments working directory must be free of file {tempfile}. Trying to delete the file.")
