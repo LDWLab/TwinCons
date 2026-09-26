@@ -1,0 +1,16 @@
+[
+    {
+        "maxX": 0.38613861386138615,
+        "maxY": 82.16770993376493,
+        "minX": 0.004201680672268907,
+        "minY": 4.68766464959746
+    },
+    [
+        "./data/test_twc_parameters/SegmentCSV/BBS/lg_bgfreq_cg0p9__cmsW7_nn.csv",
+        "./data/test_twc_parameters/PKL/newParams/BBS/lg_bgfreq_cg0p9__cmsW7_nn__ts0p5_normalized.pkl",
+        "-ts",
+        "0.5",
+        "-l",
+        "normalized"
+    ]
+]

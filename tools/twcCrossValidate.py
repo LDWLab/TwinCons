@@ -7,12 +7,12 @@ from sklearn.metrics import auc
 import os, sys, random, csv, argparse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from twincons.twcSVMtest import load_and_assign_data, \
+from twcSVMtest import load_and_assign_data, \
                                 trim_data_by_top_segments, \
                                 csv_iterator, mass_test, \
                                 use_absolute_length_of_segments, \
                                 normalize_features
-from twincons.twcSVMtrain import train_classifier
+from twcSVMtrain import train_classifier
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

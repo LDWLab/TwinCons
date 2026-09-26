@@ -15,7 +15,7 @@ from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
 from sklearn.tree import DecisionTreeClassifier
 import pickle as cPickle
 
-from twincons.twcSVMtest import csv_iterator, \
+from twcSVMtest import csv_iterator, \
                                 load_csv_data, \
                                 trim_data_by_top_segments, \
                                 recalculate_data_by_averaging_segments, \
@@ -85,7 +85,9 @@ def plotQuerySegments(X, aln_names, edgecolor, axis, labelOrder, threshold, samp
     label_order = list()
     abs_length = [float(n)**1.6 for n in sample_weight]
     scatter = sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=aln_names, 
-            palette="tab10", edgecolor=edgecolor, s=abs_length)
+            palette="tab10", edgecolor=edgecolor)
+    # Per-point sizes go on the points directly; seaborn would also apply them to legend markers.
+    scatter.collections[-1].set_sizes(abs_length)
     
     ##   Legend labels ordering only if full data  ###
     if fullData:

@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import svm
 import pickle as cPickle
-from twincons.twcSVMtest import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
+from twcSVMtest import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -56,7 +56,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
     xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
-    vir_cmap = plt.cm.get_cmap('viridis')
+    vir_cmap = plt.get_cmap('viridis')
 
     ###   Draws the decision function as a red line   ###
     axis.contour(xx, yy, Z, levels=[0],colors='r', linestyles=['-'], linewidths=0.5)

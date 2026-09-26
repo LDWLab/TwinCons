@@ -10,10 +10,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
                               AdaBoostClassifier)
 from sklearn.tree import DecisionTreeClassifier
-from twincons.twcSVMtest import normalize_features
-from twincons.twcCrossValidate import cv_by_alns, load_data, plot_roc_curve
-from twincons.twcTreesTrain import train_classifier
-from twincons.twcTreesTest import mass_test
+from twcSVMtest import normalize_features
+from twcCrossValidate import cv_by_alns, load_data, plot_roc_curve
+from twcTreesTrain import train_classifier
+from twcTreesTest import mass_test
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)

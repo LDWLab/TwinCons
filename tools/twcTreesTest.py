@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from operator import itemgetter
 import pickle as cPickle
 
-from twincons.twcTreesTrain import plot_decision_function
-from twincons.twcSVMtest import csv_iterator, \
+from twcTreesTrain import plot_decision_function
+from twcSVMtest import csv_iterator, \
                                 load_csv_data, \
                                 read_features, \
                                 normalize_features, \
@@ -195,7 +195,7 @@ def main(commandline_arguments):
             from itertools import cycle, compress
             namedColors, numberedNames, alphaAdjustedColors, seen = dict(), list(), list(), set()
             uniqueNames = [x for x in aln_names if not (x in seen or seen.add(x))]
-            for name, color, number in zip(uniqueNames, cycle(plt.cm.get_cmap('tab10').colors), cycle(range(10))):
+            for name, color, number in zip(uniqueNames, cycle(plt.get_cmap('tab10').colors), cycle(range(10))):
                 namedColors[name] = (color, number)
             for i, (name, prediction, probability) in enumerate(segmentPredictions):
                 g,r,b = namedColors[name][0]

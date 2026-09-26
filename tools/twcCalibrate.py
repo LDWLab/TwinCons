@@ -8,9 +8,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sklearn.calibration import CalibratedClassifierCV
-from twincons.twcSVMtrain import train_classifier
-from twincons.twcSVMtest import load_csv_data, csv_iterator, trim_data_by_top_segments
-from twincons.twcCrossValidate import make_idx
+from twcSVMtrain import train_classifier
+from twcSVMtest import load_csv_data, csv_iterator, trim_data_by_top_segments
+from twcCrossValidate import make_idx
 import pickle as cPickle
 
 def create_and_parse_argument_options(argument_list):

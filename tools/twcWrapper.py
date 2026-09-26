@@ -2,7 +2,6 @@
 '''Calculate and visualize conservation between two groups of sequences from one alignment'''
 import re, os, sys, argparse
 
-from numpy.lib.index_tricks import OGridClass
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from itertools import groupby
@@ -14,12 +13,12 @@ from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
 
 
 
-from twincons import TwinCons, twcCalculateSegments, twcSVMtest, twcTreesTest
+from twincons import TwinCons
+import twcCalculateSegments, twcSVMtest, twcTreesTest
 
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 classifiers = {
-    'SVM-BBS-BL62':"twcPKL/BBS_cg09_it1_lt3.pkl",
-    'ExtraTrees-BBS-LG':"twcPKL/BBS_best_ExtraTrees.pkl",
-    'SVM-BBS-CumulativeW9-LG':"twcPKL/BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts0p5_normalized.pkl"
+    'SVM-BBS-CumulativeW9-LG': os.path.join(MODEL_DIR, "BBS_lg_bgfreq_cg0p9__cmsW7_nn__ts0p5_normalized.pkl"),
     }
 
 def create_and_parse_argument_options(argument_list):
@@ -43,22 +42,27 @@ def main(commandline_arguments):
     comm_args = create_and_parse_argument_options(commandline_arguments)
 
     if comm_args.classifier:
-        classifier_path = f"{str(os.path.dirname(__file__))}/../{classifiers[comm_args.classifier]}"
+        classifier_path = classifiers[comm_args.classifier]
     else:
         classifier_path = comm_args.custom_classifier
         if not os.path.isfile(classifier_path):
             raise IOError(f"Could not find the custom decision boundary pickle file at {comm_args.custom_classifier}")
-        if not os.path.isfile(classifier_path+".json"):
-            raise IOError(f"Could not find the custom decision boundary json file at {comm_args.custom_classifier}.json")
+        features_path = classifier_path.replace('.pkl', '') + ".json"
+        if not os.path.isfile(features_path):
+            raise IOError(f"Could not find the custom decision boundary json file at {features_path}")
 
     calc_args, minmax_features = twcSVMtest.read_features(classifier_path.replace('.pkl','')+".json")
 
+    twincons_args, calcSegments_args = None, None
     g_list=[list(g) for k,g in groupby(calc_args , lambda i : '-twca' in i or '-csa' in i)]
     for i, args in enumerate(g_list[1:]):
         if args[0] == '-twca':
             twincons_args = g_list[i+2]
         if args[0] == '-csa':
             calcSegments_args = g_list[i+2]
+    if twincons_args is None:
+        raise IOError(f"The classifier metadata {classifier_path.replace('.pkl', '')}.json does not record the TwinCons "
+                      "arguments (-twca) it was trained with, so alignments cannot be scored consistently with it.")
     int_thr, length_thr, positive_as_negative, cmsWindow = 1, 3, False, None
     if calcSegments_args is not None:
         for segm_opt in calcSegments_args:
@@ -79,7 +83,7 @@ def main(commandline_arguments):
                 raise IOError(f"Could not find alignment file at {comm_args.alignment_paths}")
             twincons_alns.append(path)
     else:
-        twincons_alns.append("-as", comm_args.alignment_string)
+        twincons_alns.extend(["-as", comm_args.alignment_string])
     
     twc_args_list = twcCalculateSegments.parse_arguments_for_twc(twincons_args, twincons_alns)
     alnindex_score, sliced_alns, num_alned_pos, gap_mapping = TwinCons.main(twc_args_list)

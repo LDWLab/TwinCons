@@ -154,10 +154,13 @@ def test_function(csv_list, classifier, min_max_features):
         test_segment = np.array([(float(entry[2])-minX)/(maxX-minX),(float(entry[3])-minY)/(maxY-minY)])
         segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
         if isinstance(classifier, CalibratedClassifierCV):
-            segment_dist = classifier.base_estimator.decision_function(test_segment.reshape(1,-1))[0]
+            # scikit-learn renamed base_estimator to estimator in 1.2 and removed the old name in 1.4.
+            base = getattr(classifier, 'estimator', None) or classifier.base_estimator
+            segment_dist = base.decision_function(test_segment.reshape(1,-1))[0]
         else:
             segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
-        segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))
+        # Only calibrated classifiers or SVMs trained with probability=True provide probabilities.
+        segment_prob = classifier.predict_proba(test_segment.reshape(1,-1)) if hasattr(classifier, 'predict_proba') else [[None, float('nan')]]
         if str(entry[0]) not in segment_pred_dist.keys():
             segment_pred_dist[str(entry[0])] = []
         segment_pred_dist[str(entry[0])].append([entry[4],(segment_pred,segment_dist,entry[1], segment_prob[0][1])])
@@ -232,7 +235,7 @@ def mass_test(segment_pred_dist, min_threshold=0, max_threshold=2, step=0.1, eva
 
 def draw_thresholds(axis, fig, X, xx, yy, Z, decision_levels, clean=False):
 
-    curr_cmap = plt.cm.get_cmap('PRGn').copy()
+    curr_cmap = plt.get_cmap('PRGn').copy()
     # Specifies under and over values to first and last color of the colormap
     curr_cmap.set_under(curr_cmap(0))
     curr_cmap.set_over(curr_cmap(1))
@@ -263,7 +266,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     # plot the decision function
     xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
     if isinstance(classifier, CalibratedClassifierCV):
-        classifier = classifier.base_estimator
+        classifier = getattr(classifier, 'estimator', None) or classifier.base_estimator
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 
@@ -297,8 +300,10 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
             dummy_levels[thr]=0
         draw_thresholds(axis, fig, X, xx, yy, Z, dummy_levels, clean=True)
         label_order = []
-        scatter = sns.scatterplot(X[:, 0], X[:, 1], hue=aln_names, 
-                palette=flattenedColors[:len(set(aln_names))], edgecolor=edgecolor, s=abs_length)
+        scatter = sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=aln_names, 
+                palette=flattenedColors[:len(set(aln_names))], edgecolor=edgecolor)
+        # Per-point sizes go on the points directly; seaborn would also apply them to legend markers.
+        scatter.collections[-1].set_sizes(abs_length)
 
         ###   Legend labels ordering   ###
         handles, labels = axis.get_legend_handles_labels()
@@ -336,7 +341,8 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
 def read_features(features_path):
     with open(features_path) as f:
         data = json.load(f)
-    return data[1], [data[0]["maxX"],data[0]["maxY"],data[0]["minX"],data[0]["minY"]]
+    # Older classifiers scaled features by their maximum only, which equals min-max scaling with minimum 0.
+    return data[1], [data[0]["maxX"],data[0]["maxY"],data[0].get("minX", 0.0),data[0].get("minY", 0.0)]
 
 def write_aln_rows(segments, csv_writer, aln):
     for segment in segments:
