@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import io
 import os
 import shutil
 import tempfile
@@ -6,7 +7,7 @@ import unittest
 from unittest import mock
 
 import numpy as np
-from Bio import AlignIO
+from Bio import AlignIO, Phylo
 from Bio.Align import MultipleSeqAlignment
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Seq import Seq
@@ -222,6 +223,74 @@ class TestOtherAlignments(unittest.TestCase):
         by_tree = self.scores('-a', self.PROTEIN_PATH, '-lg', '-phy')
         self.assertEqual(len(by_name), len(by_tree))
         self.assertTrue(np.isfinite(by_tree).all())
+
+
+class TestClustalWWeights(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = slice_by_name(read_align(ALIGNMENT_PATH))['uL02b']
+
+    def weights(self, aln):
+        return np.array(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm='clustalw'))
+
+    def with_copies(self, index, copies):
+        record = self.group[index]
+        return MultipleSeqAlignment(list(self.group) + [SeqRecord(record.seq, id=f'{record.id}_copy{k}') for k in range(copies)])
+
+    def test_hand_computed_tree(self):
+        # A and B share the internal branch of length 2, so each gets 1 from it.
+        tree = Phylo.read(io.StringIO('((A:1,B:1):2,C:3);'), 'newick')
+        self.assertEqual(SequenceWeightFromTree.branch_sharing_weights(tree, ['A', 'B', 'C']), [2.0, 2.0, 3.0])
+
+    def test_matches_path_sum_definition(self):
+        tree = SequenceWeightFromTree.tree_construct(self.group, calc_mx='identity')
+        leaves_below = {clade: len(clade.get_terminals()) for clade in tree.find_clades()}
+        expected = [sum((clade.branch_length or 0) / leaves_below[clade] for clade in tree.get_path(record.id))
+                    for record in self.group]
+        result = SequenceWeightFromTree.branch_sharing_weights(tree, [record.id for record in self.group])
+        np.testing.assert_allclose(result, expected, rtol=1e-12)
+
+    def test_weights_are_positive_and_normalized(self):
+        weights = self.weights(self.group)
+        self.assertEqual(len(weights), len(self.group))
+        self.assertTrue((weights > 0).all())
+        self.assertAlmostEqual(weights.sum(), 1.0)
+
+    def test_identical_sequences_share_weight_equally(self):
+        weights = self.weights(self.with_copies(30, 3))
+        copies = weights[[30, len(self.group), len(self.group) + 1, len(self.group) + 2]]
+        np.testing.assert_allclose(copies, copies[0], rtol=1e-12)
+
+    def test_duplicates_do_not_accumulate_weight(self):
+        original = self.weights(self.group)[30]
+        weights = self.weights(self.with_copies(30, 3))
+        together = weights[[30, len(self.group), len(self.group) + 1, len(self.group) + 2]].sum()
+        # Pairwise weights give four copies about 3.7x the original weight on this group.
+        self.assertLess(together, 1.5 * original)
+
+    def test_divergent_sequence_outweighs_redundant_clade(self):
+        aln = make_alignment([('A_1', 'ACDEFGHIKL'), ('A_2', 'ACDEFGHIKM'), ('A_3', 'ACDEFGHIKN'),
+                              ('A_4', 'ACDEFGHIKP'), ('A_5', 'WYVTSRQPNM')])
+        weights = self.weights(aln)
+        self.assertTrue((weights[4] > weights[:4]).all())
+
+    def test_identical_sequences_only(self):
+        aln = make_alignment([('A_1', 'ACDE'), ('A_2', 'ACDE'), ('A_3', 'ACDE')])
+        for algorithm in ('pairwise', 'clustalw'):
+            self.assertEqual(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm=algorithm), [1/3] * 3)
+
+    def test_single_sequence(self):
+        aln = make_alignment([('A_1', 'ACDE')])
+        self.assertEqual(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm='clustalw'), [1.0])
+
+    def test_scoring_with_clustalw_weights(self):
+        def scores(*options):
+            output_dict = TwinCons.main(['-a', ALIGNMENT_PATH, '-r'] + list(options))[0]
+            return np.array([output_dict[position][0] for position in sorted(output_dict)])
+        for matrix in (['-lg'], ['-rs']):
+            weighted = scores(*matrix, '-w', 'clustalw')
+            self.assertTrue(np.isfinite(weighted).all())
+            self.assertFalse(np.allclose(weighted, scores(*matrix)))
 
 
 class TestAlignmentGroup(unittest.TestCase):

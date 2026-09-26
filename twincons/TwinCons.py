@@ -12,7 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.CompositionalAdjustment import adjust_matrix
-from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES
+from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES, WEIGHTING_ALGORITHMS
 from Bio.SeqRecord import SeqRecord
 from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable, alignment_array, gap_counts_per_column
 from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
@@ -34,7 +34,10 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
-    parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-w','--weigh_sequences', choices=WEIGHTING_ALGORITHMS, help='Weigh sequences within each alignment group:\n\
+\tpairwise - sum of tree distances to the other sequences;\n\
+\tvoronoi  - share of randomly sampled sequences closest to each sequence (Sibbald & Argos 1990);\n\
+\tclustalw - tree branch lengths shared by the sequences below each branch (Thompson, Higgins & Gibson 1994).')
     parser.add_argument('-vs','--voronoi_samples', help=f'Number of random sequences sampled for -w voronoi weights. (Default: {DEFAULT_VORONOI_SAMPLES})', type=positive_int, default=DEFAULT_VORONOI_SAMPLES)
     parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
     output_type_group = parser.add_mutually_exclusive_group()

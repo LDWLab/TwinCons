@@ -108,6 +108,23 @@ def leaf_distance_sums(tree, names):
         sums.append(len(names) * depths[leaf] + total_depth - 2 * lca_depth_sum)
     return sums
 
+def branch_sharing_weights(tree, names):
+    '''
+    Thompson, Higgins & Gibson (1994) weights, as used by ClustalW: each branch length is shared
+    equally by the leaves below it, and a leaf's weight is the sum of its shares along the path
+    from the root. Closely related sequences split their common branches, so redundant
+    sequences do not accumulate weight.
+    '''
+    leaves_below = {}
+    for clade in tree.find_clades(order='postorder'):
+        leaves_below[clade] = 1 if clade.is_terminal() else sum(leaves_below[child] for child in clade.clades)
+    share = {tree.root: 0.0}
+    for clade in tree.find_clades(order='preorder'):
+        for child in clade.clades:
+            share[child] = share[clade] + (child.branch_length or 0.0) / leaves_below[child]
+    leaves = {leaf.name: leaf for leaf in tree.get_terminals()}
+    return [share[leaves[name]] for name in names]
+
 DEFAULT_VORONOI_SAMPLES = 100000
 
 def _one_hot(codes, symbols):
@@ -152,16 +169,27 @@ def voronoi_weights(aln_obj, repeat=DEFAULT_VORONOI_SAMPLES, calc_mx='identity')
         convergence_vr += voronoi_convergence(distances)
     return (convergence_vr / convergence_vr.sum()).tolist()
 
+WEIGHTING_ALGORITHMS = ['pairwise', 'voronoi', 'clustalw']
+
 def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=DEFAULT_VORONOI_SAMPLES, nucl=False):
-    alg_types = ['voronoi', 'pairwise']
-    if algorithm not in alg_types:
-        raise ValueError("Invalid algorithm type. Expected one of: %s" % alg_types)
+    '''Returns one weight per sequence of aln_obj, summing to 1.'''
+    if algorithm not in WEIGHTING_ALGORITHMS:
+        raise ValueError("Invalid algorithm type. Expected one of: %s" % WEIGHTING_ALGORITHMS)
     if algorithm == 'voronoi':
         return voronoi_weights(aln_obj, repeat=repeat, calc_mx=calc_mx)
+    if len(aln_obj) == 1:
+        return [1.0]
+    tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
+    names = [seq_obj.id for seq_obj in aln_obj]
     if algorithm == 'pairwise':
-        tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
-        distance_sums = leaf_distance_sums(tree, [seq_obj.id for seq_obj in aln_obj])
-        return [i/sum(distance_sums) for i in distance_sums]
+        raw_weights = leaf_distance_sums(tree, names)
+    else:
+        raw_weights = branch_sharing_weights(tree, names)
+    total = sum(raw_weights)
+    # Identical sequences give a tree without branch lengths; they are then equally weighted.
+    if total == 0:
+        return [1 / len(names)] * len(names)
+    return [weight / total for weight in raw_weights]
 
 def find_deepest_ancestors(tree):
     '''

@@ -82,8 +82,9 @@ scores, groups, aligned_positions, position_mapping = main(['-a', 'alignment.fas
 usage: twcons [-h] [-o OUTPUT_PATH] (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] |
               -as ALIGNMENT_STRING) [-ma MERGED_ALIGNMENT] [-bn {uniform,bgfreq}] [-cg] [-gg]
               [-gt GAP_THRESHOLD] [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]]
-              [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]] [-phy] [-nc] [-w {pairwise,voronoi}]
-              [-vs VORONOI_SAMPLES] [-ca] [-p | -pml {unix,windows} | -r | -csv | -rv | -jv]
+              [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]] [-phy] [-nc]
+              [-w {pairwise,voronoi,clustalw}] [-vs VORONOI_SAMPLES] [-ca] [-p |
+              -pml {unix,windows} | -r | -csv | -rv | -jv]
               [-mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans} |
               -cm CUSTOM_MATRIX | -lg | -e | -rs] [-ss | -be | -ssbe]
 
@@ -117,8 +118,11 @@ options:
                         Paths to structure files, for plotting a pml.
   -phy, --phylo_split   Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.
   -nc, --nucleotide     Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs
-  -w, --weigh_sequences {pairwise,voronoi}
-                        Weigh sequences within each alignment group.
+  -w, --weigh_sequences {pairwise,voronoi,clustalw}
+                        Weigh sequences within each alignment group:
+                                pairwise - sum of tree distances to the other sequences;
+                                voronoi  - share of randomly sampled sequences closest to each sequence (Sibbald & Argos 1990);
+                                clustalw - tree branch lengths shared by the sequences below each branch (Thompson, Higgins & Gibson 1994).
   -vs, --voronoi_samples VORONOI_SAMPLES
                         Number of random sequences sampled for -w voronoi weights. (Default: 100000)
   -ca, --compositional_adjustment
