@@ -25,8 +25,6 @@ class PAMLmatrix:
 	Class for constructing a matrix from a PAML dat file
 	'''
 	_lodd = None
-	_dict_lodd = None
-	_aa_sequence = ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V']
 	_piFreq = None
 
 	def __init__(self,matrix_path):
@@ -72,17 +70,3 @@ class PAMLmatrix:
 
 			self._lodd = np.log2(sym_mx)
 		return self._lodd
-
-	@property
-	def dict_lodd(self):
-		'''
-		Returns a dictionary form of the log odds matrix with keys tuples of aa combinations.
-		'''
-		if self._lodd is None:
-			self._lodd = self.lodd
-		if self._dict_lodd is None:
-			self._dict_lodd={}
-			for i in range(len(self._lodd)):
-				for j in range (len(self._lodd[i])):
-					self._dict_lodd[(self._aa_sequence[i],self._aa_sequence[j])] = self._lodd[i][j]
-		return self._dict_lodd

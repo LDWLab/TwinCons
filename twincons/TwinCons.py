@@ -134,7 +134,7 @@ def count_aligned_positions(aln_obj, gap_threshold):
         raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
     return aligned_positions, extremely_gapped
 
-def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, group_lengths):
+def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold):
     '''Detects alignment positions that are heavily gapped in one group only.
     Uses the gap_threshold to determine whether either group has less residues in the alignment columns.
     '''
@@ -613,10 +613,9 @@ def main(commandline_arguments):
     if len(gapped_sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
-    num_seqs_per_group, num_seqs_per_group_dict  = list(), dict()
+    num_seqs_per_group = list()
     for aln in gapped_sliced_alns:
         num_seqs_per_group.append(gapped_sliced_alns[aln].__len__())
-        num_seqs_per_group_dict[aln] = gapped_sliced_alns[aln].__len__()
     if comm_args.gap_threshold is None:
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
@@ -625,11 +624,11 @@ def main(commandline_arguments):
     if comm_args.calculate_group_gaps:#Make sure its not above 1!
         if 2*comm_args.gap_threshold >= 1:
             raise IOError("When calculating group gaps, gap threshold must be assigned to values bellow 0.5!")
-        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
+        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
         alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
-        gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
+        gp_mapping, alignIO_out_gapped, _ = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
     else:
         for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
             gp_mapping[i] = i
