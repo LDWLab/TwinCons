@@ -45,7 +45,7 @@ jobs:
         with:
           python-version: "3.14"
       - name: Install TwinCons and tool dependencies
-        run: python -m pip install -r requirements_complete.txt .
+        run: python -m pip install . -r tools/requirements.txt
       - name: Check every tool script starts
         run: |
           for script in tools/*.py; do

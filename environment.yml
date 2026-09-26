@@ -8,5 +8,5 @@ dependencies:
   - dssp
   - pip
   - pip:
-      - -r requirements_complete.txt
+      - -r tools/requirements.txt
       - -e .

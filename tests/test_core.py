@@ -199,6 +199,31 @@ class TestVectorizedAlgorithms(unittest.TestCase):
         self.assertEqual(mapping, {1: 1, 2: 4, 3: 5})
 
 
+class TestOtherAlignments(unittest.TestCase):
+    RNA_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'AB_LSU_rRNA.fa')
+    PROTEIN_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'bS01-RNAP7Ca.fa')
+
+    def scores(self, *args):
+        output_dict = TwinCons.main(list(args) + ['-r'])[0]
+        return [output_dict[position][0] for position in sorted(output_dict)]
+
+    def test_nucleotide_matrix(self):
+        scores = self.scores('-a', self.RNA_PATH, '-nc', '-mx', 'blastn')
+        self.assertEqual(len(scores), read_align(self.RNA_PATH).get_alignment_length())
+        self.assertTrue(np.isfinite(scores).all())
+
+    def test_nucleotide_entropy_with_gap_removal(self):
+        scores = self.scores('-a', self.RNA_PATH, '-nc', '-rs', '-cg')
+        self.assertLess(len(scores), read_align(self.RNA_PATH).get_alignment_length())
+        self.assertTrue(np.isfinite(scores).all())
+
+    def test_groups_from_phylogenetic_tree(self):
+        by_name = self.scores('-a', self.PROTEIN_PATH, '-lg')
+        by_tree = self.scores('-a', self.PROTEIN_PATH, '-lg', '-phy')
+        self.assertEqual(len(by_name), len(by_tree))
+        self.assertTrue(np.isfinite(by_tree).all())
+
+
 class TestAlignmentGroup(unittest.TestCase):
     def test_seq_distribution_accepts_dict(self):
         aln = make_alignment([('A_1', 'ACDE'), ('A_2', 'ACDF')])

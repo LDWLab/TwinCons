@@ -8,7 +8,7 @@ env/*
 dist/*
 build/*
 *.out
-.vscode/settings.json
+.vscode/
 # Claw Code local artifacts
 .claude/settings.local.json
 .claude/sessions/

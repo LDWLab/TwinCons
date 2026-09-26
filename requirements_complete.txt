@@ -1,6 +1,0 @@
-matplotlib>=3.11.2
-numpy>=2.5.3
-scipy>=1.18.1
-seaborn>=0.13.2
-biopython>=1.88
-scikit_learn>=1.9.1
