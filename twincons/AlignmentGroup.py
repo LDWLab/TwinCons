@@ -1,10 +1,26 @@
-import re, ntpath
+import os, re, ntpath, shutil
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
 from twincons.twcSupportFunctions import alignment_array
 '''Contains class for alignment groups'''
+
+def locate_dssp_data():
+    '''
+    DSSP 4 reads its mmCIF dictionaries through libcifpp, whose conda build does not find them
+    unless LIBCIFPP_DATA_DIR is set. When it is unset, point it at <prefix>/share/libcifpp next to
+    the mkdssp executable, if the dictionaries are there.
+    '''
+    if 'LIBCIFPP_DATA_DIR' in os.environ:
+        return
+    executable = shutil.which('mkdssp') or shutil.which('dssp')
+    if executable is None:
+        return
+    prefix = os.path.dirname(os.path.dirname(os.path.realpath(executable)))
+    data_dir = os.path.join(prefix, 'share', 'libcifpp')
+    if os.path.isfile(os.path.join(data_dir, 'mmcif_pdbx.dic')):
+        os.environ['LIBCIFPP_DATA_DIR'] = data_dir
 
 class AlignmentGroup:
     '''
@@ -15,7 +31,7 @@ class AlignmentGroup:
     '''
     # DSSP 4 added P (polyproline II helix), grouped here with turns and coil.
     DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','P':'O','-':'O'}
-    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None, uniq_resi_list=None):
+    def __init__(self, aln_obj, seq_distribution=None, struc_path=None):
         self.aln_obj = aln_obj
         self.uniq_resi_list = self._determineUniqResis(aln_obj)
         if seq_distribution is not None:
@@ -30,8 +46,7 @@ class AlignmentGroup:
             for entry in aln_obj:
                 tempStorage += str(entry.seq).replace('-','').replace('\n','')
             self.seq_distribution = {i : tempStorage.count(i)/len(tempStorage) for i in set(tempStorage)}
-        self.struc_path = struc_path if struc_path is not None else None
-        self.sstruc_str = sstruc_str if sstruc_str is not None else None
+        self.struc_path = struc_path
 
     def validateType(self, string, alphabet='protein'):
         '''Check that a string only contains values from an alphabet'''
@@ -75,7 +90,7 @@ class AlignmentGroup:
         for chain in structure.get_chains():
             chains.append(chain)
         if len(chains) != 1:
-            raise IOError(f"When using structure files, they need to have a single chain!")
+            raise IOError("When using structure files, they need to have a single chain!")
         sequence = str()
         seq_ix_mapping = dict()
         untrue_seq_ix = 1
@@ -185,6 +200,7 @@ class AlignmentGroup:
         return {col_ix: column.tolist() for col_ix, column in enumerate(frequencies, 1)}
 
     def structure_loader(self,struc_to_aln_index_mapping):
+        locate_dssp_data()
         inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
         parser = PDBParser()
         structure = parser.get_structure('current_structure',self.struc_path)
@@ -232,10 +248,6 @@ class AlignmentGroup:
                 else:
                     sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
         return sda
-
-    def _return_alignment_obj(self):
-        '''Returns current alignment object of this group'''
-        return self.aln_obj
 
     def getAAfrequenciesList (self):
         return [self.seq_distribution.get(aa, 0.0) for aa in self.uniq_resi_list]

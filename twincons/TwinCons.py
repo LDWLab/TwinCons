@@ -12,7 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.CompositionalAdjustment import adjust_matrix
-from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES
+from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES, WEIGHTING_ALGORITHMS
 from Bio.SeqRecord import SeqRecord
 from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable, alignment_array, gap_counts_per_column
 from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
@@ -34,7 +34,10 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
-    parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-w','--weigh_sequences', choices=WEIGHTING_ALGORITHMS, help='Weigh sequences within each alignment group:\n\
+\tpairwise - sum of tree distances to the other sequences;\n\
+\tvoronoi  - share of randomly sampled sequences closest to each sequence (Sibbald & Argos 1990);\n\
+\tclustalw - tree branch lengths shared by the sequences below each branch (Thompson, Higgins & Gibson 1994).')
     parser.add_argument('-vs','--voronoi_samples', help=f'Number of random sequences sampled for -w voronoi weights. (Default: {DEFAULT_VORONOI_SAMPLES})', type=positive_int, default=DEFAULT_VORONOI_SAMPLES)
     parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
     output_type_group = parser.add_mutually_exclusive_group()
@@ -134,7 +137,7 @@ def count_aligned_positions(aln_obj, gap_threshold):
         raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
     return aligned_positions, extremely_gapped
 
-def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, group_lengths):
+def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold):
     '''Detects alignment positions that are heavily gapped in one group only.
     Uses the gap_threshold to determine whether either group has less residues in the alignment columns.
     '''
@@ -437,7 +440,7 @@ def jalview_output(output_dict, comm_args):
     with open(comm_args.output_path+".jlv","w") as jv_output:
         jv_output.write('JALVIEW_ANNOTATION\n')
         jv_output.write('# Created: '+str(date.today())+"\n")
-        jv_output.write('# Contact: ppenev@gatech.edu\n')
+        jv_output.write('# Contact: peteripenev@gmail.com\n')
         jv_output.write('BAR_GRAPH\tTWINCONS\t')
         for position in sorted(output_dict.keys(), key=abs):
             color_hex = data_to_diverging_gradients(output_dict[position][0], max_score, min_score, 'Greens', 'Purples')
@@ -613,10 +616,9 @@ def main(commandline_arguments):
     if len(gapped_sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
-    num_seqs_per_group, num_seqs_per_group_dict  = list(), dict()
+    num_seqs_per_group = list()
     for aln in gapped_sliced_alns:
         num_seqs_per_group.append(gapped_sliced_alns[aln].__len__())
-        num_seqs_per_group_dict[aln] = gapped_sliced_alns[aln].__len__()
     if comm_args.gap_threshold is None:
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
@@ -625,11 +627,11 @@ def main(commandline_arguments):
     if comm_args.calculate_group_gaps:#Make sure its not above 1!
         if 2*comm_args.gap_threshold >= 1:
             raise IOError("When calculating group gaps, gap threshold must be assigned to values bellow 0.5!")
-        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
+        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
         alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
-        gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
+        gp_mapping, alignIO_out_gapped, _ = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
     else:
         for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
             gp_mapping[i] = i

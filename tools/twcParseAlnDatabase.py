@@ -127,7 +127,7 @@ def parse_ecod_folder(comm_args):
 	fnamelist_to_alnpath = {}
 	for alignment in aln_list:
 		#parses through the aln filename to grab only the architecture levels in a fname list
-		fname = re.split('\.|-', alignment.split("/")[int(len(alignment.split("/"))-1)])[:-1]
+		fname = re.split(r'\.|-', alignment.split("/")[int(len(alignment.split("/"))-1)])[:-1]
 		build_nested(fname, alignment, fnamelist_to_alnpath)
 	
 	for xlevel in sorted(fnamelist_to_alnpath):

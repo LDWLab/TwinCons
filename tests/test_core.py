@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import io
 import os
 import shutil
 import tempfile
@@ -6,14 +7,14 @@ import unittest
 from unittest import mock
 
 import numpy as np
-from Bio import AlignIO
+from Bio import AlignIO, Phylo
 from Bio.Align import MultipleSeqAlignment
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from twincons import MatrixInfo, SequenceWeightFromTree, TwinCons
-from twincons.AlignmentGroup import AlignmentGroup
+from twincons.AlignmentGroup import AlignmentGroup, locate_dssp_data
 from twincons.CompositionalAdjustment import CompositionalAdjustmentError, adjust_matrix
 from twincons.MatrixLoad import matrix_path
 from twincons.twcSupportFunctions import read_align, slice_by_name
@@ -197,6 +198,155 @@ class TestVectorizedAlgorithms(unittest.TestCase):
         self.assertEqual([record.id for record in trimmed], ['A_1', 'A_2', 'B_1', 'B_2'])
         self.assertEqual(length, 3)
         self.assertEqual(mapping, {1: 1, 2: 4, 3: 5})
+
+
+class TestOtherAlignments(unittest.TestCase):
+    RNA_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'AB_LSU_rRNA.fa')
+    PROTEIN_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'bS01-RNAP7Ca.fa')
+
+    def scores(self, *args):
+        output_dict = TwinCons.main(list(args) + ['-r'])[0]
+        return [output_dict[position][0] for position in sorted(output_dict)]
+
+    def test_nucleotide_matrix(self):
+        scores = self.scores('-a', self.RNA_PATH, '-nc', '-mx', 'blastn')
+        self.assertEqual(len(scores), read_align(self.RNA_PATH).get_alignment_length())
+        self.assertTrue(np.isfinite(scores).all())
+
+    def test_nucleotide_entropy_with_gap_removal(self):
+        scores = self.scores('-a', self.RNA_PATH, '-nc', '-rs', '-cg')
+        self.assertLess(len(scores), read_align(self.RNA_PATH).get_alignment_length())
+        self.assertTrue(np.isfinite(scores).all())
+
+    def test_groups_from_phylogenetic_tree(self):
+        by_name = self.scores('-a', self.PROTEIN_PATH, '-lg')
+        by_tree = self.scores('-a', self.PROTEIN_PATH, '-lg', '-phy')
+        self.assertEqual(len(by_name), len(by_tree))
+        self.assertTrue(np.isfinite(by_tree).all())
+
+
+class TestClustalWWeights(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = slice_by_name(read_align(ALIGNMENT_PATH))['uL02b']
+
+    def weights(self, aln):
+        return np.array(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm='clustalw'))
+
+    def with_copies(self, index, copies):
+        record = self.group[index]
+        return MultipleSeqAlignment(list(self.group) + [SeqRecord(record.seq, id=f'{record.id}_copy{k}') for k in range(copies)])
+
+    def test_hand_computed_tree(self):
+        # A and B share the internal branch of length 2, so each gets 1 from it.
+        tree = Phylo.read(io.StringIO('((A:1,B:1):2,C:3);'), 'newick')
+        self.assertEqual(SequenceWeightFromTree.branch_sharing_weights(tree, ['A', 'B', 'C']), [2.0, 2.0, 3.0])
+
+    def test_gapless_identity_distance(self):
+        aln = make_alignment([('A_full1', 'ACDEFGHIKLMN'), ('A_full2', 'ACDEFGHIKLMQ'), ('A_frag1', 'ACDEF-------'),
+                              ('A_frag2', 'WYVTS-------'), ('A_frag3', '-------IKLMN')])
+        distances = SequenceWeightFromTree.gapless_identity_distance_matrix(aln)
+        self.assertAlmostEqual(distances['A_full1', 'A_full2'], 1/12)
+        self.assertEqual(distances['A_frag1', 'A_full1'], 0)
+        self.assertEqual(distances['A_frag1', 'A_frag2'], 1)
+        self.assertEqual(distances['A_frag1', 'A_frag3'], 1)
+
+    def test_shared_gaps_do_not_make_fragments_similar(self):
+        aln = make_alignment([('A_full1', 'ACDEFGHIKLMN'), ('A_full2', 'ACDEFGHIKLMQ'), ('A_full3', 'ACDEYGHIKRMN'),
+                              ('A_frag1', 'ACDEF-------'), ('A_frag2', 'WYVTS-------')])
+        weights = self.weights(aln)
+        # frag1 repeats full1's residues, frag2's residues are unique; their shared gaps are irrelevant.
+        self.assertLessEqual(weights[3], weights[0])
+        self.assertTrue((weights[4] > weights[:4]).all())
+
+    def test_matches_path_sum_definition(self):
+        tree = SequenceWeightFromTree.tree_from_distances(SequenceWeightFromTree.gapless_identity_distance_matrix(self.group))
+        leaves_below = {clade: len(clade.get_terminals()) for clade in tree.find_clades()}
+        expected = [sum((clade.branch_length or 0) / leaves_below[clade] for clade in tree.get_path(record.id))
+                    for record in self.group]
+        result = SequenceWeightFromTree.branch_sharing_weights(tree, [record.id for record in self.group])
+        np.testing.assert_allclose(result, expected, rtol=1e-12)
+
+    def test_weights_are_positive_and_normalized(self):
+        weights = self.weights(self.group)
+        self.assertEqual(len(weights), len(self.group))
+        self.assertTrue((weights > 0).all())
+        self.assertAlmostEqual(weights.sum(), 1.0)
+
+    def test_identical_sequences_share_weight_equally(self):
+        weights = self.weights(self.with_copies(30, 3))
+        copies = weights[[30, len(self.group), len(self.group) + 1, len(self.group) + 2]]
+        np.testing.assert_allclose(copies, copies[0], rtol=1e-12)
+
+    def test_duplicates_do_not_accumulate_weight(self):
+        original = self.weights(self.group)[30]
+        weights = self.weights(self.with_copies(30, 3))
+        together = weights[[30, len(self.group), len(self.group) + 1, len(self.group) + 2]].sum()
+        # Pairwise weights give four copies about 3.7x the original weight on this group.
+        self.assertLess(together, 1.5 * original)
+
+    def test_divergent_sequence_outweighs_redundant_clade(self):
+        aln = make_alignment([('A_1', 'ACDEFGHIKL'), ('A_2', 'ACDEFGHIKM'), ('A_3', 'ACDEFGHIKN'),
+                              ('A_4', 'ACDEFGHIKP'), ('A_5', 'WYVTSRQPNM')])
+        weights = self.weights(aln)
+        self.assertTrue((weights[4] > weights[:4]).all())
+
+    def test_identical_sequences_only(self):
+        aln = make_alignment([('A_1', 'ACDE'), ('A_2', 'ACDE'), ('A_3', 'ACDE')])
+        for algorithm in ('pairwise', 'clustalw'):
+            self.assertEqual(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm=algorithm), [1/3] * 3)
+
+    def test_single_sequence(self):
+        aln = make_alignment([('A_1', 'ACDE')])
+        self.assertEqual(SequenceWeightFromTree.calculate_weight_vector(aln, algorithm='clustalw'), [1.0])
+
+    def test_scoring_with_clustalw_weights(self):
+        def scores(*options):
+            output_dict = TwinCons.main(['-a', ALIGNMENT_PATH, '-r'] + list(options))[0]
+            return np.array([output_dict[position][0] for position in sorted(output_dict)])
+        for matrix in (['-lg'], ['-rs']):
+            weighted = scores(*matrix, '-w', 'clustalw')
+            self.assertTrue(np.isfinite(weighted).all())
+            self.assertFalse(np.allclose(weighted, scores(*matrix)))
+
+
+class TestDsspDataLocation(unittest.TestCase):
+    def fake_prefix(self, with_dictionary=True):
+        prefix = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, prefix)
+        os.makedirs(os.path.join(prefix, 'bin'))
+        # shutil.which only finds files with an executable extension on Windows.
+        executable = os.path.join(prefix, 'bin', 'mkdssp.exe' if os.name == 'nt' else 'mkdssp')
+        with open(executable, 'w') as fh:
+            fh.write('')
+        os.chmod(executable, 0o755)
+        os.makedirs(os.path.join(prefix, 'share', 'libcifpp'))
+        if with_dictionary:
+            with open(os.path.join(prefix, 'share', 'libcifpp', 'mmcif_pdbx.dic'), 'w') as fh:
+                fh.write('')
+        return prefix
+
+    def environment(self, prefix, **extra):
+        return mock.patch.dict(os.environ, {'PATH': os.path.join(prefix, 'bin'), **extra}, clear=True)
+
+    def test_points_dssp_at_its_dictionaries(self):
+        prefix = self.fake_prefix()
+        with self.environment(prefix):
+            locate_dssp_data()
+            self.assertEqual(os.path.realpath(os.environ['LIBCIFPP_DATA_DIR']),
+                             os.path.realpath(os.path.join(prefix, 'share', 'libcifpp')))
+
+    def test_keeps_an_existing_setting(self):
+        prefix = self.fake_prefix()
+        with self.environment(prefix, LIBCIFPP_DATA_DIR='/somewhere/else'):
+            locate_dssp_data()
+            self.assertEqual(os.environ['LIBCIFPP_DATA_DIR'], '/somewhere/else')
+
+    def test_leaves_unset_without_dictionaries(self):
+        prefix = self.fake_prefix(with_dictionary=False)
+        with self.environment(prefix):
+            locate_dssp_data()
+            self.assertNotIn('LIBCIFPP_DATA_DIR', os.environ)
 
 
 class TestAlignmentGroup(unittest.TestCase):

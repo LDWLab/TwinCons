@@ -1,0 +1,5 @@
+# Additional dependencies of the segment, training and cross-validation scripts in tools/.
+# Install together with TwinCons from the repository root:  pip install . -r tools/requirements.txt
+scipy>=1.18.1
+seaborn>=0.13.2
+scikit_learn>=1.9.1
