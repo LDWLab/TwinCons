@@ -61,6 +61,33 @@ def distance_matrix(aln_obj, calculator):
         lower_triangle.append(pairwise_distances(calculator, seqs[:i], seqs[i:i+1])[:, 0].tolist() + [0])
     return DistanceMatrix(names, lower_triangle)
 
+def gapless_identity_distance_matrix(aln_obj):
+    '''
+    Distance = 1 - fraction of identical residues over the columns where both sequences have a
+    residue (the ClustalW definition), so shared gaps do not make sequences look similar.
+    Sequences without any such column are at distance 1.
+    '''
+    names = [record.id for record in aln_obj]
+    seqs = alignment_array(aln_obj)
+    residues = seqs != b'-'
+    lower_triangle = [[0]]
+    for i in range(1, len(names)):
+        both = residues[:i] & residues[i]
+        compared = both.sum(axis=1)
+        identical = ((seqs[:i] == seqs[i]) & both).sum(axis=1)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            distances = np.where(compared > 0, 1 - identical / compared, 1.0)
+        lower_triangle.append(distances.tolist() + [0])
+    return DistanceMatrix(names, lower_triangle)
+
+def tree_from_distances(dist_mx, nj=False, ladderize=True):
+    '''UPGMA (or neighbour-joining) tree from a DistanceMatrix.'''
+    constructor = DistanceTreeConstructor()
+    tree = constructor.nj(dist_mx) if nj else constructor.upgma(dist_mx)
+    if ladderize:
+        tree.ladderize()
+    return tree
+
 def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosum62'):
     '''
     Constructs and returns a tree from an alignment object.
@@ -71,15 +98,7 @@ def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosu
         calculator = DistanceCalculator(calc_mx)
     else:
         calculator = DistanceCalculator(calc_mx)
-    dist_mx = distance_matrix(aln_obj, calculator)
-    constructor = DistanceTreeConstructor()
-    if nj:
-        tree = constructor.nj(dist_mx)
-    else:
-        tree = constructor.upgma(dist_mx)
-    if ladderize:
-        tree.ladderize()
-    return tree
+    return tree_from_distances(distance_matrix(aln_obj, calculator), nj=nj, ladderize=ladderize)
 
 def voronoi_convergence(distances):
     '''Given sample x sequence distances, splits one vote per sample among its closest sequences.'''
@@ -179,12 +198,11 @@ def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', r
         return voronoi_weights(aln_obj, repeat=repeat, calc_mx=calc_mx)
     if len(aln_obj) == 1:
         return [1.0]
-    tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
     names = [seq_obj.id for seq_obj in aln_obj]
     if algorithm == 'pairwise':
-        raw_weights = leaf_distance_sums(tree, names)
+        raw_weights = leaf_distance_sums(tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx), names)
     else:
-        raw_weights = branch_sharing_weights(tree, names)
+        raw_weights = branch_sharing_weights(tree_from_distances(gapless_identity_distance_matrix(aln_obj)), names)
     total = sum(raw_weights)
     # Identical sequences give a tree without branch lengths; they are then equally weighted.
     if total == 0:

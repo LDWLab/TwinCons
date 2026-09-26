@@ -242,8 +242,25 @@ class TestClustalWWeights(unittest.TestCase):
         tree = Phylo.read(io.StringIO('((A:1,B:1):2,C:3);'), 'newick')
         self.assertEqual(SequenceWeightFromTree.branch_sharing_weights(tree, ['A', 'B', 'C']), [2.0, 2.0, 3.0])
 
+    def test_gapless_identity_distance(self):
+        aln = make_alignment([('A_full1', 'ACDEFGHIKLMN'), ('A_full2', 'ACDEFGHIKLMQ'), ('A_frag1', 'ACDEF-------'),
+                              ('A_frag2', 'WYVTS-------'), ('A_frag3', '-------IKLMN')])
+        distances = SequenceWeightFromTree.gapless_identity_distance_matrix(aln)
+        self.assertAlmostEqual(distances['A_full1', 'A_full2'], 1/12)
+        self.assertEqual(distances['A_frag1', 'A_full1'], 0)
+        self.assertEqual(distances['A_frag1', 'A_frag2'], 1)
+        self.assertEqual(distances['A_frag1', 'A_frag3'], 1)
+
+    def test_shared_gaps_do_not_make_fragments_similar(self):
+        aln = make_alignment([('A_full1', 'ACDEFGHIKLMN'), ('A_full2', 'ACDEFGHIKLMQ'), ('A_full3', 'ACDEYGHIKRMN'),
+                              ('A_frag1', 'ACDEF-------'), ('A_frag2', 'WYVTS-------')])
+        weights = self.weights(aln)
+        # frag1 repeats full1's residues, frag2's residues are unique; their shared gaps are irrelevant.
+        self.assertLessEqual(weights[3], weights[0])
+        self.assertTrue((weights[4] > weights[:4]).all())
+
     def test_matches_path_sum_definition(self):
-        tree = SequenceWeightFromTree.tree_construct(self.group, calc_mx='identity')
+        tree = SequenceWeightFromTree.tree_from_distances(SequenceWeightFromTree.gapless_identity_distance_matrix(self.group))
         leaves_below = {clade: len(clade.get_terminals()) for clade in tree.find_clades()}
         expected = [sum((clade.branch_length or 0) / leaves_below[clade] for clade in tree.get_path(record.id))
                     for record in self.group]
