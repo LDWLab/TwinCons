@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
+import shutil
 from Bio.Align import MultipleSeqAlignment
 from Bio import AlignIO
+
+def find_executable(name, purpose):
+    '''Returns the full path of an external program, or raises a helpful error.'''
+    executable = shutil.which(name)
+    if executable is None:
+        raise OSError(f"{name} was not found on PATH. It is required {purpose}.")
+    return executable
 
 def read_align(aln_path):
     '''Reads the fasta file and gets the sequences.

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import os
+import platform
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import numpy as np
 from Bio.Align import MultipleSeqAlignment
@@ -64,6 +67,23 @@ class TestSubstitutionMatrices(unittest.TestCase):
     def test_packaged_matrices_exist(self):
         for parts in (['LG.dat'], ['BLOSUM', 'blosum62.out'], ['structureDerived', 'BEHOS.dat'], ['jp', 'blosum62.dat']):
             self.assertTrue(os.path.isfile(matrix_path(*parts)), parts)
+
+
+class TestExternalPrograms(unittest.TestCase):
+    def test_missing_mafft_is_reported(self):
+        with mock.patch('shutil.which', return_value=None):
+            with self.assertRaisesRegex(OSError, 'mafft was not found on PATH'):
+                TwinCons.run_mafft([ALIGNMENT_PATH, ALIGNMENT_PATH])
+
+    def test_compositional_adjustment(self):
+        with tempfile.TemporaryDirectory() as output_dir:
+            args = ['-a', ALIGNMENT_PATH, '-mx', 'blosum62', '-ca', '-csv', '-o', os.path.join(output_dir, 'out')]
+            if sys.platform.startswith('linux') and platform.machine() in ('x86_64', 'AMD64'):
+                TwinCons.main(args)
+                self.assertGreater(os.path.getsize(os.path.join(output_dir, 'out.csv')), 0)
+            else:
+                with self.assertRaisesRegex(OSError, 'Linux x86-64'):
+                    TwinCons.main(args)
 
 
 class TestAlignmentGroup(unittest.TestCase):

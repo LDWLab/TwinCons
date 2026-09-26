@@ -97,34 +97,31 @@ class AlignmentGroup:
         self.struc_seq = SeqRecord(Seq(sequence))
 
     def create_aln_struc_mapping_with_mafft(self):
-        from subprocess import Popen, PIPE
+        import os
+        import subprocess
+        import tempfile
         from Bio import AlignIO
-        from os import remove, path
         from warnings import warn
+        from twincons.twcSupportFunctions import find_executable
 
-        aln_group_path = f"{path.dirname(path.realpath(__file__))}/TWCtempAln.txt"
-        pdb_seq_path = f"{path.dirname(path.realpath(__file__))}/TWCtempStrucSeq.txt"
-        mappingFileName = pdb_seq_path + ".map"
-        tempfiles = [aln_group_path, pdb_seq_path, mappingFileName]
-        for tempf in tempfiles:
-            if path.isfile(tempf):
-                warn(f"When using mafft to make structural mapping the working directory must be free of file {tempf}. Trying to delete the file.")
-                remove(tempf)
-                if path.isfile(tempf):
-                    raise IOError(f"Couldn't delete the file {tempf} please remove it manually!")
+        mafft = find_executable('mafft', 'to map structure residues onto the alignment')
+        with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+            aln_group_path = os.path.join(temp_dir, 'aln_group.fas')
+            pdb_seq_path = os.path.join(temp_dir, 'struc_seq.fas')
+            with open(aln_group_path, "w") as aln_group_fh:
+                AlignIO.write(self.aln_obj, aln_group_fh, "fasta")
+            with open(pdb_seq_path, "w") as pdb_seq_fh:
+                SeqIO.write(self.struc_seq, pdb_seq_fh, "fasta")
 
-        aln_group_fh = open(aln_group_path, "w")
-        AlignIO.write(self.aln_obj, aln_group_fh, "fasta")
-        aln_group_fh.close()
-
-        pdb_seq_fh = open(pdb_seq_path, "w")
-        SeqIO.write(self.struc_seq, pdb_seq_fh, "fasta")
-        pdb_seq_fh.close()
-
-        pipe = Popen(f"mafft --quiet --addfull {pdb_seq_path} --mapout {aln_group_path}; cat {mappingFileName}", stdout=PIPE, shell=True)
-        output = pipe.communicate()[0]
-        mapping_file = output.decode("ascii").split('\n#')[1]
-        groupName = output.decode('ascii').split('>')[1].split('_')[0]
+            result = subprocess.run([mafft, '--quiet', '--addfull', pdb_seq_path, '--mapout', aln_group_path],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            map_path = pdb_seq_path + ".map"
+            if result.returncode != 0 or not os.path.isfile(map_path):
+                raise OSError(f"mafft --addfull failed with exit code {result.returncode}:\n{result.stderr}")
+            with open(map_path) as map_handle:
+                map_text = map_handle.read()
+        mapping_file = map_text.split('\n#')[1]
+        groupName = result.stdout.split('>')[1].split('_')[0]
         firstLine = True
         mapping, bad_map_positions, fail_map = dict(), 0, False
         for line in mapping_file.split('\n'):
@@ -140,8 +137,6 @@ class AlignmentGroup:
             if row[1] == '-':
                 fail_map = True
             mapping[int(row[2])] = self.seq_ix_mapping[int(row[1])]
-        for tempf in tempfiles:
-            remove(tempf)
         if fail_map:
             raise ValueError(f"Mapping between structure file {self.struc_path} and group {groupName} did not work properly!")
         if bad_map_positions > 0:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, os, csv, sys, Bio.Align, argparse, math, matplotlib, ntpath
+import shutil, subprocess, tempfile
 import numpy as np
 from datetime import date
 from functools import lru_cache
@@ -11,7 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
-from twincons.twcSupportFunctions import read_align, slice_by_name
+from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable
 from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
 from twincons import MatrixInfo
 
@@ -64,49 +65,35 @@ def required_length(nmin,nmax):
             setattr(args, self.dest, values)
     return RequiredLength
 
-def deletefile(file_loc):
-    '''Tries to delete provided file path.
-    '''
-    import subprocess
-    try:
-        subprocess.run(['rm', file_loc], check = True)
-    except subprocess.CalledProcessError:
-        raise IOError("When using mafft for merging two alignments working directory must be writable!")
-
-def run_mafft(aln_paths):
+def run_mafft(aln_paths, merged_path="./tempmergedfasta.fas"):
     '''Tags separate alignments for TwinCons and merges them with mafft --merge.
+    The merged alignment is kept at merged_path for inspection.
     '''
-    import warnings
-    tempfiles = ['./tempsubMSAtable', './tempconcatfasta.fas']
-    for tempfile in tempfiles:
-        if os.path.isfile(tempfile):
-            warnings.warn(f"When using mafft for merging two alignments working directory must be free of file {tempfile}. Trying to delete the file.")
-            deletefile(tempfile)
+    mafft = find_executable('mafft', 'to merge two alignment files')
     list_with_alns = [read_align(aln_path) for aln_path in aln_paths]
-    concatedfasta_handle = open("./tempconcatfasta.fas", "a")
-    mergertable_ix = list()
-    previous_len = 0
-    for i, aln in enumerate(list_with_alns, 1):
-        mergertable_ix.append((aln_paths[i-1],len(aln),previous_len))
-        previous_len = len(aln)
-        for seq in aln:
-            seq.id = str(i)+"_"+seq.id
-        AlignIO.write(aln, concatedfasta_handle, "fasta")
-    concatedfasta_handle.close()
-    mergertable = open("./tempsubMSAtable", "a")
-    for aln_len in mergertable_ix:
-        seq_list = [str(x) for x in list(range(aln_len[2]+1,aln_len[2]+aln_len[1]+1))]
-        seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
-        mergertable.write(" "+seq_nums)
-    mergertable.close()
-    try:
-        os.system("mafft --quiet --merge ./tempsubMSAtable ./tempconcatfasta.fas > ./tempmergedfasta.fas")
-    except OSError as e:
-        raise OSError("Mafft failed with the following error:\n"+e)
-    merged_tagged_aln = read_align("./tempmergedfasta.fas")
-    for tempfile in tempfiles:
-        deletefile(tempfile)
-    return merged_tagged_aln
+    with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+        concat_path = os.path.join(temp_dir, 'concatenated.fas')
+        table_path = os.path.join(temp_dir, 'subMSAtable')
+        mergertable_ix = list()
+        previous_len = 0
+        with open(concat_path, "w") as concatedfasta_handle:
+            for i, aln in enumerate(list_with_alns, 1):
+                mergertable_ix.append((aln_paths[i-1],len(aln),previous_len))
+                previous_len += len(aln)
+                for seq in aln:
+                    seq.id = str(i)+"_"+seq.id
+                AlignIO.write(aln, concatedfasta_handle, "fasta")
+        with open(table_path, "w") as mergertable:
+            for aln_len in mergertable_ix:
+                seq_list = [str(x) for x in list(range(aln_len[2]+1,aln_len[2]+aln_len[1]+1))]
+                seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
+                mergertable.write(" "+seq_nums)
+        with open(merged_path, "w") as merged_handle:
+            result = subprocess.run([mafft, '--quiet', '--merge', table_path, concat_path],
+                                    stdout=merged_handle, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        raise OSError(f"mafft --merge failed with exit code {result.returncode}:\n{result.stderr}")
+    return read_align(merged_path)
 
 def count_aligned_positions(aln_obj, gap_threshold):
     '''Counts how many positions are aligned (less than gap_threshold gaps)
@@ -241,12 +228,10 @@ def baseline_matrix(mx, testFrequency=None):
     return np.subtract(np.array(mx),baseline)
 
 def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
-    from subprocess import Popen, PIPE
     '''Runs newton_direct_solve on a pre-computed joint probility for a substitution matrix.
     Uses the two provided AA frequencies to output a substitution matrix which is compositionally
     adjusted for these two frequencies.'''
     jointProbLocation = matrix_path('jp', f'{subsMatrixName}.dat')
-    newton_direct_solve = f'{os.path.dirname(os.path.realpath(__file__))}/newton_direct_solve'
     groupAAfreqs, groupLengths = list(), list()
     multiplicationFactors = dict(blosum62 = 2, blosum30 = 5, blosum35 = 4, blosum40 = 4, blosum45 = 3, blosum50 = 3, blosum55 = 3,
                                 blosum60 = 2, blosum65 = 2, blosum70 = 2, blosum75 = 2, blosum80 = 2, blosum85 = 2, blosum90 = 2,
@@ -258,26 +243,39 @@ def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
         groupAAfreqs.append(alnGroup.getAAfrequenciesList())
         groupLengths.append(alnObj.get_alignment_length())
 
-    g1Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG1freqs"
-    g2Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG2freqs"
-    tempMxfile = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempCAmatrix"
+    with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+        g1Freqs = os.path.join(temp_dir, 'g1freqs')
+        g2Freqs = os.path.join(temp_dir, 'g2freqs')
+        tempMxfile = os.path.join(temp_dir, 'CAmatrix')
+        for freq_path, aaFreqs in zip((g1Freqs, g2Freqs), groupAAfreqs):
+            with open(freq_path, "w") as f:
+                f.write('\n'.join([str(x) for x in aaFreqs]))
 
-    tempfiles = [g1Freqs, g2Freqs, tempMxfile]
-    for i, aaFreqs in enumerate(groupAAfreqs):
-        with open(tempfiles[i], "w") as f:
-            f.write('\n'.join([str(x) for x in aaFreqs]))
+        newton_direct_solve = _newton_direct_solve_executable(temp_dir)
+        cmd = [newton_direct_solve, '1', tempMxfile, jointProbLocation, g1Freqs, g2Freqs,
+               str(groupLengths[0]), str(groupLengths[1]), str(len(mx))]
+        try:
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        except OSError as e:
+            raise OSError("Compositional adjustment (-ca) uses the bundled newton_direct_solve program, "
+                          f"which is built for Linux x86-64 and could not be run on this platform: {e}") from e
+        if not os.path.isfile(tempMxfile) or os.path.getsize(tempMxfile) == 0:
+            raise OSError(f"newton_direct_solve failed with exit code {result.returncode}:\n{result.stdout}{result.stderr}")
+        with open(tempMxfile, "r") as file:
+            li = [[float(x) for x in line.strip()[1:-1].split()] for line in file]
 
-    cmd = f'{newton_direct_solve} 1 {tempMxfile} {jointProbLocation} {g1Freqs} {g2Freqs} {groupLengths[0]} {groupLengths[1]} {len(mx)}'
-    pipe = Popen(cmd, stdout=PIPE, shell=True)
-    output = pipe.communicate()[0]
-    with open(tempMxfile, "r") as file:
-        li = [[float(x) for x in line.strip()[1:-1].split()] for line in file]
+    return np.array(li)*multiplicationFactors[subsMatrixName]
 
-    outputMx = np.array(li)
-    for tempf in tempfiles:
-        os.remove(tempf)
-    
-    return outputMx*multiplicationFactors[subsMatrixName]
+def _newton_direct_solve_executable(temp_dir):
+    '''Returns a runnable path to the bundled solver. Package installs often drop the
+    executable bit, so fall back to an executable copy inside temp_dir.'''
+    bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'newton_direct_solve')
+    if os.access(bundled, os.X_OK):
+        return bundled
+    runnable = os.path.join(temp_dir, 'newton_direct_solve')
+    shutil.copyfile(bundled, runnable)
+    os.chmod(runnable, 0o755)
+    return runnable
 
 
 def determine_subs_matrix(comm_args, sliced_alns):
