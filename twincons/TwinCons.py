@@ -12,7 +12,8 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
-from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable
+from Bio.SeqRecord import SeqRecord
+from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable, alignment_array, gap_counts_per_column
 from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
 from twincons import MatrixInfo
 
@@ -101,9 +102,9 @@ def count_aligned_positions(aln_obj, gap_threshold):
     number_seqs = len(aln_obj)
     aligned_positions = 0
     extremely_gapped = dict()
-    for i in range(0,aln_obj.get_alignment_length()):
+    for i, gap_count in enumerate(gap_counts_per_column(aln_obj).tolist()):
         extremely_gapped[i+1] = 'True'
-        if aln_obj[:,i].count('-')/number_seqs <= float(gap_threshold):
+        if gap_count/number_seqs <= float(gap_threshold):
             aligned_positions+=1
             extremely_gapped[i+1] = 'False'
     if aligned_positions == 0:
@@ -129,27 +130,23 @@ def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, gr
 
 def remove_extremely_gapped_regions(align, gap_perc, gap_mapping):
     '''Removes columns of alignment with more than gap_perc gaps.
+    Fills gap_mapping with trimmed column index -> original column index (1-based).
     '''
-    n = float(len(align[0]))
-    i, x = 0, 0
-    length=1
-    while i < n:
-        x = align[:, i].count('-')/len(align)                 #Get percentage of gaps in column
-        if float(x) > abs(float(gap_perc)):
-            if i == 0:
-                align = align[:, 1:]
-            elif i+1 == n:
-                align = align[:, :i]
-            else:
-                align = align[:, :i] + align[:, i+1:]
-            n -= 1                                            #  seq. 1 shorter
-        else:                                                 #  nothing to delete, proceed
+    number_seqs = len(align)
+    kept_columns = list()
+    i, length = 0, 1
+    for column, gap_count in enumerate(gap_counts_per_column(align).tolist()):
+        if gap_count/number_seqs <= abs(float(gap_perc)):
+            kept_columns.append(column)
             i += 1
-        length+=1
-        if i in gap_mapping.keys():
-            continue
-        gap_mapping[i] = int(length)-1
-    return gap_mapping, align, len(align[0])
+        length += 1
+        if i not in gap_mapping:
+            gap_mapping[i] = length-1
+    columns = alignment_array(align)[:, kept_columns]
+    trimmed = Bio.Align.MultipleSeqAlignment([
+        SeqRecord(Seq.Seq(row.tobytes().decode('ascii')), id=record.id, name=record.name, description=record.description)
+        for record, row in zip(align, columns)])
+    return gap_mapping, trimmed, len(kept_columns)
 
 def uniq_resi_list(aln_obj):
     '''

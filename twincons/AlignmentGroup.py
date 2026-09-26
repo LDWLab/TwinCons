@@ -3,7 +3,7 @@ import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
-#from Bio.PDB import ResidueDepth
+from twincons.twcSupportFunctions import alignment_array
 '''Contains class for alignment groups'''
 
 class AlignmentGroup:
@@ -144,62 +144,44 @@ class AlignmentGroup:
         self.mapping = mapping
         return mapping
 
-    def _freq_iterator(self, column, aa_list, weight_aa_distr):
-        '''Calculates gap adjusted frequency of each AA in the column.'''
-        #Still doesn't handle ambiguous letters well
-        if type(aa_list) == list:
-            aa_list = ''.join(aa_list)
-        if len(aa_list) >= 20:
-            abs_length = 20
-            adjsuted_column_list = ['-' if resi=='X' else resi for resi in column]
-            all_residues = aa_list.replace('X', '')
-        else:
-            abs_length = 4
-            adjsuted_column_list = ['-' if resi=='N' else resi for resi in column]
-            aa_list.replace('N', '')
-
-        M   =  len(adjsuted_column_list)
-        
-        #Gap adjustment
-        num_gaps = adjsuted_column_list.count('-')
-        if '-' in weight_aa_distr.keys():
-            num_gaps = weight_aa_distr['-']*M
-        gap_freq = num_gaps/abs_length
-        frequency_list = list()
-        
-        # Number of residues in column
-        for base in aa_list:
-            n_i = adjsuted_column_list.count(base) # Number of residues of type i
-            if base in weight_aa_distr.keys():     # In case of weighted
-                n_i = weight_aa_distr[base]*M
-            #Gap adjustment
-            if base in self.seq_distribution.keys():
-                n_i += self.seq_distribution[base]*num_gaps
-            else:
-                n_i += gap_freq
-            P_i = n_i/float(M) # n_i(Number of residues of type i) / M(Number of residues in column)
-            frequency_list.append(P_i)
-        return frequency_list
-
     def column_distribution_calculation(self, aa_list, alignment_length, seq_weights):
-        '''Calculates AA distribution for the current alignment column'''
-        column_distr = dict()
-        col_ix = 0
-        while col_ix < alignment_length:
-            col_aalist = list()
-            weighted_distr = dict()
-            if len(seq_weights) > 0:
-                col_aalist = list()
-                row_ix = 0
-                for col_aa in self.aln_obj[:, col_ix]:
-                    if col_aa not in weighted_distr.keys():
-                        weighted_distr[col_aa] = float()
-                    weighted_distr[col_aa] += seq_weights[row_ix]
-                    row_ix += 1
-            col_aalist = self._freq_iterator(self.aln_obj[:, col_ix], aa_list, weighted_distr)
-            col_ix += 1
-            column_distr[col_ix] = col_aalist
-        return column_distr
+        '''
+        Returns {column index (1-based): gap adjusted frequency of each residue in aa_list}.
+        Ambiguous residues (X for proteins, N for nucleotides) count as gaps. Gaps are
+        redistributed according to seq_distribution, or uniformly for residues missing from it.
+        With seq_weights, residue counts are replaced by the summed weights of the sequences
+        carrying that residue, scaled by the number of sequences.
+        '''
+        aa_string = ''.join(aa_list)
+        if len(aa_string) >= 20:
+            abs_length, ambiguous = 20, b'X'
+        else:
+            abs_length, ambiguous = 4, b'N'
+        seqs = alignment_array(self.aln_obj)[:, :alignment_length]
+        M = seqs.shape[0]
+        adjusted = np.where(seqs == ambiguous, b'-', seqs)
+        num_gaps = (adjusted == b'-').sum(axis=0)
+        weighted = len(seq_weights) > 0
+        if weighted:
+            weights = np.asarray(seq_weights, dtype=float)[:, None]
+            def summed_weights(char):
+                # Sequential sum over sequences keeps the floating point result of per-row accumulation.
+                present = seqs == char
+                return present.any(axis=0), (present * weights).cumsum(axis=0)[-1]
+            gap_present, gap_weight = summed_weights(b'-')
+            num_gaps = np.where(gap_present, gap_weight*M, num_gaps)
+        frequencies = np.empty((seqs.shape[1], len(aa_string)))
+        for i, base in enumerate(aa_string):
+            n_i = (adjusted == base.encode('ascii')).sum(axis=0)
+            if weighted:
+                base_present, base_weight = summed_weights(base.encode('ascii'))
+                n_i = np.where(base_present, base_weight*M, n_i)
+            if base in self.seq_distribution:
+                n_i = n_i + self.seq_distribution[base]*num_gaps
+            else:
+                n_i = n_i + num_gaps/abs_length
+            frequencies[:, i] = n_i/float(M)
+        return {col_ix: column.tolist() for col_ix, column in enumerate(frequencies, 1)}
 
     def structure_loader(self,struc_to_aln_index_mapping):
         inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}

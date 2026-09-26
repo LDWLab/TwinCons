@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 import shutil
+import numpy as np
 from Bio.Align import MultipleSeqAlignment
 from Bio import AlignIO
+
+def alignment_array(aln_obj):
+    '''Returns the alignment as an (n_sequences, n_columns) array of single-byte characters.'''
+    return np.array([np.frombuffer(str(record.seq).encode('ascii'), dtype='S1') for record in aln_obj])
+
+def gap_counts_per_column(aln_obj):
+    '''Returns the number of '-' characters in each alignment column.'''
+    return (alignment_array(aln_obj) == b'-').sum(axis=0)
 
 def find_executable(name, purpose):
     '''Returns the full path of an external program, or raises a helpful error.'''

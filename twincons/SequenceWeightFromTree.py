@@ -2,16 +2,17 @@
 """Calculate importance of sequences based on phylogenetic tree."""
 
 import os, sys, Bio.Align, argparse
+import numpy as np
 from Bio import Phylo
 from io import StringIO
 from numpy.random import choice
 from collections import Counter
 from statistics import mean, stdev
 from itertools import combinations, product
-from Bio.Phylo.TreeConstruction import DistanceCalculator
+from Bio.Phylo.TreeConstruction import DistanceCalculator, DistanceMatrix
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor
 
-from twincons.twcSupportFunctions import read_align, slice_by_name
+from twincons.twcSupportFunctions import read_align, slice_by_name, alignment_array
 
 def create_and_parse_argument_options(argument_list):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -25,6 +26,55 @@ def create_and_parse_argument_options(argument_list):
     commandline_args = parser.parse_args(argument_list)
     return commandline_args
 
+def pairwise_distances(calculator, seqs1, seqs2):
+    '''
+    Vectorized DistanceCalculator._pairwise: returns an array whose [p, q] entry is the
+    distance between seqs1[p] and seqs2[q], given as alignment_array() byte arrays.
+    Uses the calculator's own scoring matrix and skip letters.
+    '''
+    skip_letters = [letter.encode('ascii') for letter in calculator.skip_letters]
+    skip1 = np.isin(seqs1, skip_letters)
+    skip2 = np.isin(seqs2, skip_letters)
+    distances = np.empty((len(seqs1), len(seqs2)))
+    if calculator.scoring_matrix is None:
+        length = seqs1.shape[1]
+        for q in range(len(seqs2)):
+            valid = ~(skip1 | skip2[q])
+            score = ((seqs1 == seqs2[q]) & valid).sum(axis=1)
+            distances[:, q] = 1 - score / length if length else 1
+        return distances
+
+    scoring = np.asarray(calculator.scoring_matrix, dtype=float)
+    lookup = np.full(256, -1)
+    for index, letter in enumerate(calculator.scoring_matrix.alphabet):
+        lookup[ord(letter)] = index
+    codes1 = lookup[seqs1.view(np.uint8)]
+    codes2 = lookup[seqs2.view(np.uint8)]
+    diagonal = np.diag(scoring)
+    for q in range(len(seqs2)):
+        valid = ~(skip1 | skip2[q])
+        bad = valid & ((codes1 < 0) | (codes2[q] < 0))
+        if bad.any():
+            p, position = np.argwhere(bad)[0]
+            letter = seqs1[p, position] if codes1[p, position] < 0 else seqs2[q, position]
+            raise ValueError(f"Bad letter '{letter.decode()}' at position '{position}'")
+        c1, c2 = np.where(valid, codes1, 0), np.where(valid, codes2[q], 0)
+        score = np.where(valid, scoring[c1, c2], 0).sum(axis=1)
+        max_score = np.maximum(np.where(valid, diagonal[c1], 0).sum(axis=1),
+                               np.where(valid, diagonal[c2], 0).sum(axis=1))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            distances[:, q] = np.where(max_score == 0, 1, 1 - score / max_score)
+    return distances
+
+def distance_matrix(aln_obj, calculator):
+    '''Same result as calculator.get_distance(aln_obj), computed with numpy.'''
+    names = [record.id for record in aln_obj]
+    seqs = alignment_array(aln_obj)
+    lower_triangle = [[0]]
+    for i in range(1, len(names)):
+        lower_triangle.append(pairwise_distances(calculator, seqs[:i], seqs[i:i+1])[:, 0].tolist() + [0])
+    return DistanceMatrix(names, lower_triangle)
+
 def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosum62'):
     '''
     Constructs and returns a tree from an alignment object.
@@ -35,7 +85,7 @@ def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosu
         calculator = DistanceCalculator(calc_mx)
     else:
         calculator = DistanceCalculator(calc_mx)
-    dist_mx = calculator.get_distance(aln_obj)
+    dist_mx = distance_matrix(aln_obj, calculator)
     constructor = DistanceTreeConstructor()
     if nj:
         tree = constructor.nj(dist_mx)
@@ -58,33 +108,59 @@ def generate_sequence_sampled_from_alignment(aln_obj):
         i+=1
     return outseq
 
-def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=1000, nucl=False):
+def voronoi_convergence(distances):
+    '''Given sample x sequence distances, splits one vote per sample among its closest sequences.'''
+    convergence_vr = np.zeros(distances.shape[1])
+    for sample_distances in distances:
+        closest = sample_distances == sample_distances.min()
+        convergence_vr[closest] += 1/closest.sum()
+    return convergence_vr
+
+def leaf_distance_sums(tree, names):
+    '''For each named leaf, the sum of tree distances to all leaves in names.
+    Equivalent to summing tree.distance() over all pairs, in O(n * depth).'''
+    depths = tree.depths()
+    parents = {child: clade for clade in tree.find_clades() for child in clade.clades}
+    leaves = {leaf.name: leaf for leaf in tree.get_terminals()}
+    targets = {leaves[name] for name in names}
+    below = {}
+    for clade in tree.find_clades(order='postorder'):
+        below[clade] = (clade in targets) + sum(below[child] for child in clade.clades)
+    total_depth = sum(depths[leaves[name]] for name in names)
+    sums = list()
+    for name in names:
+        leaf = leaves[name]
+        lca_depth_sum = depths[leaf] * below[leaf]
+        child, clade = leaf, parents.get(leaf)
+        while clade is not None:
+            lca_depth_sum += depths[clade] * (below[clade] - below[child])
+            child, clade = clade, parents.get(clade)
+        sums.append(len(names) * depths[leaf] + total_depth - 2 * lca_depth_sum)
+    return sums
+
+def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=1000, nucl=False, chunk_size=100):
     alg_types = ['voronoi', 'pairwise']
     if algorithm not in alg_types:
         raise ValueError("Invalid algorithm type. Expected one of: %s" % alg_types)
-    i = 0
     if algorithm == 'voronoi':
+        # Random sequences pick, at every column, one of the characters present there with equal probability.
         calculator = DistanceCalculator(calc_mx)
-        convergence_vr = [0] * len(aln_obj)
-        while i < repeat:
-            test_seq = generate_sequence_sampled_from_alignment(aln_obj)
-            wei_vr = list()
-            for seq_obj in aln_obj:
-                wei_vr.append(calculator._pairwise(seq_obj.seq, test_seq))
-            closest_seq = min(wei_vr)
-            closest_sequences = [i for i, j in enumerate(wei_vr) if j == closest_seq]
-            for pos in closest_sequences:
-                convergence_vr[pos] += 1/len(closest_sequences)
-            i += 1
-        return [i/sum(convergence_vr) for i in convergence_vr]
+        seqs = alignment_array(aln_obj)
+        column_chars = [np.unique(seqs[:, column]) for column in range(seqs.shape[1])]
+        choices_per_column = np.array([len(chars) for chars in column_chars])
+        padded_chars = np.full((len(column_chars), choices_per_column.max()), b'-', dtype='S1')
+        for column, chars in enumerate(column_chars):
+            padded_chars[column, :len(chars)] = chars
+        convergence_vr = np.zeros(len(aln_obj))
+        for start in range(0, repeat, chunk_size):
+            samples = min(chunk_size, repeat - start)
+            picks = (np.random.random_sample((samples, len(column_chars))) * choices_per_column).astype(int)
+            test_seqs = padded_chars[np.arange(len(column_chars)), picks]
+            convergence_vr += voronoi_convergence(pairwise_distances(calculator, seqs, test_seqs).T)
+        return (convergence_vr / convergence_vr.sum()).tolist()
     if algorithm == 'pairwise':
         tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
-        distance_sums = list()
-        for seq_obj in aln_obj:
-            curr_seq_dist = 0
-            for seq_obj2 in aln_obj:
-                curr_seq_dist += tree.distance(seq_obj.id, seq_obj2.id)
-            distance_sums.append(curr_seq_dist)
+        distance_sums = leaf_distance_sums(tree, [seq_obj.id for seq_obj in aln_obj])
         return [i/sum(distance_sums) for i in distance_sums]
 
 def read_indeli_trees_file(file_path):

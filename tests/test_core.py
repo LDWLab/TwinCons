@@ -8,13 +8,14 @@ from unittest import mock
 
 import numpy as np
 from Bio.Align import MultipleSeqAlignment
+from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from twincons import MatrixInfo, TwinCons
+from twincons import MatrixInfo, SequenceWeightFromTree, TwinCons
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.MatrixLoad import matrix_path
-from twincons.twcSupportFunctions import slice_by_name
+from twincons.twcSupportFunctions import read_align, slice_by_name
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ALIGNMENT_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'uL02ab_txid_tagged.fas')
@@ -84,6 +85,42 @@ class TestExternalPrograms(unittest.TestCase):
             else:
                 with self.assertRaisesRegex(OSError, 'Linux x86-64'):
                     TwinCons.main(args)
+
+
+class TestVectorizedAlgorithms(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.aln = read_align(ALIGNMENT_PATH)[:25]
+
+    def test_distance_matrix_matches_biopython(self):
+        for model in ('identity', 'blosum62'):
+            calculator = DistanceCalculator(model)
+            expected = calculator.get_distance(self.aln)
+            result = SequenceWeightFromTree.distance_matrix(self.aln, calculator)
+            self.assertEqual(result.names, expected.names)
+            self.assertEqual(result.matrix, expected.matrix)
+
+    def test_leaf_distance_sums_match_tree_distances(self):
+        tree = SequenceWeightFromTree.tree_construct(self.aln)
+        names = [record.id for record in self.aln]
+        expected = [sum(tree.distance(a, b) for b in names) for a in names]
+        np.testing.assert_allclose(SequenceWeightFromTree.leaf_distance_sums(tree, names), expected, rtol=1e-12)
+
+    def test_voronoi_weights_are_reproducible_distribution(self):
+        np.random.seed(0)
+        first = SequenceWeightFromTree.calculate_weight_vector(self.aln, algorithm='voronoi', repeat=200)
+        np.random.seed(0)
+        second = SequenceWeightFromTree.calculate_weight_vector(self.aln, algorithm='voronoi', repeat=200)
+        self.assertEqual(first, second)
+        self.assertAlmostEqual(sum(first), 1.0)
+
+    def test_remove_extremely_gapped_regions(self):
+        aln = make_alignment([('A_1', 'A--CD-'), ('A_2', 'A-EC--'), ('B_1', 'A--CDE'), ('B_2', 'AG-C--')])
+        mapping, trimmed, length = TwinCons.remove_extremely_gapped_regions(aln, 0.5, {})
+        self.assertEqual([str(record.seq) for record in trimmed], ['ACD', 'AC-', 'ACD', 'AC-'])
+        self.assertEqual([record.id for record in trimmed], ['A_1', 'A_2', 'B_1', 'B_2'])
+        self.assertEqual(length, 3)
+        self.assertEqual(mapping, {1: 1, 2: 4, 3: 5})
 
 
 class TestAlignmentGroup(unittest.TestCase):
