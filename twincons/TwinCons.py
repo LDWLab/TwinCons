@@ -440,7 +440,7 @@ def jalview_output(output_dict, comm_args):
     with open(comm_args.output_path+".jlv","w") as jv_output:
         jv_output.write('JALVIEW_ANNOTATION\n')
         jv_output.write('# Created: '+str(date.today())+"\n")
-        jv_output.write('# Contact: ppenev@gatech.edu\n')
+        jv_output.write('# Contact: peteripenev@gmail.com\n')
         jv_output.write('BAR_GRAPH\tTWINCONS\t')
         for position in sorted(output_dict.keys(), key=abs):
             color_hex = data_to_diverging_gradients(output_dict[position][0], max_score, min_score, 'Greens', 'Purples')
