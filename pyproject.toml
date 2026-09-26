@@ -7,7 +7,7 @@ name = "TwinCons"
 version = "0.7.0.dev0"
 description = "TwinCons script for analysis of MSAs comprised of two sequence groups."
 readme = "README_twc.md"
-requires-python = ">=3.5"
+requires-python = ">=3.8"
 license = { text = "MIT License" }
 authors = [
     { name = "Petar Penev", email = "ppenev@gatech.edu" },
@@ -34,10 +34,10 @@ include-package-data = true
 include = ["twincons", "twincons.*"]
 
 [tool.setuptools.package-data]
-"twincons" = ["newton_direct_solve"]
-
-[tool.setuptools.data-files]
-"matrices" = ["matrices/LG.dat"]
-"matrices/BLOSUM" = ["matrices/BLOSUM/*.out"]
-"matrices/structureDerived" = ["matrices/structureDerived/*.dat"]
-"matrices/jp" = ["matrices/jp/*.dat"]
+"twincons" = [
+    "newton_direct_solve",
+    "matrices/*.dat",
+    "matrices/BLOSUM/*.out",
+    "matrices/structureDerived/*.dat",
+    "matrices/jp/*.dat",
+]

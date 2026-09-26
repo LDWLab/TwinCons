@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, os, csv, sys, Bio.Align, argparse, math, matplotlib, ntpath
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from datetime import date
+from functools import lru_cache
 from Bio import AlignIO, Seq
 from io import StringIO
 import matplotlib.pyplot as plt
@@ -13,7 +12,7 @@ from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
 from twincons.twcSupportFunctions import read_align, slice_by_name
-from twincons.MatrixLoad import PAMLmatrix
+from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
 from twincons import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
@@ -217,17 +216,18 @@ def subs_matrix_bgFreq(matrix):
         return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034, 
            0.035, 0.085, 0.085, 0.012, 0.045, 0.041, 0.057, 0.062, 0.012, 0.030, 0.078])
     elif re.match(r'blosum.*', matrix):
-        with open (str(os.path.dirname(__file__))+'/../matrices/BLOSUM/'+matrix+'.out') as f:
+        with open(matrix_path('BLOSUM', matrix+'.out')) as f:
             freqs = f.readlines()[37]
         return np.array([float(x) for x in freqs.split()])
     else:
         raise IOError(f"Impossible combination of arguments!\
              Can't use background frequencies with matrix {matrix}!")
 
+@lru_cache(maxsize=None)
 def struc_anno_matrices (struc_anno, baselineType):
     '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/'+struc_anno+'.dat')
-    behosMX = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/BEHOS.dat')
+    mx = load_paml_matrix(matrix_path('structureDerived', struc_anno+'.dat'))
+    behosMX = load_paml_matrix(matrix_path('structureDerived', 'BEHOS.dat'))
     if baselineType == 'uniform':
         return baseline_matrix(np.array(mx.lodd))
     return baseline_matrix(np.array(mx.lodd), behosMX.getPiFreqs)
@@ -246,7 +246,7 @@ def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
     '''Runs newton_direct_solve on a pre-computed joint probility for a substitution matrix.
     Uses the two provided AA frequencies to output a substitution matrix which is compositionally
     adjusted for these two frequencies.'''
-    jointProbLocation = f'{os.path.dirname(os.path.realpath(__file__))}/../matrices/jp/{subsMatrixName}.dat'
+    jointProbLocation = matrix_path('jp', f'{subsMatrixName}.dat')
     newton_direct_solve = f'{os.path.dirname(os.path.realpath(__file__))}/newton_direct_solve'
     groupAAfreqs, groupLengths = list(), list()
     multiplicationFactors = dict(blosum62 = 2, blosum30 = 5, blosum35 = 4, blosum40 = 4, blosum45 = 3, blosum50 = 3, blosum55 = 3,
@@ -294,11 +294,13 @@ def determine_subs_matrix(comm_args, sliced_alns):
         mx = np.array([4.322, 0])
         return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.leegascuel or comm_args.structure_paths:
-        mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-        bgFreq = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').getPiFreqs
+        lg_matrix = load_paml_matrix(matrix_path('LG.dat'))
+        mx = np.array(lg_matrix.lodd)
+        bgFreq = lg_matrix.getPiFreqs
     elif comm_args.custom_matrix:
-        mx = np.array(PAMLmatrix(str(comm_args.custom_matrix)).lodd)
-        bgFreq = PAMLmatrix(str(comm_args.custom_matrix)).getPiFreqs
+        custom_matrix = PAMLmatrix(str(comm_args.custom_matrix))
+        mx = np.array(custom_matrix.lodd)
+        bgFreq = custom_matrix.getPiFreqs
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
         bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix)
@@ -536,11 +538,13 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, ba
     if struc_annotation and mx:
         raise IOError("Do not use structure defined matrices and sequence based matrices at the same time.")
     alnindex_score = defaultdict(dict)
+    if struc_annotation:
+        lg_lodd = np.array(load_paml_matrix(matrix_path('LG.dat')).lodd)
     for aln_index in aln_index_dict:
         vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
         vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
         if struc_annotation:
-            mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+            mx = lg_lodd
             if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
                 common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
                 if len(common_chars) > 0:
