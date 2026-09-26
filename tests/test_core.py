@@ -315,7 +315,8 @@ class TestDsspDataLocation(unittest.TestCase):
         prefix = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, prefix)
         os.makedirs(os.path.join(prefix, 'bin'))
-        executable = os.path.join(prefix, 'bin', 'mkdssp')
+        # shutil.which only finds files with an executable extension on Windows.
+        executable = os.path.join(prefix, 'bin', 'mkdssp.exe' if os.name == 'nt' else 'mkdssp')
         with open(executable, 'w') as fh:
             fh.write('')
         os.chmod(executable, 0o755)
