@@ -12,7 +12,7 @@ from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
 from twincons.CompositionalAdjustment import adjust_matrix
-from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
+from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES
 from Bio.SeqRecord import SeqRecord
 from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable, alignment_array, gap_counts_per_column
 from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
@@ -35,6 +35,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
     parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-vs','--voronoi_samples', help=f'Number of random sequences sampled for -w voronoi weights. (Default: {DEFAULT_VORONOI_SAMPLES})', type=positive_int, default=DEFAULT_VORONOI_SAMPLES)
     parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
     output_type_group = parser.add_mutually_exclusive_group()
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
@@ -65,6 +66,13 @@ def score_outputs(comm_args):
     '''The requested score output options; all falsy when only merging alignments.'''
     return (comm_args.plotit, comm_args.write_pml_script, comm_args.return_within,
             comm_args.return_csv, comm_args.ribovision, comm_args.jalview_output)
+
+def positive_int(value):
+    '''argparse type for integers greater than zero.'''
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be a positive integer, got {value}")
+    return number
 
 def required_length(nmin,nmax):
     '''Limiter for passed arguments.
@@ -630,10 +638,10 @@ def main(commandline_arguments):
     alngroup_to_sequence_weight['shannon'] = list()
     if comm_args.weigh_sequences:
         if comm_args.reflected_shannon or comm_args.shannon_entropy:
-            alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
+            alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences, repeat=comm_args.voronoi_samples)
         else:
             for alngroup in gapped_sliced_alns:
-                alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
+                alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences, repeat=comm_args.voronoi_samples)
 
     uniq_resis = uniq_resi_list(alignIO_out_gapped)
     if comm_args.nucleotide:

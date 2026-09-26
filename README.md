@@ -53,7 +53,7 @@ TwinCons.py -a ./data/ALNS/casp9-mcasp_struct.fa -pml unix -s ./data/PDB/HUMAN_C
 Usage:
 ```
 TwinCons.py [-h] [-o OUTPUT_PATH] (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] | -as ALIGNMENT_STRING) [-ma MERGED_ALIGNMENT] [-bn {uniform,bgfreq}] [-cg] [-gg] [-gt GAP_THRESHOLD] [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]] [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]]
-                   [-phy] [-nc] [-w {pairwise,voronoi}] [-ca] [-p | -pml {unix,windows} | -r | -csv | -rv | -jv]
+                   [-phy] [-nc] [-w {pairwise,voronoi}] [-vs VORONOI_SAMPLES] [-ca] [-p | -pml {unix,windows} | -r | -csv | -rv | -jv]
                    [-mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans} | -cm CUSTOM_MATRIX | -lg | -e | -rs]
                    [-ss | -be | -ssbe]
 
@@ -89,6 +89,8 @@ optional arguments:
   -nc, --nucleotide     Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs
   -w {pairwise,voronoi}, --weigh_sequences {pairwise,voronoi}
                         Weigh sequences within each alignment group.
+  -vs VORONOI_SAMPLES, --voronoi_samples VORONOI_SAMPLES
+                        Number of random sequences sampled for -w voronoi weights. (Default: 100000)
   -ca, --compositional_adjustment
                         Adjust the substitution matrix with residue frequencies computed from the two alignment groups.
                          Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.

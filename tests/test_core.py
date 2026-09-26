@@ -110,6 +110,14 @@ class TestArgumentValidation(unittest.TestCase):
         with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
             TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-ma', 'merged.fas'])
 
+    def test_voronoi_samples(self):
+        args = TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-lg', '-csv'])
+        self.assertEqual(args.voronoi_samples, SequenceWeightFromTree.DEFAULT_VORONOI_SAMPLES)
+        args = TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-lg', '-csv', '-w', 'voronoi', '-vs', '500'])
+        self.assertEqual(args.voronoi_samples, 500)
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
+            TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-lg', '-csv', '-vs', '0'])
+
     def test_output_option_required(self):
         with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
             TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-lg'])

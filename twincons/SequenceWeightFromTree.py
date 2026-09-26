@@ -5,7 +5,6 @@ import os, sys, Bio.Align, argparse
 import numpy as np
 from Bio import Phylo
 from io import StringIO
-from numpy.random import choice
 from collections import Counter
 from statistics import mean, stdev
 from itertools import combinations, product
@@ -38,10 +37,16 @@ def pairwise_distances(calculator, seqs1, seqs2):
     distances = np.empty((len(seqs1), len(seqs2)))
     if calculator.scoring_matrix is None:
         length = seqs1.shape[1]
-        for q in range(len(seqs2)):
-            valid = ~(skip1 | skip2[q])
-            score = ((seqs1 == seqs2[q]) & valid).sum(axis=1)
-            distances[:, q] = 1 - score / length if length else 1
+        if length == 0:
+            distances[:] = 1
+            return distances
+        # Compare against blocks of seqs2 at once, keeping each block's boolean array under ~2e7 elements.
+        block = max(1, 20_000_000 // max(1, seqs1.size))
+        for start in range(0, len(seqs2), block):
+            stop = start + block
+            valid = ~(skip1[:, None, :] | skip2[None, start:stop, :])
+            score = ((seqs1[:, None, :] == seqs2[None, start:stop, :]) & valid).sum(axis=2)
+            distances[:, start:stop] = 1 - score / length
         return distances
 
     scoring = np.asarray(calculator.scoring_matrix, dtype=float)
@@ -95,26 +100,10 @@ def tree_construct(aln_obj, nj=False, nucl=False, ladderize=True, calc_mx='blosu
         tree.ladderize()
     return tree
 
-def generate_sequence_sampled_from_alignment(aln_obj):
-    outseq = ''
-    i = 0
-    while i < len(aln_obj[0]):
-        aa_list = list(set(aln_obj[:, i]))
-        distribution = Counter(aln_obj[:, i])
-        choice_distr = []
-        for aa in aa_list:
-            choice_distr.append(distribution[aa]/len(aln_obj[:, i]))
-        outseq += choice(aa_list)
-        i+=1
-    return outseq
-
 def voronoi_convergence(distances):
     '''Given sample x sequence distances, splits one vote per sample among its closest sequences.'''
-    convergence_vr = np.zeros(distances.shape[1])
-    for sample_distances in distances:
-        closest = sample_distances == sample_distances.min()
-        convergence_vr[closest] += 1/closest.sum()
-    return convergence_vr
+    closest = distances == distances.min(axis=1, keepdims=True)
+    return (closest / closest.sum(axis=1, keepdims=True)).sum(axis=0)
 
 def leaf_distance_sums(tree, names):
     '''For each named leaf, the sum of tree distances to all leaves in names.
@@ -138,26 +127,56 @@ def leaf_distance_sums(tree, names):
         sums.append(len(names) * depths[leaf] + total_depth - 2 * lca_depth_sum)
     return sums
 
-def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=1000, nucl=False, chunk_size=100):
+DEFAULT_VORONOI_SAMPLES = 100000
+
+def _one_hot(codes, symbols):
+    '''(rows, columns) symbol codes -> float32 (rows, columns * symbols) one-hot matrix.'''
+    rows, columns = codes.shape
+    matrix = np.zeros((rows, columns * symbols), dtype=np.float32)
+    matrix[np.repeat(np.arange(rows), columns), (np.arange(columns) * symbols + codes).ravel()] = 1
+    return matrix
+
+def voronoi_weights(aln_obj, repeat=DEFAULT_VORONOI_SAMPLES, calc_mx='identity'):
+    '''
+    Voronoi sequence weights (Sibbald & Argos 1990): random sequences pick, at every column,
+    one of the characters present there with equal probability; each random sequence gives one
+    vote, split between the alignment sequences closest to it. Uses numpy's global random state.
+    '''
+    calculator = DistanceCalculator(calc_mx)
+    seqs = alignment_array(aln_obj)
+    n, length = seqs.shape
+    symbols, codes = np.unique(seqs, return_inverse=True)
+    codes = codes.reshape(n, length)
+    column_codes = [np.unique(codes[:, column]) for column in range(length)]
+    choices_per_column = np.array([len(column) for column in column_codes])
+    padded_codes = np.zeros((length, choices_per_column.max()), dtype=codes.dtype)
+    for column, column_symbols in enumerate(column_codes):
+        padded_codes[column, :len(column_symbols)] = column_symbols
+    # Identity distances depend only on the number of identical columns, which a one-hot matrix
+    # product counts exactly; other distance models go through pairwise_distances.
+    fast_identity = calculator.scoring_matrix is None and not calculator.skip_letters
+    if fast_identity:
+        seq_one_hot = _one_hot(codes, len(symbols))
+    chunk_size = max(1, 25_000_000 // max(1, length * len(symbols)))
+    convergence_vr = np.zeros(n)
+    for start in range(0, repeat, chunk_size):
+        samples = min(chunk_size, repeat - start)
+        picks = (np.random.random_sample((samples, length)) * choices_per_column).astype(int)
+        sample_codes = padded_codes[np.arange(length), picks]
+        if fast_identity:
+            matches = _one_hot(sample_codes, len(symbols)) @ seq_one_hot.T
+            distances = 1 - matches.astype(float) / length
+        else:
+            distances = pairwise_distances(calculator, seqs, symbols[sample_codes]).T
+        convergence_vr += voronoi_convergence(distances)
+    return (convergence_vr / convergence_vr.sum()).tolist()
+
+def calculate_weight_vector(aln_obj, algorithm='pairwise', calc_mx='identity', repeat=DEFAULT_VORONOI_SAMPLES, nucl=False):
     alg_types = ['voronoi', 'pairwise']
     if algorithm not in alg_types:
         raise ValueError("Invalid algorithm type. Expected one of: %s" % alg_types)
     if algorithm == 'voronoi':
-        # Random sequences pick, at every column, one of the characters present there with equal probability.
-        calculator = DistanceCalculator(calc_mx)
-        seqs = alignment_array(aln_obj)
-        column_chars = [np.unique(seqs[:, column]) for column in range(seqs.shape[1])]
-        choices_per_column = np.array([len(chars) for chars in column_chars])
-        padded_chars = np.full((len(column_chars), choices_per_column.max()), b'-', dtype='S1')
-        for column, chars in enumerate(column_chars):
-            padded_chars[column, :len(chars)] = chars
-        convergence_vr = np.zeros(len(aln_obj))
-        for start in range(0, repeat, chunk_size):
-            samples = min(chunk_size, repeat - start)
-            picks = (np.random.random_sample((samples, len(column_chars))) * choices_per_column).astype(int)
-            test_seqs = padded_chars[np.arange(len(column_chars)), picks]
-            convergence_vr += voronoi_convergence(pairwise_distances(calculator, seqs, test_seqs).T)
-        return (convergence_vr / convergence_vr.sum()).tolist()
+        return voronoi_weights(aln_obj, repeat=repeat, calc_mx=calc_mx)
     if algorithm == 'pairwise':
         tree = tree_construct(aln_obj, nucl=nucl, calc_mx=calc_mx)
         distance_sums = leaf_distance_sums(tree, [seq_obj.id for seq_obj in aln_obj])
