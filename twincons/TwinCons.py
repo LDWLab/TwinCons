@@ -25,6 +25,7 @@ def create_and_parse_argument_options(argument_list):
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
+    parser.add_argument('-ma','--merged_alignment', help='Save the alignment merged from the two -a files (FASTA, sequence ids prefixed with 1_ and 2_ by input file).\nWithout a scoring output option only the merged alignment is written.')
     parser.add_argument('-bn','--baseline', help='Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.\n\t(Default: bgfreq)', choices=['uniform', 'bgfreq'], default='bgfreq')
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
     parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
@@ -35,7 +36,7 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
     parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
     parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
-    output_type_group = parser.add_mutually_exclusive_group(required=True)
+    output_type_group = parser.add_mutually_exclusive_group()
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
     output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.', choices=['unix', 'windows'])
     output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
@@ -53,7 +54,17 @@ def create_and_parse_argument_options(argument_list):
     structure_option.add_argument('-be','--burried_exposed', help = 'Use substitution matrices derived from data dependent on the solvent accessability of a residue.', action="store_true")
     structure_option.add_argument('-ssbe','--both', help = 'Use substitution matrices derived from data dependent on both the secondary structure and the solvent accessability of a residue.', action="store_true")
     commandline_args = parser.parse_args(argument_list)
+    if commandline_args.merged_alignment and len(commandline_args.alignment_paths or []) != 2:
+        parser.error('-ma/--merged_alignment requires two alignment files given with -a')
+    if not commandline_args.merged_alignment and not any(score_outputs(commandline_args)):
+        parser.error('one of the arguments -p/--plotit -pml/--write_pml_script -r/--return_within -csv/--return_csv '
+                     '-rv/--ribovision -jv/--jalview_output is required, unless only merging alignments with -ma')
     return commandline_args
+
+def score_outputs(comm_args):
+    '''The requested score output options; all falsy when only merging alignments.'''
+    return (comm_args.plotit, comm_args.write_pml_script, comm_args.return_within,
+            comm_args.return_csv, comm_args.ribovision, comm_args.jalview_output)
 
 def required_length(nmin,nmax):
     '''Limiter for passed arguments.
@@ -67,13 +78,16 @@ def required_length(nmin,nmax):
             setattr(args, self.dest, values)
     return RequiredLength
 
-def run_mafft(aln_paths, merged_path="./tempmergedfasta.fas"):
+def run_mafft(aln_paths, merged_path=None):
     '''Tags separate alignments for TwinCons and merges them with mafft --merge.
-    The merged alignment is kept at merged_path for inspection.
+    Sequence ids are prefixed with 1_ and 2_ by input file, which defines the two groups.
+    The merged alignment is also saved to merged_path when one is given.
     '''
     mafft = find_executable('mafft', 'to merge two alignment files')
     list_with_alns = [read_align(aln_path) for aln_path in aln_paths]
     with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+        if merged_path is None:
+            merged_path = os.path.join(temp_dir, 'merged.fas')
         concat_path = os.path.join(temp_dir, 'concatenated.fas')
         table_path = os.path.join(temp_dir, 'subMSAtable')
         mergertable_ix = list()
@@ -93,9 +107,9 @@ def run_mafft(aln_paths, merged_path="./tempmergedfasta.fas"):
         with open(merged_path, "w") as merged_handle:
             result = subprocess.run([mafft, '--quiet', '--merge', table_path, concat_path],
                                     stdout=merged_handle, stderr=subprocess.PIPE, text=True)
-    if result.returncode != 0:
-        raise OSError(f"mafft --merge failed with exit code {result.returncode}:\n{result.stderr}")
-    return read_align(merged_path)
+        if result.returncode != 0:
+            raise OSError(f"mafft --merge failed with exit code {result.returncode}:\n{result.stderr}")
+        return read_align(merged_path)
 
 def count_aligned_positions(aln_obj, gap_threshold):
     '''Counts how many positions are aligned (less than gap_threshold gaps)
@@ -552,6 +566,9 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
+    if not any(score_outputs(comm_args)):
+        run_mafft(comm_args.alignment_paths, merged_path=comm_args.merged_alignment)
+        return None
     if comm_args.cut_gaps and (comm_args.structure_pymol or comm_args.structure_paths):
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nCombining gap removal (-cg) and structural mapping (-sy) or structure based matrices (-s) produces inconsistent alignment mapping!")
@@ -572,7 +589,7 @@ def main(commandline_arguments):
     elif len(comm_args.alignment_paths) == 1:
         alignIO_out_gapped=read_align(comm_args.alignment_paths[0])
     elif len(comm_args.alignment_paths) == 2:
-        alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
+        alignIO_out_gapped = run_mafft(comm_args.alignment_paths, merged_path=comm_args.merged_alignment)
     else:
         raise IOError("Unhandled combination of arguments!")
     for x in alignIO_out_gapped:

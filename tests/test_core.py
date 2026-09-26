@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import tempfile
 import unittest
 from unittest import mock
 
 import numpy as np
+from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from Bio.Seq import Seq
@@ -67,6 +69,50 @@ class TestSubstitutionMatrices(unittest.TestCase):
     def test_packaged_matrices_exist(self):
         for parts in (['LG.dat'], ['BLOSUM', 'blosum62.out'], ['structureDerived', 'BEHOS.dat'], ['jp', 'blosum62.dat']):
             self.assertTrue(os.path.isfile(matrix_path(*parts)), parts)
+
+
+@unittest.skipUnless(shutil.which('mafft'), 'mafft is not installed')
+class TestMergedAlignment(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.group_paths = list()
+        for name, group in slice_by_name(read_align(ALIGNMENT_PATH)).items():
+            path = os.path.join(self.temp_dir.name, f'{name}.fas')
+            AlignIO.write(group, path, 'fasta')
+            self.group_paths.append(path)
+
+    def path(self, name):
+        return os.path.join(self.temp_dir.name, name)
+
+    def test_merge_only(self):
+        self.assertIsNone(TwinCons.main(['-a'] + self.group_paths + ['-ma', self.path('merged.fas')]))
+        merged = read_align(self.path('merged.fas'))
+        self.assertEqual(len(merged), 122)
+        self.assertEqual(list(slice_by_name(merged)), ['1', '2'])
+
+    def test_merged_alignment_can_be_rescored(self):
+        TwinCons.main(['-a'] + self.group_paths + ['-ma', self.path('merged.fas'), '-lg', '-csv', '-o', self.path('merged')])
+        TwinCons.main(['-a', self.path('merged.fas'), '-lg', '-csv', '-o', self.path('rescored')])
+        with open(self.path('merged.csv')) as merged, open(self.path('rescored.csv')) as rescored:
+            self.assertEqual(merged.read(), rescored.read())
+
+    def test_no_files_left_without_merged_alignment_option(self):
+        previous = os.getcwd()
+        os.chdir(self.temp_dir.name)
+        self.addCleanup(os.chdir, previous)
+        TwinCons.main(['-a'] + self.group_paths + ['-lg', '-csv', '-o', self.path('scores')])
+        self.assertEqual(sorted(os.listdir(self.temp_dir.name)), sorted([os.path.basename(p) for p in self.group_paths] + ['scores.csv']))
+
+
+class TestArgumentValidation(unittest.TestCase):
+    def test_merged_alignment_needs_two_files(self):
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
+            TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-ma', 'merged.fas'])
+
+    def test_output_option_required(self):
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
+            TwinCons.create_and_parse_argument_options(['-a', ALIGNMENT_PATH, '-lg'])
 
 
 class TestExternalPrograms(unittest.TestCase):

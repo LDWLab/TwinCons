@@ -15,7 +15,7 @@ Generates data for subsequent scripts or can be used independently. Calculates T
 ### Usage
 
 1. Input files
-- One fasta alignment file with two defined groups **(Required)**. If no groups are defined a phylogenetic tree can be built from the alignment, the groups are defined by the deepest branching point in the tree. Alternatively two alignment files can be provided, each defining a single group - mafft-merge will be used to merge them in a single alignment.
+- One fasta alignment file with two defined groups **(Required)**. If no groups are defined a phylogenetic tree can be built from the alignment, the groups are defined by the deepest branching point in the tree. Alternatively two alignment files can be provided, each defining a single group - mafft-merge will be used to merge them in a single alignment. Save the merged alignment with `-ma`; without a scoring output option (`-p`, `-csv`, ...) TwinCons only merges the two alignments.
 - One or two structure files for each group to map data. The name of the file must include the sequence group name as defined in the alignment. (Optional)
 
 Example sequence group definitions in fasta format:
@@ -39,6 +39,7 @@ SEQNAME3_GROUP2.pdb
 Typical usage:
 ```
 TwinCons.py -a ./data/ALNS/test_aln.fa -mx blosum62 -csv -o ./test_aln
+TwinCons.py -a ./groupA.fas ./groupB.fas -ma ./groupA_groupB_merged.fas
 TwinCons.py -a ./data/ALNS/casp9-mcasp_struct.fa -pml unix -s ./data/PDB/HUMAN_CASP9.pdb ./data/PDB/YEAST_MCASP.pdb -ssbe -sy ./data/PDB/HUMAN_CASP9.pdb ./data/PDB/YEAST_MCASP.pdb -o ./twc_ssbe_HS-CASP9_SC-MCASP
 ```
 
@@ -51,8 +52,8 @@ TwinCons.py -a ./data/ALNS/casp9-mcasp_struct.fa -pml unix -s ./data/PDB/HUMAN_C
 
 Usage:
 ```
-TwinCons.py [-h] [-o OUTPUT_PATH] (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] | -as ALIGNMENT_STRING) [-bn {uniform,bgfreq}] [-cg] [-gg] [-gt GAP_THRESHOLD] [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]] [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]]
-                   [-phy] [-nc] [-w {pairwise,voronoi}] [-ca] (-p | -pml {unix,windows} | -r | -csv | -rv | -jv)
+TwinCons.py [-h] [-o OUTPUT_PATH] (-a ALIGNMENT_PATHS [ALIGNMENT_PATHS ...] | -as ALIGNMENT_STRING) [-ma MERGED_ALIGNMENT] [-bn {uniform,bgfreq}] [-cg] [-gg] [-gt GAP_THRESHOLD] [-s STRUCTURE_PATHS [STRUCTURE_PATHS ...]] [-sy STRUCTURE_PYMOL [STRUCTURE_PYMOL ...]]
+                   [-phy] [-nc] [-w {pairwise,voronoi}] [-ca] [-p | -pml {unix,windows} | -r | -csv | -rv | -jv]
                    [-mx {benner6,benner22,benner74,blosum100,blosum30,blosum35,blosum40,blosum45,blosum50,blosum55,blosum60,blosum62,blosum65,blosum70,blosum75,blosum80,blosum85,blosum90,blosum95,genetic,gonnet,ident,johnson,levin,miyata,nwsgappep,pam120,pam180,pam250,pam30,pam300,pam60,pam90,risler,structure,blastn,identity,trans} | -cm CUSTOM_MATRIX | -lg | -e | -rs]
                    [-ss | -be | -ssbe]
 
@@ -66,6 +67,9 @@ optional arguments:
                         Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.
   -as ALIGNMENT_STRING, --alignment_string ALIGNMENT_STRING
                         Alignment string
+  -ma MERGED_ALIGNMENT, --merged_alignment MERGED_ALIGNMENT
+                        Save the alignment merged from the two -a files (FASTA, sequence ids prefixed with 1_ and 2_ by input file).
+                        Without a scoring output option only the merged alignment is written.
   -bn {uniform,bgfreq}, --baseline {uniform,bgfreq}
                         Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.
                                 (Default: bgfreq)
