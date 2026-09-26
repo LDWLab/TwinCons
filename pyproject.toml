@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "TwinCons"
+version = "0.7.0.dev0"
+description = "TwinCons script for analysis of MSAs comprised of two sequence groups."
+readme = "README_twc.md"
+requires-python = ">=3.5"
+license = { text = "MIT License" }
+authors = [
+    { name = "Petar Penev", email = "ppenev@gatech.edu" },
+]
+urls = { Homepage = "https://github.com/petaripenev/AlignmentScore" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "matplotlib>=3.1.1",
+    "numpy>=1.17.2",
+    "biopython>=1.79",
+]
+
+[project.scripts]
+twcons = "twincons.entry:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["twincons", "twincons.*"]
+
+[tool.setuptools.package-data]
+"twincons" = ["newton_direct_solve"]
+
+[tool.setuptools.data-files]
+"matrices" = ["matrices/LG.dat"]
+"matrices/BLOSUM" = ["matrices/BLOSUM/*.out"]
+"matrices/structureDerived" = ["matrices/structureDerived/*.dat"]
+"matrices/jp" = ["matrices/jp/*.dat"]

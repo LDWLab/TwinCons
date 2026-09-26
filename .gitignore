@@ -10,5 +10,11 @@ dist/*
 build/*
 *.out
 .vscode/settings.json
-matrixAdjustments/matrixCA*
-ROC/SVMCalibration*
+# Claw Code local artifacts
+.claude/settings.local.json
+.claude/sessions/
+.claw/
+.claude.json
+.clawd-todos.json
+.sandbox-home/
+.sandbox-tmp/
