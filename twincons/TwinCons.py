@@ -16,8 +16,7 @@ from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
 from twincons import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
-    subtitution_mx = MatrixInfo.available_matrices
-    subtitution_mx.extend(['blastn', 'identity', 'trans'])
+    subtitution_mx = MatrixInfo.available_matrices + ['blastn', 'identity', 'trans']
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-o','--output_path', help='Output path')
     input_file = parser.add_mutually_exclusive_group(required=True)
@@ -212,16 +211,16 @@ def subs_matrix(matrix):
     return np.array(loddmx)
 
 def subs_matrix_bgFreq(matrix):
-    if re.match(r'PAM.*',matrix):
-        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034, 
+    if matrix.lower().startswith('pam'):
+        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034,
            0.035, 0.085, 0.085, 0.012, 0.045, 0.041, 0.057, 0.062, 0.012, 0.030, 0.078])
-    elif re.match(r'blosum.*', matrix):
+    elif matrix.lower().startswith('blosum'):
         with open(matrix_path('BLOSUM', matrix+'.out')) as f:
             freqs = f.readlines()[37]
         return np.array([float(x) for x in freqs.split()])
     else:
-        raise IOError(f"Impossible combination of arguments!\
-             Can't use background frequencies with matrix {matrix}!")
+        raise IOError(f"Background frequencies are only available for PAM and BLOSUM matrices. "
+                      f"Use -bn uniform with matrix {matrix}.")
 
 @lru_cache(maxsize=None)
 def struc_anno_matrices (struc_anno, baselineType):
@@ -303,7 +302,7 @@ def determine_subs_matrix(comm_args, sliced_alns):
         bgFreq = custom_matrix.getPiFreqs
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
-        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix)
+        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix) if comm_args.baseline == 'bgfreq' else None
     elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
@@ -390,8 +389,8 @@ def gradients(data, positivegradient, negativegradient, mx_maxval, mx_minval):
 def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     """Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
     """
-    from pathlib import Path, PureWindowsPath, PurePosixPath
-    
+    from pathlib import PureWindowsPath, PurePosixPath
+
     data = []
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
@@ -402,9 +401,8 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
         alnindex_to_hexcolors = gradients(data,'Greens','Purples', mx_maxval, mx_minval)
 
     group_names = list(gapped_sliced_alns.keys())
-    #Open .pml file for structure coloring
-    pml_output = open(comm_args.output_path+".pml","w")
-    pml_output.write("\
+    with open(comm_args.output_path+".pml","w") as pml_output:
+        pml_output.write("\
         set hash_max, 500\n\
         set valence, 0\n\
         set cartoon_loop_radius,0.4\n\
@@ -417,23 +415,16 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
         set ray_trace_mode,1\n\
         set ray_shadows,0\n")
 
-    #Bellow here needs fixing to properly do structures for plotting
-    for alngroup_name in group_names:
-        #Match groupnames with structure files
-        current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
-        
-        if len(current_path) == 0:
-            raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
-               and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
-        else:
+        for alngroup_name in group_names:
+            #Match groupnames with structure files
+            current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
+            if len(current_path) == 0:
+                raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
+                   and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
             #We have to recalculate the structure to alignment mapping
             alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
-            #Open the structure file
-            output_parent_dir = ntpath.dirname(comm_args.output_path)
-            if output_parent_dir == '.':
-                output_parent_dir = str(Path(__file__).parent.absolute())
             if comm_args.write_pml_script == 'unix':
                 pml_path = PurePosixPath(current_path[0])
             elif comm_args.write_pml_script == 'windows':
@@ -446,7 +437,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                 if aln_index in struc_to_aln_index_mapping:
                     hexcolors_appropriate_for_pml = alnindex_to_hexcolors[aln_index].replace('#','0x')
                     pml_output.write(f"color {hexcolors_appropriate_for_pml}, {alngroup_name} and resi {str(struc_to_aln_index_mapping[aln_index])}\n")
-    pml_output.write(f"super {group_names[0]}, {group_names[1]}\n")
+        pml_output.write(f"super {group_names[0]}, {group_names[1]}\n")
     return True
 
 def jalview_output(output_dict, comm_args):
@@ -456,14 +447,15 @@ def jalview_output(output_dict, comm_args):
     for x in sorted(output_dict.keys()):
         out_data.append(output_dict[x][0])
     
-    jv_output = open(comm_args.output_path+".jlv","w")
-    jv_output.write('JALVIEW_ANNOTATION\n')
-    jv_output.write('# Created: '+str(date.today())+"\n")
-    jv_output.write('# Contact: ppenev@gatech.edu\n')
-    jv_output.write('BAR_GRAPH\tTWINCONS\t')
-    for position in sorted(output_dict.keys(), key=abs):
-        color_hex = data_to_diverging_gradients(output_dict[position][0], max(out_data), min(out_data), 'Greens', 'Purples')
-        jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
+    max_score, min_score = max(out_data), min(out_data)
+    with open(comm_args.output_path+".jlv","w") as jv_output:
+        jv_output.write('JALVIEW_ANNOTATION\n')
+        jv_output.write('# Created: '+str(date.today())+"\n")
+        jv_output.write('# Contact: ppenev@gatech.edu\n')
+        jv_output.write('BAR_GRAPH\tTWINCONS\t')
+        for position in sorted(output_dict.keys(), key=abs):
+            color_hex = data_to_diverging_gradients(output_dict[position][0], max_score, min_score, 'Greens', 'Purples')
+            jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
 def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
@@ -483,12 +475,11 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
         if len(current_path) == 0:
             raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
                and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
-        else:
-            rv_output = open(f"{comm_args.output_path}_{alngroup_name}.csv","w")
+        alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
+        AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
+        struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
+        with open(f"{comm_args.output_path}_{alngroup_name}.csv","w") as rv_output:
             rv_output.write("resNum,DataCol,ColorCol\n")
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
-            AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
-            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             for aln_index in alnindex_to_hexcolors.keys():
                 if aln_index in struc_to_aln_index_mapping:
                     rv_output.write(f"{alngroup_name}:{str(struc_to_aln_index_mapping[aln_index])},{data[aln_index-1]},{alnindex_to_hexcolors[aln_index]},\n")
@@ -654,14 +645,13 @@ def main(commandline_arguments):
         for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
             gp_mapping[i] = i
 
-    alngroup_to_sequence_weight = dict()
-    for alngroup in gapped_sliced_alns:
-        alngroup_to_sequence_weight[alngroup] = list()
-        alngroup_to_sequence_weight['shannon'] = list()
-        if comm_args.weigh_sequences:
-            if comm_args.reflected_shannon or comm_args.shannon_entropy:
-                alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
-            else:
+    alngroup_to_sequence_weight = {alngroup: list() for alngroup in gapped_sliced_alns}
+    alngroup_to_sequence_weight['shannon'] = list()
+    if comm_args.weigh_sequences:
+        if comm_args.reflected_shannon or comm_args.shannon_entropy:
+            alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
+        else:
+            for alngroup in gapped_sliced_alns:
                 alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
 
     uniq_resis = uniq_resi_list(alignIO_out_gapped)

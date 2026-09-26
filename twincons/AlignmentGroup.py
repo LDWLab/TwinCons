@@ -18,9 +18,9 @@ class AlignmentGroup:
         self.aln_obj = aln_obj
         self.uniq_resi_list = self._determineUniqResis(aln_obj)
         if seq_distribution is not None:
-            if type(seq_distribution) is np.ndarray:
+            if isinstance(seq_distribution, np.ndarray):
                 self.seq_distribution = {self.uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
-            elif type(seq_distribution) is dict():
+            elif isinstance(seq_distribution, dict):
                 self.seq_distribution = seq_distribution
             else:
                 raise IOError("Incorrect type of seq_distribution passed. Must be np.array or dict.")
@@ -246,7 +246,7 @@ class AlignmentGroup:
         try:
             dssp = DSSP(model, self.struc_path)
         except OSError as e:
-            raise OSError("DSSP failed with the following error:\n"+e)
+            raise OSError(f"DSSP failed with the following error:\n{e}") from e
         for a_key in list(dssp.keys()):
             if a_key[1][1] in inv_map.keys():
                 if dssp[a_key][3] > 0.2:
