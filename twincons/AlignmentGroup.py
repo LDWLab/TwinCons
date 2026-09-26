@@ -13,7 +13,8 @@ class AlignmentGroup:
     and a sequence distribution (used for gap adjustment). When no
     sequence distribution is passed a uniform distribution is assumed.
     '''
-    DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
+    # DSSP 4 added P (polyproline II helix), grouped here with turns and coil.
+    DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','P':'O','-':'O'}
     def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None, uniq_resi_list=None):
         self.aln_obj = aln_obj
         self.uniq_resi_list = self._determineUniqResis(aln_obj)

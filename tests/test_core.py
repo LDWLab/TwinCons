@@ -205,6 +205,9 @@ class TestAlignmentGroup(unittest.TestCase):
         distribution = {'A': 0.5, 'C': 0.5}
         self.assertEqual(AlignmentGroup(aln, seq_distribution=distribution).seq_distribution, distribution)
 
+    def test_all_dssp4_secondary_structure_codes_are_mapped(self):
+        self.assertLessEqual(set('HBEGIPTS-'), set(AlignmentGroup.DSSP_code_mycode))
+
     def test_seq_distribution_accepts_array(self):
         aln = make_alignment([('A_1', 'ACDE'), ('A_2', 'ACDF')])
         group = AlignmentGroup(aln, seq_distribution=np.repeat(0.05, 20))
