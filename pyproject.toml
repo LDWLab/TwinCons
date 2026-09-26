@@ -4,25 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TwinCons"
-version = "0.7.0.dev0"
-description = "TwinCons script for analysis of MSAs comprised of two sequence groups."
-readme = "README_twc.md"
+version = "0.7.0"
+description = "Conservation score for two sequence groups within one multiple sequence alignment."
+readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
     { name = "Petar Penev", email = "ppenev@gatech.edu" },
 ]
-urls = { Homepage = "https://github.com/petaripenev/AlignmentScore" }
+keywords = ["multiple sequence alignment", "conservation", "substitution matrix", "bioinformatics"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
 ]
+
 dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.5.3",
     "biopython>=1.88",
 ]
+
+[project.urls]
+Homepage = "https://github.com/LDWLab/TwinCons"
+Issues = "https://github.com/LDWLab/TwinCons/issues"
+Paper = "https://doi.org/10.1371/journal.pcbi.1009541"
 
 [project.scripts]
 twcons = "twincons.entry:main"
