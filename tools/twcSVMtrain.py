@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import svm
 import pickle as cPickle
+from twcModels import SVCWithProbabilities
 from twcSVMtest import load_csv_data, trim_data_by_top_segments, recalculate_data_by_averaging_segments, use_absolute_length_of_segments
 
 def create_and_parse_argument_options(argument_list):
@@ -87,9 +88,10 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
     plt.ylim(0, math.ceil(max(X[:, 1])))
     axis.set_title(title)
 
-def train_classifier(X, y, penalty, gamma, kernel, sample_weight=None):
-    '''Fits the classifier'''
-    decision_function = svm.SVC(C=penalty, gamma=gamma, kernel=kernel)
+def train_classifier(X, y, penalty, gamma, kernel, sample_weight=None, probabilities=False):
+    '''Fits the classifier; with probabilities, it also provides calibrated predict_proba.'''
+    model = SVCWithProbabilities if probabilities else svm.SVC
+    decision_function = model(C=penalty, gamma=gamma, kernel=kernel)
     if sample_weight is not None and len(sample_weight) > 0:
         decision_function.fit(X, y, sample_weight=sample_weight)
     else:
@@ -112,7 +114,7 @@ def main(commandline_arguments):
     X, y, sample_weight, maxX, maxY, minX, minY, aln_names = load_csv_data(csv_list)
     if comm_args.length_type_calculation != 'absolute':
         sample_weight = [math.log(x) for x in sample_weight]
-    decision_function = train_classifier(X, y, comm_args.penalty, comm_args.gamma, comm_args.kernel, sample_weight=sample_weight)
+    decision_function = train_classifier(X, y, comm_args.penalty, comm_args.gamma, comm_args.kernel, sample_weight=sample_weight, probabilities=True)
 
     ###   Save the classifier   ###
     with open(comm_args.output_path, 'wb') as classifier_output:

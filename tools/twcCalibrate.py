@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.frozen import FrozenEstimator
+from sklearn.model_selection import KFold
 from twcSVMtrain import train_classifier
 from twcSVMtest import load_csv_data, csv_iterator, trim_data_by_top_segments
 from twcCrossValidate import make_idx
@@ -28,14 +29,16 @@ def create_and_parse_argument_options(argument_list):
 def calibrate(clf, X_test, y_test, X_valid, y_valid, weights_test):
     from sklearn.metrics import log_loss, brier_score_loss
     # Tree with Isotonic calibration
-    calClassifierIso = CalibratedClassifierCV(FrozenEstimator(clf), method="isotonic")
+    # A frozen classifier is not refitted per fold, so the folds only need to split the data;
+    # two unstratified folds work for validation sets of any class balance.
+    calClassifierIso = CalibratedClassifierCV(FrozenEstimator(clf), method="isotonic", cv=KFold(n_splits=2))
     calClassifierIso.fit(X_valid, y_valid)
     iso_clf_probs = calClassifierIso.predict_proba(X_test)
     iso_score = log_loss(y_test, iso_clf_probs)
 
 
     # Gaussian Naive-Bayes with sigmoid calibration
-    calClassifierSig = CalibratedClassifierCV(FrozenEstimator(clf), method="sigmoid")
+    calClassifierSig = CalibratedClassifierCV(FrozenEstimator(clf), method="sigmoid", cv=KFold(n_splits=2))
     calClassifierSig.fit(X_valid, y_valid)
     sig_clf_probs = calClassifierSig.predict_proba(X_test)
     sig_score = log_loss(y_test, sig_clf_probs)
