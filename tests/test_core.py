@@ -14,7 +14,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from twincons import MatrixInfo, SequenceWeightFromTree, TwinCons
-from twincons.AlignmentGroup import AlignmentGroup
+from twincons.AlignmentGroup import AlignmentGroup, locate_dssp_data
 from twincons.CompositionalAdjustment import CompositionalAdjustmentError, adjust_matrix
 from twincons.MatrixLoad import matrix_path
 from twincons.twcSupportFunctions import read_align, slice_by_name
@@ -308,6 +308,44 @@ class TestClustalWWeights(unittest.TestCase):
             weighted = scores(*matrix, '-w', 'clustalw')
             self.assertTrue(np.isfinite(weighted).all())
             self.assertFalse(np.allclose(weighted, scores(*matrix)))
+
+
+class TestDsspDataLocation(unittest.TestCase):
+    def fake_prefix(self, with_dictionary=True):
+        prefix = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, prefix)
+        os.makedirs(os.path.join(prefix, 'bin'))
+        executable = os.path.join(prefix, 'bin', 'mkdssp')
+        with open(executable, 'w') as fh:
+            fh.write('')
+        os.chmod(executable, 0o755)
+        os.makedirs(os.path.join(prefix, 'share', 'libcifpp'))
+        if with_dictionary:
+            with open(os.path.join(prefix, 'share', 'libcifpp', 'mmcif_pdbx.dic'), 'w') as fh:
+                fh.write('')
+        return prefix
+
+    def environment(self, prefix, **extra):
+        return mock.patch.dict(os.environ, {'PATH': os.path.join(prefix, 'bin'), **extra}, clear=True)
+
+    def test_points_dssp_at_its_dictionaries(self):
+        prefix = self.fake_prefix()
+        with self.environment(prefix):
+            locate_dssp_data()
+            self.assertEqual(os.path.realpath(os.environ['LIBCIFPP_DATA_DIR']),
+                             os.path.realpath(os.path.join(prefix, 'share', 'libcifpp')))
+
+    def test_keeps_an_existing_setting(self):
+        prefix = self.fake_prefix()
+        with self.environment(prefix, LIBCIFPP_DATA_DIR='/somewhere/else'):
+            locate_dssp_data()
+            self.assertEqual(os.environ['LIBCIFPP_DATA_DIR'], '/somewhere/else')
+
+    def test_leaves_unset_without_dictionaries(self):
+        prefix = self.fake_prefix(with_dictionary=False)
+        with self.environment(prefix):
+            locate_dssp_data()
+            self.assertNotIn('LIBCIFPP_DATA_DIR', os.environ)
 
 
 class TestAlignmentGroup(unittest.TestCase):

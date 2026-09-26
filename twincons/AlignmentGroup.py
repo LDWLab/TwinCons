@@ -1,10 +1,26 @@
-import re, ntpath
+import os, re, ntpath, shutil
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
 from twincons.twcSupportFunctions import alignment_array
 '''Contains class for alignment groups'''
+
+def locate_dssp_data():
+    '''
+    DSSP 4 reads its mmCIF dictionaries through libcifpp, whose conda build does not find them
+    unless LIBCIFPP_DATA_DIR is set. When it is unset, point it at <prefix>/share/libcifpp next to
+    the mkdssp executable, if the dictionaries are there.
+    '''
+    if 'LIBCIFPP_DATA_DIR' in os.environ:
+        return
+    executable = shutil.which('mkdssp') or shutil.which('dssp')
+    if executable is None:
+        return
+    prefix = os.path.dirname(os.path.dirname(os.path.realpath(executable)))
+    data_dir = os.path.join(prefix, 'share', 'libcifpp')
+    if os.path.isfile(os.path.join(data_dir, 'mmcif_pdbx.dic')):
+        os.environ['LIBCIFPP_DATA_DIR'] = data_dir
 
 class AlignmentGroup:
     '''
@@ -184,6 +200,7 @@ class AlignmentGroup:
         return {col_ix: column.tolist() for col_ix, column in enumerate(frequencies, 1)}
 
     def structure_loader(self,struc_to_aln_index_mapping):
+        locate_dssp_data()
         inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
         parser = PDBParser()
         structure = parser.get_structure('current_structure',self.struc_path)

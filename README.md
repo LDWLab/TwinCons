@@ -19,7 +19,7 @@ Some options call external programs, which must be on the `PATH`:
 - [MAFFT](https://mafft.cbrc.jp/alignment/software/) — to merge two alignment files (`-a file1 file2`) and to map scores onto structures (`-s`, `-sy`).
 - [DSSP](https://github.com/PDB-REDO/dssp) (`mkdssp`) — for the structure-derived matrices (`-ss`, `-be`, `-ssbe`).
 
-Both are available from conda-forge and bioconda. The repository contains an [`environment.yml`](https://github.com/LDWLab/TwinCons/blob/master/environment.yml) with Python, MAFFT and DSSP. With conda's DSSP 4.6, also set `LIBCIFPP_DATA_DIR` to the environment's `share/libcifpp` directory (`conda env config vars set LIBCIFPP_DATA_DIR=$CONDA_PREFIX/share/libcifpp`); otherwise DSSP reports "Could not load dictionary mmcif_pdbx.dic".
+Both are available from conda-forge and bioconda. The repository contains an [`environment.yml`](https://github.com/LDWLab/TwinCons/blob/master/environment.yml) with Python, MAFFT and DSSP. If `LIBCIFPP_DATA_DIR` is not set, TwinCons points DSSP 4 at the `share/libcifpp` dictionaries installed next to `mkdssp`, which conda's DSSP build does not find on its own.
 
 ## Input
 
