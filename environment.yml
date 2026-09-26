@@ -1,0 +1,12 @@
+name: twincons-py314
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.14
+  - mafft
+  - dssp
+  - pip
+  - pip:
+      - -r requirements_complete.txt
+      - -e .

@@ -2,10 +2,23 @@
 
 Conservation score that highlights conserved, variable and diverging (signature) positions between two sequence groups within an alignment. The method mathematically determines a ‘cost’ of transforming one alignment group to the other. Includes automated parsing protocol for the detection of continuous stretches (segments) of high TwinCons scoring columns within protein alignments to query deep ancestry of short peptides.
 
+## Installation
+TwinCons requires Python 3.14 or newer.
+```
+pip install .
+```
+A conda environment with Python, MAFFT, DSSP, TwinCons (editable) and the dependencies of the `tools/` scripts:
+```
+conda env create -f environment.yml
+conda env config vars set -n twincons-py314 LIBCIFPP_DATA_DIR=<conda prefix>/envs/twincons-py314/share/libcifpp
+conda activate twincons-py314
+```
+The second command lets the conda build of DSSP (mkdssp 4.6) find its dictionaries; without it DSSP reports "Could not load dictionary mmcif_pdbx.dic".
+
 ## Dependencies
 Programs required to be present in the PATH:
-- MAFFT https://mafft.cbrc.jp/alignment/software/
-- DSSP https://swift.cmbi.umcn.nl/gv/dssp/ or in Linux just execute
+- MAFFT https://mafft.cbrc.jp/alignment/software/ (for merging two alignments and mapping structures)
+- DSSP https://swift.cmbi.umcn.nl/gv/dssp/ (for structure-derived matrices, -ss/-be/-ssbe) or in Linux just execute
 	> apt-get install dssp
 
 ## [TwinCons.py](./bin/TwinCons.py)
