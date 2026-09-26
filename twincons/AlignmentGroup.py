@@ -237,4 +237,4 @@ class AlignmentGroup:
         return self.aln_obj
 
     def getAAfrequenciesList (self):
-        return [self.seq_distribution[aa] for aa in self.uniq_resi_list]
+        return [self.seq_distribution.get(aa, 0.0) for aa in self.uniq_resi_list]

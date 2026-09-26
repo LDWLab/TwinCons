@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-import platform
-import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -14,6 +12,7 @@ from Bio.SeqRecord import SeqRecord
 
 from twincons import MatrixInfo, SequenceWeightFromTree, TwinCons
 from twincons.AlignmentGroup import AlignmentGroup
+from twincons.CompositionalAdjustment import CompositionalAdjustmentError, adjust_matrix
 from twincons.MatrixLoad import matrix_path
 from twincons.twcSupportFunctions import read_align, slice_by_name
 
@@ -76,15 +75,38 @@ class TestExternalPrograms(unittest.TestCase):
             with self.assertRaisesRegex(OSError, 'mafft was not found on PATH'):
                 TwinCons.run_mafft([ALIGNMENT_PATH, ALIGNMENT_PATH])
 
-    def test_compositional_adjustment(self):
+
+
+class TestCompositionalAdjustment(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.groups = list(slice_by_name(read_align(ALIGNMENT_PATH)).values())
+        cls.freqs = [AlignmentGroup(group).getAAfrequenciesList() for group in cls.groups]
+        cls.length = cls.groups[0].get_alignment_length()
+        cls.blosum62 = np.loadtxt(matrix_path('jp', 'blosum62.dat'))
+
+    def test_matches_original_newton_direct_solve(self):
+        # Output of the formerly bundled newton_direct_solve binary for the same inputs (9 decimals).
+        with open(os.path.join(TEST_DIR, 'input_test_data', 'compositional_adjustment', 'newton_direct_solve_blosum62_uL02ab.txt')) as fh:
+            expected = np.array([[float(value) for value in line.split()] for line in fh if line.strip()])
+        result = adjust_matrix(self.blosum62, self.freqs[0], self.freqs[1], self.length, self.length)
+        np.testing.assert_allclose(result, expected, atol=1e-8, rtol=0)
+
+    def test_group_missing_an_amino_acid(self):
+        aln = make_alignment([('A_1', 'ACDEFGHIK'), ('A_2', 'ACDEFGHIL'), ('B_1', 'MNPQRSTVY'), ('B_2', 'MNPQRSTVW')])
+        frequencies = AlignmentGroup(slice_by_name(aln)['A']).getAAfrequenciesList()
+        self.assertEqual(frequencies[AlignmentGroup(aln).uniq_resi_list.index('W')], 0.0)
+        self.assertEqual(adjust_matrix(self.blosum62, frequencies, self.freqs[1], 9, 9).shape, (20, 20))
+
+    def test_non_convergence_is_reported(self):
+        uniform = [0.05] * 20
+        with self.assertRaises(CompositionalAdjustmentError):
+            adjust_matrix(np.loadtxt(matrix_path('jp', 'blosum35.dat')), uniform, uniform, 500, 500)
+
+    def test_command_line(self):
         with tempfile.TemporaryDirectory() as output_dir:
-            args = ['-a', ALIGNMENT_PATH, '-mx', 'blosum62', '-ca', '-csv', '-o', os.path.join(output_dir, 'out')]
-            if sys.platform.startswith('linux') and platform.machine() in ('x86_64', 'AMD64'):
-                TwinCons.main(args)
-                self.assertGreater(os.path.getsize(os.path.join(output_dir, 'out.csv')), 0)
-            else:
-                with self.assertRaisesRegex(OSError, 'Linux x86-64'):
-                    TwinCons.main(args)
+            TwinCons.main(['-a', ALIGNMENT_PATH, '-mx', 'blosum62', '-ca', '-csv', '-o', os.path.join(output_dir, 'out')])
+            self.assertGreater(os.path.getsize(os.path.join(output_dir, 'out.csv')), 0)
 
 
 class TestVectorizedAlgorithms(unittest.TestCase):

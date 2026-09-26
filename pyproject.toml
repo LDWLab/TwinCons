@@ -35,7 +35,6 @@ include = ["twincons", "twincons.*"]
 
 [tool.setuptools.package-data]
 "twincons" = [
-    "newton_direct_solve",
     "matrices/*.dat",
     "matrices/BLOSUM/*.out",
     "matrices/structureDerived/*.dat",
