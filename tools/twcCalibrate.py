@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
 from twcSVMtrain import train_classifier
 from twcSVMtest import load_csv_data, csv_iterator, trim_data_by_top_segments
 from twcCrossValidate import make_idx
@@ -26,21 +27,18 @@ def create_and_parse_argument_options(argument_list):
 
 def calibrate(clf, X_test, y_test, X_valid, y_valid, weights_test):
     from sklearn.metrics import log_loss, brier_score_loss
-    # Gaussian Naive-Bayes with no calibration
-    prob_pos_clf = clf.predict_proba(X_test)[:, 1]
-
     # Tree with Isotonic calibration
-    calClassifierIso = CalibratedClassifierCV(clf, method="isotonic", cv="prefit")
+    calClassifierIso = CalibratedClassifierCV(FrozenEstimator(clf), method="isotonic")
     calClassifierIso.fit(X_valid, y_valid)
     iso_clf_probs = calClassifierIso.predict_proba(X_test)
     iso_score = log_loss(y_test, iso_clf_probs)
 
 
     # Gaussian Naive-Bayes with sigmoid calibration
-    calClassifierSig = CalibratedClassifierCV(clf, method="sigmoid", cv="prefit")
+    calClassifierSig = CalibratedClassifierCV(FrozenEstimator(clf), method="sigmoid")
     calClassifierSig.fit(X_valid, y_valid)
     sig_clf_probs = calClassifierSig.predict_proba(X_test)
-    sig_score = log_loss(y_test, iso_clf_probs)
+    sig_score = log_loss(y_test, sig_clf_probs)
 
     #print("Log loss scores: (the smaller the better)")
     #print("With isotonic calibration: %1.3f" % iso_score)

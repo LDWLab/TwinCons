@@ -143,6 +143,12 @@ def load_csv_data(csv_list, min_max_features=''):
     data_xy_normx = normalize_features(data_xy, maxX, maxY, minX, minY)
     return np.asarray(data_xy_normx), np.asarray(data_identity), data_weights, maxX, maxY, minX, minY, aln_names
 
+def fitted_base_classifier(calibrated):
+    '''The fitted classifier inside a CalibratedClassifierCV. scikit-learn renamed the attribute
+    holding it from base_estimator to estimator in 1.2.'''
+    first = calibrated.calibrated_classifiers_[0]
+    return getattr(first, 'estimator', None) or first.base_estimator
+
 def test_function(csv_list, classifier, min_max_features):
     '''
     Executes prediction and distance calculation on each
@@ -154,9 +160,7 @@ def test_function(csv_list, classifier, min_max_features):
         test_segment = np.array([(float(entry[2])-minX)/(maxX-minX),(float(entry[3])-minY)/(maxY-minY)])
         segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
         if isinstance(classifier, CalibratedClassifierCV):
-            # scikit-learn renamed base_estimator to estimator in 1.2 and removed the old name in 1.4.
-            base = getattr(classifier, 'estimator', None) or classifier.base_estimator
-            segment_dist = base.decision_function(test_segment.reshape(1,-1))[0]
+            segment_dist = fitted_base_classifier(classifier).decision_function(test_segment.reshape(1,-1))[0]
         else:
             segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
         # Only calibrated classifiers or SVMs trained with probability=True provide probabilities.
@@ -266,7 +270,7 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, fig, title, al
     # plot the decision function
     xx, yy = np.meshgrid(np.linspace(0, math.ceil(max(X[:, 0])), 100), np.linspace(0, math.ceil(max(X[:, 1])), 100))
     if isinstance(classifier, CalibratedClassifierCV):
-        classifier = getattr(classifier, 'estimator', None) or classifier.base_estimator
+        classifier = fitted_base_classifier(classifier)
     Z = classifier.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 

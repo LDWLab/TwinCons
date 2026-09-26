@@ -105,9 +105,9 @@ def plotQuerySegments(X, aln_names, edgecolor, axis, labelOrder, threshold, samp
               bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     return scatter
 
-def train_classifier(X, y, model, sample_weight=''):
+def train_classifier(X, y, model, sample_weight=None):
     '''Fits the classifier'''
-    if sample_weight != '':
+    if sample_weight is not None and len(sample_weight) > 0:
         model.fit(X, y, sample_weight=sample_weight)
     else:
         model.fit(X, y)

@@ -81,7 +81,7 @@ def cv_by_alns(aln_names, num_of_splits):
 def predict_test_set(classifier, test_segment):
     segment_pred = classifier.predict(test_segment.reshape(1,-1))[0]
     segment_dist = classifier.decision_function(test_segment.reshape(1,-1))[0]
-    segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))[0][1]
+    segment_prob = classifier.predict_proba(test_segment.reshape(1,-1))[0][1] if hasattr(classifier, 'predict_proba') else float('nan')
     return segment_pred, segment_dist, segment_prob
 
 def load_data(csv_location, top_segments=1, abs_length=False):
@@ -138,7 +138,7 @@ def plot_roc_curve(axis, mean_tpr, mean_fpr, mean_auc, std_auc, std_tpr, label='
         color_std = plt.cm.viridis(color)
     
     axis.plot(mean_fpr, mean_tpr, 
-            label=f'{label} (AUC = {mean_auc:.2f} $\pm$ {std_auc:.2f})',
+            label=rf'{label} (AUC = {mean_auc:.2f} $\pm$ {std_auc:.2f})',
             lw=2, alpha=.8, color=color_line)
     tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
     tprs_lower = np.maximum(mean_tpr - std_tpr, 0)

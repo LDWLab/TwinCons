@@ -87,10 +87,10 @@ def plot_decision_function(classifier, X, y, sample_weight, axis, title, aln_nam
     plt.ylim(0, math.ceil(max(X[:, 1])))
     axis.set_title(title)
 
-def train_classifier(X, y, penalty, gamma, kernel, sample_weight=''):
+def train_classifier(X, y, penalty, gamma, kernel, sample_weight=None):
     '''Fits the classifier'''
-    decision_function = svm.SVC(C=penalty, gamma=gamma, kernel=kernel, probability=True)
-    if sample_weight != '':
+    decision_function = svm.SVC(C=penalty, gamma=gamma, kernel=kernel)
+    if sample_weight is not None and len(sample_weight) > 0:
         decision_function.fit(X, y, sample_weight=sample_weight)
     else:
         decision_function.fit(X, y)
