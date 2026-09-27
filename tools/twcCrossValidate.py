@@ -105,11 +105,12 @@ def calc_stats_by_folds(aln_names, number_folds, X, y, sample_weight, penalty, g
         sample_weight_train = list(np.asarray(sample_weight)[train_ind])
         maxX, maxY, minX, minY = max(X_train[:, 0]), max(X_train[:, 1]), min(X_train[:, 0]), min(X_train[:, 1])
         X_train_norm = np.asarray(normalize_features(list(zip(X_train[:,0], X_train[:,1])), maxX, maxY, minX, minY))
+        # Test segments must be scaled with the training fold's ranges, exactly like the training segments.
+        X_test_norm = np.asarray(normalize_features(list(zip(X_test[:,0], X_test[:,1])), maxX, maxY, minX, minY))
 
         classifier = train_classifier(X_train_norm, y_train, penalty, gamma, kernel, sample_weight=sample_weight_train)
 
-        for segment, aln_ind in zip(X_test, test_ind):
-            test_segment = np.array([float(segment[0])/float(maxX),float(segment[1])/float(maxY)])
+        for test_segment, aln_ind in zip(X_test_norm, test_ind):
             segment_pred, segment_dist, segment_prob = predict_test_set(classifier, test_segment)
             if aln_names[aln_ind] not in segment_pred_dist.keys():
                 segment_pred_dist[aln_names[aln_ind]] = list()
