@@ -53,7 +53,7 @@ def calc_stats_by_folds(aln_names, number_folds, X, y, sample_weight, model, pro
         
         maxX, maxY, minX, minY = max(X_train[:, 0]), max(X_train[:, 1]), min(X_train[:, 0]), min(X_train[:, 1])
         X_train_norm = np.asarray(normalize_features(list(zip(X_train[:,0], X_train[:,1])), maxX, maxY, minX, minY))
-        maxX, maxY, minX, minY = max(X_test[:, 0]), max(X_test[:, 1]), min(X_test[:, 0]), min(X_test[:, 1])
+        # Test segments must be scaled with the training fold's ranges, exactly like the training segments.
         X_test_norm = np.asarray(normalize_features(list(zip(X_test[:,0], X_test[:,1])), maxX, maxY, minX, minY))
 
         classifier = train_classifier(X_train_norm, y_train, model, sample_weight=sample_weight_train)
