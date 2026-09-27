@@ -22,6 +22,11 @@ jobs:
       MPLBACKEND: Agg
     steps:
       - uses: actions/checkout@v7
+      - name: Build the wheel
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip wheel --no-deps -w dist .
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
@@ -31,8 +36,9 @@ jobs:
       - name: Install mafft
         if: runner.os == 'macOS'
         run: brew install mafft
-      - name: Install TwinCons
-        run: python -m pip install .
+      - name: Install the TwinCons wheel
+        shell: bash
+        run: python -m pip install dist/*.whl
       - name: Test the installed package
         shell: bash
         run: |
@@ -46,13 +52,18 @@ jobs:
       MPLBACKEND: Agg
     steps:
       - uses: actions/checkout@v7
+      - name: Build the wheel
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip wheel --no-deps -w dist .
       - uses: actions/setup-python@v7
         with:
           python-version: "3.8"
       - name: Install mafft
         run: sudo apt-get update && sudo apt-get install -y mafft
       - name: Install TwinCons with its oldest supported dependencies
-        run: python -m pip install . "numpy==1.21.6" "matplotlib==3.5.3" "biopython==1.79"
+        run: python -m pip install dist/*.whl "numpy==1.21.6" "matplotlib==3.5.3" "biopython==1.79"
       - name: Test the installed package
         shell: bash
         run: |
