@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-import unittest, re, pathlib, sys, os, itertools, filecmp
-from Bio.SubsMat import MatrixInfo
+import itertools
+import os
+import tempfile
+import unittest
 
-sys.path.append(os.path.dirname(os.path.abspath(__name__)))
 from twincons import TwinCons
+
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+ALIGNMENT_PATH = os.path.join(TEST_DIR, 'input_test_data', 'alns', 'uL02ab_txid_tagged.fas')
+OUTPUT_EXTENSION = {'-csv': '.csv', '-jv': '.jlv', '-p': '.svg'}
+
 
 class TestTwinCons(unittest.TestCase):
     output_type_args = ['-csv', '-jv', '-p']
@@ -13,28 +19,23 @@ class TestTwinCons(unittest.TestCase):
     weigh_algorithms = ['', ['-w', 'pairwise']]
 
     def test_TWC_pseq_params(self):
-        args_for_twc = ['-a', './tests/input_test_data/alns/uL02ab_txid_tagged.fas']
-        output_files = list()
-        argument_combinations = list(itertools.product(self.entropy_type, self.output_type_args, self.weigh_algorithms))
-        arguments = [[tup for tup in x if tup] for x in argument_combinations if x]
-        flat_args = list()
-        for argset in arguments:
-            tempargset = list()
-            for arg in argset:
-                if type(arg) == list:
-                    tempargset.extend(arg)
-                else:
-                    tempargset.append(arg)
-            flat_args.append(tempargset)
-        
-        for argset in flat_args:
-            out_file_name = '_'.join(argset).replace('-', '')
-            argset.extend(['-o', f'./tests/output_test_data/{out_file_name}'])
-            output_files.append(f'./tests/output_test_data/{out_file_name}')
-            args_for_twc.extend(argset)
-            #TwinCons.main(args_for_twc)
-            args_for_twc = ['-a', './tests/input_test_data/alns/uL02ab_txid_tagged.fas']
-    #filecmp.cmp('file1.txt', 'file1.txt')
+        with tempfile.TemporaryDirectory() as output_dir:
+            combinations = itertools.product(self.entropy_type, self.output_type_args, self.weigh_algorithms)
+            for entropy_arg, output_arg, weigh_arg in combinations:
+                argset = list()
+                for arg in (entropy_arg, output_arg, weigh_arg):
+                    if isinstance(arg, list):
+                        argset.extend(arg)
+                    elif arg:
+                        argset.append(arg)
+                out_file_name = '_'.join(argset).replace('-', '')
+                output_path = os.path.join(output_dir, out_file_name)
+                args_for_twc = ['-a', ALIGNMENT_PATH, '-o', output_path] + argset
+                with self.subTest(args=argset):
+                    TwinCons.main(args_for_twc)
+                    output_file = output_path + OUTPUT_EXTENSION[output_arg]
+                    self.assertGreater(os.path.getsize(output_file), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

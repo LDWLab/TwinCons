@@ -4,11 +4,16 @@ data/ALNS/cdd/*
 *z_arx*
 data/test_twc_parameters*
 env/*
-param-test-prms_nohup.out
 *egg-info
 dist/*
 build/*
 *.out
-.vscode/settings.json
-matrixAdjustments/matrixCA*
-ROC/SVMCalibration*
+.vscode/
+# Claw Code local artifacts
+.claude/settings.local.json
+.claude/sessions/
+.claw/
+.claude.json
+.clawd-todos.json
+.sandbox-home/
+.sandbox-tmp/

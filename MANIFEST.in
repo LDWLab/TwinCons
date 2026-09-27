@@ -1,0 +1,4 @@
+graft tests
+global-exclude *.py[cod]
+prune tools
+prune data

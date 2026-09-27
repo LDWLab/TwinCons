@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 """Calculate and visualize conservation between two groups of sequences from one alignment"""
 import re, os, csv, sys, Bio.Align, argparse, math, matplotlib, ntpath
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import subprocess, tempfile
 import numpy as np
 from datetime import date
+from functools import lru_cache
 from Bio import AlignIO, Seq
 from io import StringIO
 import matplotlib.pyplot as plt
 from collections import defaultdict, Counter
 from Bio.SeqUtils import IUPACData
 from twincons.AlignmentGroup import AlignmentGroup
-from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector
-from twincons.twcSupportFunctions import read_align, slice_by_name
-from twincons.MatrixLoad import PAMLmatrix
+from twincons.CompositionalAdjustment import adjust_matrix
+from twincons.SequenceWeightFromTree import tree_construct, find_deepest_ancestors, slice_by_anc, calculate_weight_vector, DEFAULT_VORONOI_SAMPLES, WEIGHTING_ALGORITHMS
+from Bio.SeqRecord import SeqRecord
+from twincons.twcSupportFunctions import read_align, slice_by_name, find_executable, alignment_array, gap_counts_per_column
+from twincons.MatrixLoad import PAMLmatrix, load_paml_matrix, matrix_path
 from twincons import MatrixInfo
 
 def create_and_parse_argument_options(argument_list):
-    subtitution_mx = MatrixInfo.available_matrices
-    subtitution_mx.extend(['blastn', 'identity', 'trans'])
+    subtitution_mx = MatrixInfo.available_matrices + ['blastn', 'identity', 'trans']
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-o','--output_path', help='Output path')
     input_file = parser.add_mutually_exclusive_group(required=True)
     input_file.add_argument('-a','--alignment_paths', nargs='+', help='Path to alignment files. If given two files it will use mafft --merge to merge them in single alignment.', action=required_length(1,2))
     input_file.add_argument('-as','--alignment_string', help='Alignment string', type=str)
+    parser.add_argument('-ma','--merged_alignment', help='Save the alignment merged from the two -a files (FASTA, sequence ids prefixed with 1_ and 2_ by input file).\nWithout a scoring output option only the merged alignment is written.')
     parser.add_argument('-bn','--baseline', help='Whether to baseline the used matrix with the uniform vector or with the matrix background frequency.\n\t(Default: bgfreq)', choices=['uniform', 'bgfreq'], default='bgfreq')
     parser.add_argument('-cg','--cut_gaps', help='Remove alignment positions with %% gaps greater than the specified value with gap_threshold.', action="store_true")
     parser.add_argument('-gg','--calculate_group_gaps', help='Calculate alignment position gaps in 3 groups using 2*gap threshold value:\n\tUngapped - Aligned positions;\n\tGroupGap - Only one group has sequences;\n\tAllGap - Both groups are gapped.', action="store_true")
@@ -32,9 +34,13 @@ def create_and_parse_argument_options(argument_list):
     parser.add_argument('-sy','--structure_pymol', nargs='+', help='Paths to structure files, for plotting a pml.')
     parser.add_argument('-phy','--phylo_split', help='Split the alignment in two groups by constructing a tree instead of looking for _ separated strings.', action="store_true")
     parser.add_argument('-nc','--nucleotide', help='Input is nucleotide sequence. Specify nucleotide matrix for score calculation with -mx or entropy calculations with -e or -rs', action="store_true")
-    parser.add_argument('-w','--weigh_sequences', help='Weigh sequences within each alignment group.', choices=['pairwise', 'voronoi'])
+    parser.add_argument('-w','--weigh_sequences', choices=WEIGHTING_ALGORITHMS, help='Weigh sequences within each alignment group:\n\
+\tpairwise - sum of tree distances to the other sequences;\n\
+\tvoronoi  - share of randomly sampled sequences closest to each sequence (Sibbald & Argos 1990);\n\
+\tclustalw - tree branch lengths shared by the sequences below each branch (Thompson, Higgins & Gibson 1994).')
+    parser.add_argument('-vs','--voronoi_samples', help=f'Number of random sequences sampled for -w voronoi weights. (Default: {DEFAULT_VORONOI_SAMPLES})', type=positive_int, default=DEFAULT_VORONOI_SAMPLES)
     parser.add_argument('-ca','--compositional_adjustment', help='Adjust the substitution matrix with residue frequencies computed from the two alignment groups.\n Available only for BLOSUM matrices, using the methods decribed in doi.org/10.1073/pnas.2533904100 and doi.org/10.1093/bioinformatics/bti070.', action="store_true")
-    output_type_group = parser.add_mutually_exclusive_group(required=True)
+    output_type_group = parser.add_mutually_exclusive_group()
     output_type_group.add_argument('-p', '--plotit', help='Plots the calculated score as a bar graph for each alignment position.', action="store_true")
     output_type_group.add_argument('-pml', '--write_pml_script', help='Writes out a PyMOL coloring script for any structure files that have been defined. Choose between unix or windows style paths for the pymol script.', choices=['unix', 'windows'])
     output_type_group.add_argument('-r', '--return_within', help='To be used from within other python programs. Returns dictionary of alnpos->score.', action="store_true")
@@ -43,7 +49,7 @@ def create_and_parse_argument_options(argument_list):
     output_type_group.add_argument('-jv', '--jalview_output', help='Saves an annotation file for Jalview.', action="store_true")
     entropy_group = parser.add_mutually_exclusive_group()
     entropy_group.add_argument('-mx','--substitution_matrix', help='Choose a substitution matrix for score calculation.', choices=subtitution_mx)
-    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix. For example format see the matrices folder.',)
+    entropy_group.add_argument('-cm','--custom_matrix', help='Provide path to a custom PAML format matrix. For example format see twincons/matrices/LG.dat.',)
     entropy_group.add_argument('-lg','--leegascuel', help='Use LG matrix for score calculation', action="store_true")
     entropy_group.add_argument('-e','--shannon_entropy', help='Use shannon entropy for conservation calculation.', action="store_true")
     entropy_group.add_argument('-rs','--reflected_shannon', help='Use shannon entropy for conservation calculation and reflect the result so that a fully random sequence will be scored as 0.', action="store_true")
@@ -52,7 +58,24 @@ def create_and_parse_argument_options(argument_list):
     structure_option.add_argument('-be','--burried_exposed', help = 'Use substitution matrices derived from data dependent on the solvent accessability of a residue.', action="store_true")
     structure_option.add_argument('-ssbe','--both', help = 'Use substitution matrices derived from data dependent on both the secondary structure and the solvent accessability of a residue.', action="store_true")
     commandline_args = parser.parse_args(argument_list)
+    if commandline_args.merged_alignment and len(commandline_args.alignment_paths or []) != 2:
+        parser.error('-ma/--merged_alignment requires two alignment files given with -a')
+    if not commandline_args.merged_alignment and not any(score_outputs(commandline_args)):
+        parser.error('one of the arguments -p/--plotit -pml/--write_pml_script -r/--return_within -csv/--return_csv '
+                     '-rv/--ribovision -jv/--jalview_output is required, unless only merging alignments with -ma')
     return commandline_args
+
+def score_outputs(comm_args):
+    '''The requested score output options; all falsy when only merging alignments.'''
+    return (comm_args.plotit, comm_args.write_pml_script, comm_args.return_within,
+            comm_args.return_csv, comm_args.ribovision, comm_args.jalview_output)
+
+def positive_int(value):
+    '''argparse type for integers greater than zero.'''
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be a positive integer, got {value}")
+    return number
 
 def required_length(nmin,nmax):
     '''Limiter for passed arguments.
@@ -66,49 +89,38 @@ def required_length(nmin,nmax):
             setattr(args, self.dest, values)
     return RequiredLength
 
-def deletefile(file_loc):
-    '''Tries to delete provided file path.
-    '''
-    import subprocess
-    try:
-        subprocess.run(['rm', file_loc], check = True)
-    except subprocess.CalledProcessError:
-        raise IOError("When using mafft for merging two alignments working directory must be writable!")
-
-def run_mafft(aln_paths):
+def run_mafft(aln_paths, merged_path=None):
     '''Tags separate alignments for TwinCons and merges them with mafft --merge.
+    Sequence ids are prefixed with 1_ and 2_ by input file, which defines the two groups.
+    The merged alignment is also saved to merged_path when one is given.
     '''
-    import warnings
-    tempfiles = ['./tempsubMSAtable', './tempconcatfasta.fas']
-    for tempfile in tempfiles:
-        if os.path.isfile(tempfile):
-            warnings.warn(f"When using mafft for merging two alignments working directory must be free of file {tempfile}. Trying to delete the file.")
-            deletefile(tempfile)
+    mafft = find_executable('mafft', 'to merge two alignment files')
     list_with_alns = [read_align(aln_path) for aln_path in aln_paths]
-    concatedfasta_handle = open("./tempconcatfasta.fas", "a")
-    mergertable_ix = list()
-    previous_len = 0
-    for i, aln in enumerate(list_with_alns, 1):
-        mergertable_ix.append((aln_paths[i-1],len(aln),previous_len))
-        previous_len = len(aln)
-        for seq in aln:
-            seq.id = str(i)+"_"+seq.id
-        AlignIO.write(aln, concatedfasta_handle, "fasta")
-    concatedfasta_handle.close()
-    mergertable = open("./tempsubMSAtable", "a")
-    for aln_len in mergertable_ix:
-        seq_list = [str(x) for x in list(range(aln_len[2]+1,aln_len[2]+aln_len[1]+1))]
-        seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
-        mergertable.write(" "+seq_nums)
-    mergertable.close()
-    try:
-        os.system("mafft --quiet --merge ./tempsubMSAtable ./tempconcatfasta.fas > ./tempmergedfasta.fas")
-    except OSError as e:
-        raise OSError("Mafft failed with the following error:\n"+e)
-    merged_tagged_aln = read_align("./tempmergedfasta.fas")
-    for tempfile in tempfiles:
-        deletefile(tempfile)
-    return merged_tagged_aln
+    with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+        if merged_path is None:
+            merged_path = os.path.join(temp_dir, 'merged.fas')
+        concat_path = os.path.join(temp_dir, 'concatenated.fas')
+        table_path = os.path.join(temp_dir, 'subMSAtable')
+        mergertable_ix = list()
+        previous_len = 0
+        with open(concat_path, "w") as concatedfasta_handle:
+            for i, aln in enumerate(list_with_alns, 1):
+                mergertable_ix.append((aln_paths[i-1],len(aln),previous_len))
+                previous_len += len(aln)
+                for seq in aln:
+                    seq.id = str(i)+"_"+seq.id
+                AlignIO.write(aln, concatedfasta_handle, "fasta")
+        with open(table_path, "w") as mergertable:
+            for aln_len in mergertable_ix:
+                seq_list = [str(x) for x in list(range(aln_len[2]+1,aln_len[2]+aln_len[1]+1))]
+                seq_nums = " ".join(seq_list)+" #"+aln_len[0]+"\n"
+                mergertable.write(" "+seq_nums)
+        with open(merged_path, "w") as merged_handle:
+            result = subprocess.run([mafft, '--quiet', '--merge', table_path, concat_path],
+                                    stdout=merged_handle, stderr=subprocess.PIPE, text=True)
+        if result.returncode != 0:
+            raise OSError(f"mafft --merge failed with exit code {result.returncode}:\n{result.stderr}")
+        return read_align(merged_path)
 
 def count_aligned_positions(aln_obj, gap_threshold):
     '''Counts how many positions are aligned (less than gap_threshold gaps)
@@ -116,16 +128,16 @@ def count_aligned_positions(aln_obj, gap_threshold):
     number_seqs = len(aln_obj)
     aligned_positions = 0
     extremely_gapped = dict()
-    for i in range(0,aln_obj.get_alignment_length()):
+    for i, gap_count in enumerate(gap_counts_per_column(aln_obj).tolist()):
         extremely_gapped[i+1] = 'True'
-        if aln_obj[:,i].count('-')/number_seqs <= float(gap_threshold):
+        if gap_count/number_seqs <= float(gap_threshold):
             aligned_positions+=1
             extremely_gapped[i+1] = 'False'
     if aligned_positions == 0:
         raise ValueError('Alignment:\n'+str(aln_obj)+'\nhas no positions with less than '+str(gap_threshold*100)+'% gaps!')
     return aligned_positions, extremely_gapped
 
-def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, group_lengths):
+def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold):
     '''Detects alignment positions that are heavily gapped in one group only.
     Uses the gap_threshold to determine whether either group has less residues in the alignment columns.
     '''
@@ -144,27 +156,23 @@ def count_extremely_gapped_positions_for_group(aln_obj_groups, gap_threshold, gr
 
 def remove_extremely_gapped_regions(align, gap_perc, gap_mapping):
     '''Removes columns of alignment with more than gap_perc gaps.
+    Fills gap_mapping with trimmed column index -> original column index (1-based).
     '''
-    n = float(len(align[0]))
-    i, x = 0, 0
-    length=1
-    while i < n:
-        x = align[:, i].count('-')/len(align)                 #Get percentage of gaps in column
-        if float(x) > abs(float(gap_perc)):
-            if i == 0:
-                align = align[:, 1:]
-            elif i+1 == n:
-                align = align[:, :i]
-            else:
-                align = align[:, :i] + align[:, i+1:]
-            n -= 1                                            #  seq. 1 shorter
-        else:                                                 #  nothing to delete, proceed
+    number_seqs = len(align)
+    kept_columns = list()
+    i, length = 0, 1
+    for column, gap_count in enumerate(gap_counts_per_column(align).tolist()):
+        if gap_count/number_seqs <= abs(float(gap_perc)):
+            kept_columns.append(column)
             i += 1
-        length+=1
-        if i in gap_mapping.keys():
-            continue
-        gap_mapping[i] = int(length)-1
-    return gap_mapping, align, len(align[0])
+        length += 1
+        if i not in gap_mapping:
+            gap_mapping[i] = length-1
+    columns = alignment_array(align)[:, kept_columns]
+    trimmed = Bio.Align.MultipleSeqAlignment([
+        SeqRecord(Seq.Seq(row.tobytes().decode('ascii')), id=record.id, name=record.name, description=record.description)
+        for record, row in zip(align, columns)])
+    return gap_mapping, trimmed, len(kept_columns)
 
 def uniq_resi_list(aln_obj):
     '''
@@ -213,21 +221,22 @@ def subs_matrix(matrix):
     return np.array(loddmx)
 
 def subs_matrix_bgFreq(matrix):
-    if re.match(r'PAM.*',matrix):
-        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034, 
+    if matrix.lower().startswith('pam'):
+        return np.array([0.096, 0.034, 0.042, 0.053, 0.025, 0.032, 0.053, 0.090, 0.034,
            0.035, 0.085, 0.085, 0.012, 0.045, 0.041, 0.057, 0.062, 0.012, 0.030, 0.078])
-    elif re.match(r'blosum.*', matrix):
-        with open (str(os.path.dirname(__file__))+'/../matrices/BLOSUM/'+matrix+'.out') as f:
+    elif matrix.lower().startswith('blosum'):
+        with open(matrix_path('BLOSUM', matrix+'.out')) as f:
             freqs = f.readlines()[37]
         return np.array([float(x) for x in freqs.split()])
     else:
-        raise IOError(f"Impossible combination of arguments!\
-             Can't use background frequencies with matrix {matrix}!")
+        raise IOError(f"Background frequencies are only available for PAM and BLOSUM matrices. "
+                      f"Use -bn uniform with matrix {matrix}.")
 
+@lru_cache(maxsize=None)
 def struc_anno_matrices (struc_anno, baselineType):
     '''Returns a log odds matrix from a given name of a PAML type matrix'''
-    mx = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/'+struc_anno+'.dat')
-    behosMX = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/structureDerived/BEHOS.dat')
+    mx = load_paml_matrix(matrix_path('structureDerived', struc_anno+'.dat'))
+    behosMX = load_paml_matrix(matrix_path('structureDerived', 'BEHOS.dat'))
     if baselineType == 'uniform':
         return baseline_matrix(np.array(mx.lodd))
     return baseline_matrix(np.array(mx.lodd), behosMX.getPiFreqs)
@@ -241,44 +250,23 @@ def baseline_matrix(mx, testFrequency=None):
         raise ValueError("Wasn't able to baseline the substitution matrix correctly!")
     return np.subtract(np.array(mx),baseline)
 
-def adjustMatrixGivenAlnFrequencies(subsMatrixName, mx, sliced_alns):
-    from subprocess import Popen, PIPE
-    '''Runs newton_direct_solve on a pre-computed joint probility for a substitution matrix.
-    Uses the two provided AA frequencies to output a substitution matrix which is compositionally
-    adjusted for these two frequencies.'''
-    jointProbLocation = f'{os.path.dirname(os.path.realpath(__file__))}/../matrices/jp/{subsMatrixName}.dat'
-    newton_direct_solve = f'{os.path.dirname(os.path.realpath(__file__))}/newton_direct_solve'
-    groupAAfreqs, groupLengths = list(), list()
+def adjustMatrixGivenAlnFrequencies(subsMatrixName, sliced_alns):
+    '''Returns the BLOSUM matrix compositionally adjusted to the residue frequencies of the two
+    alignment groups, in the units of the original matrix.'''
+    # Adjusted scores are natural-log ratios; these factors bring them to each BLOSUM's scale.
     multiplicationFactors = dict(blosum62 = 2, blosum30 = 5, blosum35 = 4, blosum40 = 4, blosum45 = 3, blosum50 = 3, blosum55 = 3,
                                 blosum60 = 2, blosum65 = 2, blosum70 = 2, blosum75 = 2, blosum80 = 2, blosum85 = 2, blosum90 = 2,
-                                blosum95 = 2, blosum100 = 2, blastn = 1, trans = 1, identity = 1)
-    if subsMatrixName not in multiplicationFactors.keys():
-        raise IOError(f"Can't handle compositional adjustment with matrix {subsMatrixName}! Use a BLSOUM matrix instead.")
-    for alnObj in sliced_alns.values():
-        alnGroup = AlignmentGroup(alnObj)
-        groupAAfreqs.append(alnGroup.getAAfrequenciesList())
-        groupLengths.append(alnObj.get_alignment_length())
-
-    g1Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG1freqs"
-    g2Freqs = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempG2freqs"
-    tempMxfile = f"{os.path.dirname(os.path.realpath(__file__))}/TWCtempCAmatrix"
-
-    tempfiles = [g1Freqs, g2Freqs, tempMxfile]
-    for i, aaFreqs in enumerate(groupAAfreqs):
-        with open(tempfiles[i], "w") as f:
-            f.write('\n'.join([str(x) for x in aaFreqs]))
-
-    cmd = f'{newton_direct_solve} 1 {tempMxfile} {jointProbLocation} {g1Freqs} {g2Freqs} {groupLengths[0]} {groupLengths[1]} {len(mx)}'
-    pipe = Popen(cmd, stdout=PIPE, shell=True)
-    output = pipe.communicate()[0]
-    with open(tempMxfile, "r") as file:
-        li = [[float(x) for x in line.strip()[1:-1].split()] for line in file]
-
-    outputMx = np.array(li)
-    for tempf in tempfiles:
-        os.remove(tempf)
-    
-    return outputMx*multiplicationFactors[subsMatrixName]
+                                blosum95 = 2, blosum100 = 2)
+    if subsMatrixName not in multiplicationFactors:
+        raise IOError(f"Can't handle compositional adjustment with matrix {subsMatrixName}! Use a BLOSUM matrix instead.")
+    joint_probs = np.loadtxt(matrix_path('jp', f'{subsMatrixName}.dat'))
+    groups = list(sliced_alns.values())
+    adjusted = adjust_matrix(joint_probs,
+                             AlignmentGroup(groups[0]).getAAfrequenciesList(),
+                             AlignmentGroup(groups[1]).getAAfrequenciesList(),
+                             groups[0].get_alignment_length(),
+                             groups[1].get_alignment_length())
+    return adjusted*multiplicationFactors[subsMatrixName]
 
 
 def determine_subs_matrix(comm_args, sliced_alns):
@@ -294,20 +282,22 @@ def determine_subs_matrix(comm_args, sliced_alns):
         mx = np.array([4.322, 0])
         return mx, mx.min(), mx.max(), np.array([0.25, 0.25, 0.25, 0.25])
     elif comm_args.leegascuel or comm_args.structure_paths:
-        mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
-        bgFreq = PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').getPiFreqs
+        lg_matrix = load_paml_matrix(matrix_path('LG.dat'))
+        mx = np.array(lg_matrix.lodd)
+        bgFreq = lg_matrix.getPiFreqs
     elif comm_args.custom_matrix:
-        mx = np.array(PAMLmatrix(str(comm_args.custom_matrix)).lodd)
-        bgFreq = PAMLmatrix(str(comm_args.custom_matrix)).getPiFreqs
+        custom_matrix = PAMLmatrix(str(comm_args.custom_matrix))
+        mx = np.array(custom_matrix.lodd)
+        bgFreq = custom_matrix.getPiFreqs
     elif not comm_args.nucleotide and comm_args.substitution_matrix:
         mx = subs_matrix(comm_args.substitution_matrix)
-        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix)
+        bgFreq = subs_matrix_bgFreq(comm_args.substitution_matrix) if comm_args.baseline == 'bgfreq' else None
     elif (comm_args.secondary_structure or comm_args.burried_exposed or comm_args.both) and not comm_args.structure_paths:
         raise IOError("When using structure defined paths you must specify structure files with -s!")
     else:
         raise IOError("Impossible combination of arguments!")
     if comm_args.compositional_adjustment:
-        mx = adjustMatrixGivenAlnFrequencies(comm_args.substitution_matrix, mx, sliced_alns)
+        mx = adjustMatrixGivenAlnFrequencies(comm_args.substitution_matrix, sliced_alns)
     if comm_args.baseline == 'uniform':
         outMx = baseline_matrix(mx)
         bgFreq = np.repeat(1/len(mx),len(mx))
@@ -388,8 +378,8 @@ def gradients(data, positivegradient, negativegradient, mx_maxval, mx_minval):
 def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
     """Creates the same gradients used for svg output and writes out a .pml file for PyMOL visualization.
     """
-    from pathlib import Path, PureWindowsPath, PurePosixPath
-    
+    from pathlib import PureWindowsPath, PurePosixPath
+
     data = []
     for x in sorted(out_dict.keys()):
         data.append(out_dict[x][0])
@@ -400,9 +390,8 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
         alnindex_to_hexcolors = gradients(data,'Greens','Purples', mx_maxval, mx_minval)
 
     group_names = list(gapped_sliced_alns.keys())
-    #Open .pml file for structure coloring
-    pml_output = open(comm_args.output_path+".pml","w")
-    pml_output.write("\
+    with open(comm_args.output_path+".pml","w") as pml_output:
+        pml_output.write("\
         set hash_max, 500\n\
         set valence, 0\n\
         set cartoon_loop_radius,0.4\n\
@@ -415,23 +404,16 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
         set ray_trace_mode,1\n\
         set ray_shadows,0\n")
 
-    #Bellow here needs fixing to properly do structures for plotting
-    for alngroup_name in group_names:
-        #Match groupnames with structure files
-        current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
-        
-        if len(current_path) == 0:
-            raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
-               and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
-        else:
+        for alngroup_name in group_names:
+            #Match groupnames with structure files
+            current_path = [s for s in comm_args.structure_pymol if alngroup_name in ntpath.basename(s)]
+            if len(current_path) == 0:
+                raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
+                   and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
             #We have to recalculate the structure to alignment mapping
             alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
             AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
             struc_to_aln_index_mapping=AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
-            #Open the structure file
-            output_parent_dir = ntpath.dirname(comm_args.output_path)
-            if output_parent_dir == '.':
-                output_parent_dir = str(Path(__file__).parent.absolute())
             if comm_args.write_pml_script == 'unix':
                 pml_path = PurePosixPath(current_path[0])
             elif comm_args.write_pml_script == 'windows':
@@ -444,7 +426,7 @@ def pymol_script_writer(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_m
                 if aln_index in struc_to_aln_index_mapping:
                     hexcolors_appropriate_for_pml = alnindex_to_hexcolors[aln_index].replace('#','0x')
                     pml_output.write(f"color {hexcolors_appropriate_for_pml}, {alngroup_name} and resi {str(struc_to_aln_index_mapping[aln_index])}\n")
-    pml_output.write(f"super {group_names[0]}, {group_names[1]}\n")
+        pml_output.write(f"super {group_names[0]}, {group_names[1]}\n")
     return True
 
 def jalview_output(output_dict, comm_args):
@@ -454,14 +436,15 @@ def jalview_output(output_dict, comm_args):
     for x in sorted(output_dict.keys()):
         out_data.append(output_dict[x][0])
     
-    jv_output = open(comm_args.output_path+".jlv","w")
-    jv_output.write('JALVIEW_ANNOTATION\n')
-    jv_output.write('# Created: '+str(date.today())+"\n")
-    jv_output.write('# Contact: ppenev@gatech.edu\n')
-    jv_output.write('BAR_GRAPH\tTWINCONS\t')
-    for position in sorted(output_dict.keys(), key=abs):
-        color_hex = data_to_diverging_gradients(output_dict[position][0], max(out_data), min(out_data), 'Greens', 'Purples')
-        jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
+    max_score, min_score = max(out_data), min(out_data)
+    with open(comm_args.output_path+".jlv","w") as jv_output:
+        jv_output.write('JALVIEW_ANNOTATION\n')
+        jv_output.write('# Created: '+str(date.today())+"\n")
+        jv_output.write('# Contact: peteripenev@gmail.com\n')
+        jv_output.write('BAR_GRAPH\tTWINCONS\t')
+        for position in sorted(output_dict.keys(), key=abs):
+            color_hex = data_to_diverging_gradients(output_dict[position][0], max_score, min_score, 'Greens', 'Purples')
+            jv_output.write(str(output_dict[position][0])+'['+str(color_hex).replace('#','')+']|')
     return True
 
 def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_maxval, bg_freq):
@@ -481,12 +464,11 @@ def ribovision_output(out_dict, gapped_sliced_alns, comm_args, mx_minval, mx_max
         if len(current_path) == 0:
             raise IOError("Cannot write PyMOL coloring script without at least single matching structure \
                and sequence!\nSequence:\t"+alngroup_name+"\nStructure:\t"+str(current_path))
-        else:
-            rv_output = open(f"{comm_args.output_path}_{alngroup_name}.csv","w")
+        alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
+        AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
+        struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
+        with open(f"{comm_args.output_path}_{alngroup_name}.csv","w") as rv_output:
             rv_output.write("resNum,DataCol,ColorCol\n")
-            alngroup_name_object = AlignmentGroup(gapped_sliced_alns[alngroup_name], struc_path=current_path[0], seq_distribution=bg_freq)
-            AlignmentGroup.add_struc_path(alngroup_name_object, current_path[0])
-            struc_to_aln_index_mapping = AlignmentGroup.create_aln_struc_mapping_with_mafft(alngroup_name_object)
             for aln_index in alnindex_to_hexcolors.keys():
                 if aln_index in struc_to_aln_index_mapping:
                     rv_output.write(f"{alngroup_name}:{str(struc_to_aln_index_mapping[aln_index])},{data[aln_index-1]},{alnindex_to_hexcolors[aln_index]},\n")
@@ -536,11 +518,13 @@ def compute_score(aln_index_dict, groupnames, mx=None, struc_annotation=None, ba
     if struc_annotation and mx:
         raise IOError("Do not use structure defined matrices and sequence based matrices at the same time.")
     alnindex_score = defaultdict(dict)
+    if struc_annotation:
+        lg_lodd = np.array(load_paml_matrix(matrix_path('LG.dat')).lodd)
     for aln_index in aln_index_dict:
         vr1 = np.array(aln_index_dict[aln_index][groupnames[0]])
         vr2 = np.array(aln_index_dict[aln_index][groupnames[1]])
         if struc_annotation:
-            mx = np.array(PAMLmatrix(str(os.path.dirname(__file__))+'/../matrices/LG.dat').lodd)
+            mx = lg_lodd
             if aln_index in struc_annotation[groupnames[0]] and aln_index in struc_annotation[groupnames[1]]:
                 common_chars = sorted(set(struc_annotation[groupnames[0]][aln_index]) & set (struc_annotation[groupnames[1]][aln_index]))
                 if len(common_chars) > 0:
@@ -593,6 +577,9 @@ def decision_maker(comm_args, alignIO_out, sliced_alns, aa_list, alngroup_to_seq
 def main(commandline_arguments):
     '''Main entry point'''
     comm_args = create_and_parse_argument_options(commandline_arguments)
+    if not any(score_outputs(comm_args)):
+        run_mafft(comm_args.alignment_paths, merged_path=comm_args.merged_alignment)
+        return None
     if comm_args.cut_gaps and (comm_args.structure_pymol or comm_args.structure_paths):
         raise IOError("TwinCons can not take in this combination of arguments!\
     \nCombining gap removal (-cg) and structural mapping (-sy) or structure based matrices (-s) produces inconsistent alignment mapping!")
@@ -613,7 +600,7 @@ def main(commandline_arguments):
     elif len(comm_args.alignment_paths) == 1:
         alignIO_out_gapped=read_align(comm_args.alignment_paths[0])
     elif len(comm_args.alignment_paths) == 2:
-        alignIO_out_gapped = run_mafft(comm_args.alignment_paths)
+        alignIO_out_gapped = run_mafft(comm_args.alignment_paths, merged_path=comm_args.merged_alignment)
     else:
         raise IOError("Unhandled combination of arguments!")
     for x in alignIO_out_gapped:
@@ -629,10 +616,9 @@ def main(commandline_arguments):
     if len(gapped_sliced_alns.keys()) != 2:
         raise ValueError("For now does not support more than two groups! Offending groups are "+str(gapped_sliced_alns.keys()))
 
-    num_seqs_per_group, num_seqs_per_group_dict  = list(), dict()
+    num_seqs_per_group = list()
     for aln in gapped_sliced_alns:
         num_seqs_per_group.append(gapped_sliced_alns[aln].__len__())
-        num_seqs_per_group_dict[aln] = gapped_sliced_alns[aln].__len__()
     if comm_args.gap_threshold is None:
         comm_args.gap_threshold = round(min([num_seqs_per_group[0]/(num_seqs_per_group[0]+num_seqs_per_group[1]),num_seqs_per_group[1]/(num_seqs_per_group[0]+num_seqs_per_group[1])])-0.05,2)
     
@@ -641,24 +627,23 @@ def main(commandline_arguments):
     if comm_args.calculate_group_gaps:#Make sure its not above 1!
         if 2*comm_args.gap_threshold >= 1:
             raise IOError("When calculating group gaps, gap threshold must be assigned to values bellow 0.5!")
-        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold, num_seqs_per_group_dict)
+        extremely_gapped = count_extremely_gapped_positions_for_group(gapped_sliced_alns, 2*comm_args.gap_threshold)
     if comm_args.cut_gaps:
         tempaln = alignIO_out_gapped[:,:]
         alignIO_out_gapped = Bio.Align.MultipleSeqAlignment([])
-        gp_mapping, alignIO_out_gapped, alen = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
+        gp_mapping, alignIO_out_gapped, _ = remove_extremely_gapped_regions(tempaln, float(comm_args.gap_threshold), gp_mapping)
     else:
         for i in range(1, alignIO_out_gapped.get_alignment_length()+1):
             gp_mapping[i] = i
 
-    alngroup_to_sequence_weight = dict()
-    for alngroup in gapped_sliced_alns:
-        alngroup_to_sequence_weight[alngroup] = list()
-        alngroup_to_sequence_weight['shannon'] = list()
-        if comm_args.weigh_sequences:
-            if comm_args.reflected_shannon or comm_args.shannon_entropy:
-                alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences)
-            else:
-                alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences)
+    alngroup_to_sequence_weight = {alngroup: list() for alngroup in gapped_sliced_alns}
+    alngroup_to_sequence_weight['shannon'] = list()
+    if comm_args.weigh_sequences:
+        if comm_args.reflected_shannon or comm_args.shannon_entropy:
+            alngroup_to_sequence_weight['shannon'] = calculate_weight_vector(alignIO_out_gapped, algorithm=comm_args.weigh_sequences, repeat=comm_args.voronoi_samples)
+        else:
+            for alngroup in gapped_sliced_alns:
+                alngroup_to_sequence_weight[alngroup] = calculate_weight_vector(gapped_sliced_alns[alngroup], algorithm=comm_args.weigh_sequences, repeat=comm_args.voronoi_samples)
 
     uniq_resis = uniq_resi_list(alignIO_out_gapped)
     if comm_args.nucleotide:

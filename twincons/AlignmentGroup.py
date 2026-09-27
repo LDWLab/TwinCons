@@ -1,10 +1,26 @@
-import re, ntpath
+import os, re, ntpath, shutil
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import DSSP
 from Bio.PDB import PDBParser
-#from Bio.PDB import ResidueDepth
+from twincons.twcSupportFunctions import alignment_array
 '''Contains class for alignment groups'''
+
+def locate_dssp_data():
+    '''
+    DSSP 4 reads its mmCIF dictionaries through libcifpp, whose conda build does not find them
+    unless LIBCIFPP_DATA_DIR is set. When it is unset, point it at <prefix>/share/libcifpp next to
+    the mkdssp executable, if the dictionaries are there.
+    '''
+    if 'LIBCIFPP_DATA_DIR' in os.environ:
+        return
+    executable = shutil.which('mkdssp') or shutil.which('dssp')
+    if executable is None:
+        return
+    prefix = os.path.dirname(os.path.dirname(os.path.realpath(executable)))
+    data_dir = os.path.join(prefix, 'share', 'libcifpp')
+    if os.path.isfile(os.path.join(data_dir, 'mmcif_pdbx.dic')):
+        os.environ['LIBCIFPP_DATA_DIR'] = data_dir
 
 class AlignmentGroup:
     '''
@@ -13,14 +29,15 @@ class AlignmentGroup:
     and a sequence distribution (used for gap adjustment). When no
     sequence distribution is passed a uniform distribution is assumed.
     '''
-    DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','-':'O'}
-    def __init__(self, aln_obj, seq_distribution=None, struc_path=None, sstruc_str=None, uniq_resi_list=None):
+    # DSSP 4 added P (polyproline II helix), grouped here with turns and coil.
+    DSSP_code_mycode = {'H':'H','B':'S','E':'S','G':'H','I':'H','T':'O','S':'O','P':'O','-':'O'}
+    def __init__(self, aln_obj, seq_distribution=None, struc_path=None):
         self.aln_obj = aln_obj
         self.uniq_resi_list = self._determineUniqResis(aln_obj)
         if seq_distribution is not None:
-            if type(seq_distribution) is np.ndarray:
+            if isinstance(seq_distribution, np.ndarray):
                 self.seq_distribution = {self.uniq_resi_list[i] : seq_distribution[i] for i in range(len(seq_distribution))}
-            elif type(seq_distribution) is dict():
+            elif isinstance(seq_distribution, dict):
                 self.seq_distribution = seq_distribution
             else:
                 raise IOError("Incorrect type of seq_distribution passed. Must be np.array or dict.")
@@ -29,8 +46,7 @@ class AlignmentGroup:
             for entry in aln_obj:
                 tempStorage += str(entry.seq).replace('-','').replace('\n','')
             self.seq_distribution = {i : tempStorage.count(i)/len(tempStorage) for i in set(tempStorage)}
-        self.struc_path = struc_path if struc_path is not None else None
-        self.sstruc_str = sstruc_str if sstruc_str is not None else None
+        self.struc_path = struc_path
 
     def validateType(self, string, alphabet='protein'):
         '''Check that a string only contains values from an alphabet'''
@@ -74,7 +90,7 @@ class AlignmentGroup:
         for chain in structure.get_chains():
             chains.append(chain)
         if len(chains) != 1:
-            raise IOError(f"When using structure files, they need to have a single chain!")
+            raise IOError("When using structure files, they need to have a single chain!")
         sequence = str()
         seq_ix_mapping = dict()
         untrue_seq_ix = 1
@@ -97,34 +113,31 @@ class AlignmentGroup:
         self.struc_seq = SeqRecord(Seq(sequence))
 
     def create_aln_struc_mapping_with_mafft(self):
-        from subprocess import Popen, PIPE
+        import os
+        import subprocess
+        import tempfile
         from Bio import AlignIO
-        from os import remove, path
         from warnings import warn
+        from twincons.twcSupportFunctions import find_executable
 
-        aln_group_path = f"{path.dirname(path.realpath(__file__))}/TWCtempAln.txt"
-        pdb_seq_path = f"{path.dirname(path.realpath(__file__))}/TWCtempStrucSeq.txt"
-        mappingFileName = pdb_seq_path + ".map"
-        tempfiles = [aln_group_path, pdb_seq_path, mappingFileName]
-        for tempf in tempfiles:
-            if path.isfile(tempf):
-                warn(f"When using mafft to make structural mapping the working directory must be free of file {tempf}. Trying to delete the file.")
-                remove(tempf)
-                if path.isfile(tempf):
-                    raise IOError(f"Couldn't delete the file {tempf} please remove it manually!")
+        mafft = find_executable('mafft', 'to map structure residues onto the alignment')
+        with tempfile.TemporaryDirectory(prefix='twincons_') as temp_dir:
+            aln_group_path = os.path.join(temp_dir, 'aln_group.fas')
+            pdb_seq_path = os.path.join(temp_dir, 'struc_seq.fas')
+            with open(aln_group_path, "w") as aln_group_fh:
+                AlignIO.write(self.aln_obj, aln_group_fh, "fasta")
+            with open(pdb_seq_path, "w") as pdb_seq_fh:
+                SeqIO.write(self.struc_seq, pdb_seq_fh, "fasta")
 
-        aln_group_fh = open(aln_group_path, "w")
-        AlignIO.write(self.aln_obj, aln_group_fh, "fasta")
-        aln_group_fh.close()
-
-        pdb_seq_fh = open(pdb_seq_path, "w")
-        SeqIO.write(self.struc_seq, pdb_seq_fh, "fasta")
-        pdb_seq_fh.close()
-
-        pipe = Popen(f"mafft --quiet --addfull {pdb_seq_path} --mapout {aln_group_path}; cat {mappingFileName}", stdout=PIPE, shell=True)
-        output = pipe.communicate()[0]
-        mapping_file = output.decode("ascii").split('\n#')[1]
-        groupName = output.decode('ascii').split('>')[1].split('_')[0]
+            result = subprocess.run([mafft, '--quiet', '--addfull', pdb_seq_path, '--mapout', aln_group_path],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            map_path = pdb_seq_path + ".map"
+            if result.returncode != 0 or not os.path.isfile(map_path):
+                raise OSError(f"mafft --addfull failed with exit code {result.returncode}:\n{result.stderr}")
+            with open(map_path) as map_handle:
+                map_text = map_handle.read()
+        mapping_file = map_text.split('\n#')[1]
+        groupName = result.stdout.split('>')[1].split('_')[0]
         firstLine = True
         mapping, bad_map_positions, fail_map = dict(), 0, False
         for line in mapping_file.split('\n'):
@@ -140,8 +153,6 @@ class AlignmentGroup:
             if row[1] == '-':
                 fail_map = True
             mapping[int(row[2])] = self.seq_ix_mapping[int(row[1])]
-        for tempf in tempfiles:
-            remove(tempf)
         if fail_map:
             raise ValueError(f"Mapping between structure file {self.struc_path} and group {groupName} did not work properly!")
         if bad_map_positions > 0:
@@ -149,64 +160,47 @@ class AlignmentGroup:
         self.mapping = mapping
         return mapping
 
-    def _freq_iterator(self, column, aa_list, weight_aa_distr):
-        '''Calculates gap adjusted frequency of each AA in the column.'''
-        #Still doesn't handle ambiguous letters well
-        if type(aa_list) == list:
-            aa_list = ''.join(aa_list)
-        if len(aa_list) >= 20:
-            abs_length = 20
-            adjsuted_column_list = ['-' if resi=='X' else resi for resi in column]
-            all_residues = aa_list.replace('X', '')
-        else:
-            abs_length = 4
-            adjsuted_column_list = ['-' if resi=='N' else resi for resi in column]
-            aa_list.replace('N', '')
-
-        M   =  len(adjsuted_column_list)
-        
-        #Gap adjustment
-        num_gaps = adjsuted_column_list.count('-')
-        if '-' in weight_aa_distr.keys():
-            num_gaps = weight_aa_distr['-']*M
-        gap_freq = num_gaps/abs_length
-        frequency_list = list()
-        
-        # Number of residues in column
-        for base in aa_list:
-            n_i = adjsuted_column_list.count(base) # Number of residues of type i
-            if base in weight_aa_distr.keys():     # In case of weighted
-                n_i = weight_aa_distr[base]*M
-            #Gap adjustment
-            if base in self.seq_distribution.keys():
-                n_i += self.seq_distribution[base]*num_gaps
-            else:
-                n_i += gap_freq
-            P_i = n_i/float(M) # n_i(Number of residues of type i) / M(Number of residues in column)
-            frequency_list.append(P_i)
-        return frequency_list
-
     def column_distribution_calculation(self, aa_list, alignment_length, seq_weights):
-        '''Calculates AA distribution for the current alignment column'''
-        column_distr = dict()
-        col_ix = 0
-        while col_ix < alignment_length:
-            col_aalist = list()
-            weighted_distr = dict()
-            if len(seq_weights) > 0:
-                col_aalist = list()
-                row_ix = 0
-                for col_aa in self.aln_obj[:, col_ix]:
-                    if col_aa not in weighted_distr.keys():
-                        weighted_distr[col_aa] = float()
-                    weighted_distr[col_aa] += seq_weights[row_ix]
-                    row_ix += 1
-            col_aalist = self._freq_iterator(self.aln_obj[:, col_ix], aa_list, weighted_distr)
-            col_ix += 1
-            column_distr[col_ix] = col_aalist
-        return column_distr
+        '''
+        Returns {column index (1-based): gap adjusted frequency of each residue in aa_list}.
+        Ambiguous residues (X for proteins, N for nucleotides) count as gaps. Gaps are
+        redistributed according to seq_distribution, or uniformly for residues missing from it.
+        With seq_weights, residue counts are replaced by the summed weights of the sequences
+        carrying that residue, scaled by the number of sequences.
+        '''
+        aa_string = ''.join(aa_list)
+        if len(aa_string) >= 20:
+            abs_length, ambiguous = 20, b'X'
+        else:
+            abs_length, ambiguous = 4, b'N'
+        seqs = alignment_array(self.aln_obj)[:, :alignment_length]
+        M = seqs.shape[0]
+        adjusted = np.where(seqs == ambiguous, b'-', seqs)
+        num_gaps = (adjusted == b'-').sum(axis=0)
+        weighted = len(seq_weights) > 0
+        if weighted:
+            weights = np.asarray(seq_weights, dtype=float)[:, None]
+            def summed_weights(char):
+                # Sequential sum over sequences keeps the floating point result of per-row accumulation.
+                present = seqs == char
+                return present.any(axis=0), (present * weights).cumsum(axis=0)[-1]
+            gap_present, gap_weight = summed_weights(b'-')
+            num_gaps = np.where(gap_present, gap_weight*M, num_gaps)
+        frequencies = np.empty((seqs.shape[1], len(aa_string)))
+        for i, base in enumerate(aa_string):
+            n_i = (adjusted == base.encode('ascii')).sum(axis=0)
+            if weighted:
+                base_present, base_weight = summed_weights(base.encode('ascii'))
+                n_i = np.where(base_present, base_weight*M, n_i)
+            if base in self.seq_distribution:
+                n_i = n_i + self.seq_distribution[base]*num_gaps
+            else:
+                n_i = n_i + num_gaps/abs_length
+            frequencies[:, i] = n_i/float(M)
+        return {col_ix: column.tolist() for col_ix, column in enumerate(frequencies, 1)}
 
     def structure_loader(self,struc_to_aln_index_mapping):
+        locate_dssp_data()
         inv_map = {v: k for k, v in struc_to_aln_index_mapping.items()}
         parser = PDBParser()
         structure = parser.get_structure('current_structure',self.struc_path)
@@ -246,7 +240,7 @@ class AlignmentGroup:
         try:
             dssp = DSSP(model, self.struc_path)
         except OSError as e:
-            raise OSError("DSSP failed with the following error:\n"+e)
+            raise OSError(f"DSSP failed with the following error:\n{e}") from e
         for a_key in list(dssp.keys()):
             if a_key[1][1] in inv_map.keys():
                 if dssp[a_key][3] > 0.2:
@@ -255,9 +249,5 @@ class AlignmentGroup:
                     sda[inv_map[a_key[1][1]]]='B'+self.DSSP_code_mycode[dssp[a_key][2]]
         return sda
 
-    def _return_alignment_obj(self):
-        '''Returns current alignment object of this group'''
-        return self.aln_obj
-
     def getAAfrequenciesList (self):
-        return [self.seq_distribution[aa] for aa in self.uniq_resi_list]
+        return [self.seq_distribution.get(aa, 0.0) for aa in self.uniq_resi_list]
