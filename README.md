@@ -8,7 +8,7 @@ If you use TwinCons, please cite:
 
 ## Installation
 
-TwinCons requires Python 3.14 or newer.
+TwinCons 0.7 supports Python 3.8 and newer (numpy ≥ 1.21, matplotlib ≥ 3.5, biopython ≥ 1.79). TwinCons 1.0 has the same features and requires Python 3.14 and the latest numpy, matplotlib and biopython; pip installs the newest version your Python supports.
 
 ```
 pip install TwinCons
